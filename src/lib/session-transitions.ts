@@ -1,0 +1,19 @@
+import type { SessionState } from '@/lib/types';
+
+// Pure session-state transitions (Mechanic Specification). No storage I/O —
+// hooks/useActiveSession.ts calls these, then writes the result via
+// lib/storage.ts. Only the Story 2.1 transition (start) exists so far;
+// Correct/Incorrect/Restart land in Stories 2.2-2.4.
+
+// Session start (FR8, FR9): current_streak = 0, session_start_timestamp =
+// now. target_streak isn't part of SessionState — the caller derives it via
+// calculateTargetStreak(0), which evaluates to TARGET_FLOOR (5).
+export function startSession(segmentName: string): SessionState {
+  return {
+    segmentName,
+    currentStreak: 0,
+    totalIncorrectThisSession: 0,
+    sessionComplete: false,
+    sessionStartTimestamp: new Date().toISOString(),
+  };
+}

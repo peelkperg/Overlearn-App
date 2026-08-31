@@ -33,7 +33,12 @@ export default function SegmentDetailScreen() {
             <ThemedText type="title" style={styles.title}>
               {segment.name}
             </ThemedText>
-            <Pressable testID="segment-detail-start" style={styles.button} accessibilityRole="button">
+            <Pressable
+              testID="segment-detail-start"
+              style={styles.button}
+              onPress={() => router.push(`/session/${id}`)}
+              accessibilityRole="button"
+            >
               <Text style={styles.buttonText}>Start</Text>
             </Pressable>
             <View style={styles.secondaryActions}>

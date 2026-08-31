@@ -7,3 +7,14 @@ export interface Segment {
   archived: boolean;
   createdAt: string; // ISO 8601
 }
+
+// Mechanic Specification's Session State (architecture.md's camelCase
+// mapping). target_streak is intentionally absent — it's derived on every
+// read via calculateTargetStreak(totalIncorrectThisSession), never stored.
+export interface SessionState {
+  segmentName: string;
+  currentStreak: number;
+  totalIncorrectThisSession: number;
+  sessionComplete: boolean;
+  sessionStartTimestamp: string; // ISO 8601
+}
