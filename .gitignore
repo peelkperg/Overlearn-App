@@ -7,6 +7,7 @@ web-build/
 expo-env.d.ts
 
 # Native
+.kotlin/
 *.orig.*
 *.jks
 *.p8
@@ -29,9 +30,16 @@ yarn-error.*
 # Local env files
 .env*.local
 
+# TypeScript
+*.tsbuildinfo
+
 # EAS
 credentials.json
 
 # Editor
 .vscode/
 .idea/
+
+# Generated native folders (Expo managed workflow / dev-client prebuild)
+/ios
+/android
