@@ -1,98 +1,107 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSegments } from '@/hooks/useSegments';
+import type { Segment } from '@/lib/types';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
+// Story 1.3: View the Segment List (FR2, FR4, FR7, UX-DR11).
 export default function HomeScreen() {
+  const { segments } = useSegments();
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+        {segments.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <FlatList
+            testID="segment-list"
+            style={styles.list}
+            data={segments}
+            keyExtractor={(segment) => segment.id}
+            renderItem={({ item }) => <SegmentRow segment={item} />}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+        )}
       </SafeAreaView>
     </ThemedView>
+  );
+}
+
+function SegmentRow({ segment }: { segment: Segment }) {
+  return (
+    <ThemedView type="backgroundElement" style={styles.row}>
+      <ThemedText>{segment.name}</ThemedText>
+    </ThemedView>
+  );
+}
+
+function EmptyState() {
+  return (
+    <View testID="segment-list-empty" style={styles.emptyState}>
+      <ThemedText type="subtitle" style={styles.emptyTitle}>
+        No segments yet
+      </ThemedText>
+      <ThemedText type="small" style={styles.emptyHint}>
+        Create your first practice segment to get started.
+      </ThemedText>
+      <Pressable
+        testID="segment-list-create"
+        style={styles.button}
+        onPress={() => router.push('/segment/new')}
+        accessibilityRole="button"
+      >
+        <Text style={styles.buttonText}>Create segment</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'center',
   },
   safeArea: {
     flex: 1,
+    alignSelf: 'stretch',
     paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
     paddingBottom: BottomTabInset + Spacing.three,
     maxWidth: MaxContentWidth,
   },
-  heroSection: {
+  list: {
+    flex: 1,
+  },
+  row: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+    marginTop: Spacing.two,
+  },
+  emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
+    gap: Spacing.three,
     paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
-  title: {
+  emptyTitle: {
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
+  emptyHint: {
+    textAlign: 'center',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  button: {
+    backgroundColor: '#2ecc71',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
   },
+  buttonText: { color: '#0a2c14', fontWeight: '600', fontSize: 16 },
 });
