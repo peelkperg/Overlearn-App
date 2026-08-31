@@ -11,12 +11,13 @@ import { useActiveSession } from '@/hooks/useActiveSession';
 import { useSegment } from '@/hooks/useSegments';
 
 // Story 2.1: Start a Practice Session Immediately (FR8, FR9; UX-DR1, UX-DR2,
-// UX-DR6, UX-DR7, UX-DR8, UX-DR12). Correct/Incorrect/Restart tap handling
-// arrives in Stories 2.2-2.4.
+// UX-DR6, UX-DR7, UX-DR8, UX-DR12).
+// Story 2.2: Log a Correct Repetition (FR16, FR18, FR19).
+// Incorrect/Restart tap handling arrives in Stories 2.3-2.4.
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
-  const { session, start, targetStreak } = useActiveSession();
+  const { session, start, logCorrect, targetStreak } = useActiveSession();
   const started = useRef(false);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function ActiveSessionScreen() {
 
   return (
     <View style={styles.container}>
-      <CorrectButton />
+      <CorrectButton onPress={logCorrect} />
       <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={session.segmentName} />
       <IncorrectButton />
       <RestartControl />

@@ -17,3 +17,11 @@ export function startSession(segmentName: string): SessionState {
     sessionStartTimestamp: new Date().toISOString(),
   };
 }
+
+// Correct (FR16, FR18): current_streak += 1. Assumes the Story 2.2
+// precondition current_streak < target_streak — completion detection
+// (current_streak >= target_streak) is Story 2.5's addition to this
+// transition, not yet implemented here.
+export function logCorrect(session: SessionState): SessionState {
+  return { ...session, currentStreak: session.currentStreak + 1 };
+}

@@ -2,12 +2,22 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { SessionColors } from '@/components/session/colors';
 
+type CorrectButtonProps = {
+  onPress: () => void;
+};
+
 // Locked layout (UX-DR1, UX-DR2): top ~40% of screen, green, checkmark,
 // no text. Redundantly coded by position + color + icon shape (NFR7).
-// Tap handling (FR16) lands in Story 2.2 — this is layout/styling only.
-export function CorrectButton() {
+// FR16/FR18/FR19: logs a Correct repetition on tap, no undo affordance.
+export function CorrectButton({ onPress }: CorrectButtonProps) {
   return (
-    <Pressable testID="correct-button" style={styles.button} accessibilityRole="button" accessibilityLabel="Correct">
+    <Pressable
+      testID="correct-button"
+      style={styles.button}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Correct"
+    >
       <Text style={styles.icon}>✓</Text>
     </Pressable>
   );

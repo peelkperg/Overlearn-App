@@ -41,3 +41,44 @@ describe('useActiveSession [Story 2.1]', () => {
     expect(reloaded.current.session?.segmentName).toBe('Bar 24 arpeggio');
   });
 });
+
+describe('useActiveSession logCorrect [Story 2.2]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('increments current_streak by 1', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+
+    await act(() => {
+      result.current.logCorrect();
+    });
+
+    expect(result.current.session?.currentStreak).toBe(1);
+  });
+
+  it('persists the increment via the MMKV write helpers', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    await act(() => {
+      result.current.logCorrect();
+    });
+
+    const { result: reloaded } = await renderHook(() => useActiveSession());
+    expect(reloaded.current.session?.currentStreak).toBe(1);
+  });
+
+  it('is a no-op with no active session', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.logCorrect();
+    });
+
+    expect(result.current.session).toBeNull();
+  });
+});
