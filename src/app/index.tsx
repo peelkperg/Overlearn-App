@@ -33,9 +33,15 @@ export default function HomeScreen() {
 
 function SegmentRow({ segment }: { segment: Segment }) {
   return (
-    <ThemedView type="backgroundElement" style={styles.row}>
-      <ThemedText>{segment.name}</ThemedText>
-    </ThemedView>
+    <Pressable
+      testID={`segment-row-${segment.id}`}
+      onPress={() => router.push(`/segment/${segment.id}`)}
+      accessibilityRole="button"
+    >
+      <ThemedView type="backgroundElement" style={styles.row}>
+        <ThemedText>{segment.name}</ThemedText>
+      </ThemedView>
+    </Pressable>
   );
 }
 

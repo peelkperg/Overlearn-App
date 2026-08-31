@@ -1,4 +1,4 @@
-import { createSegment, readSegments } from './segments';
+import { createSegment, getSegment, readSegments } from './segments';
 import { storage } from './storage';
 
 describe('lib/segments createSegment [Story 1.2]', () => {
@@ -36,5 +36,21 @@ describe('lib/segments createSegment [Story 1.2]', () => {
     const persisted = readSegments();
     expect(persisted).toHaveLength(2);
     expect(persisted.map((s) => s.name)).toEqual(['First', 'Second']);
+  });
+});
+
+describe('lib/segments getSegment [Story 1.4]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('returns the segment matching the given id', () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    expect(getSegment(segment.id)).toEqual(segment);
+  });
+
+  it('returns undefined for an id that does not exist', () => {
+    createSegment('Bar 24 arpeggio');
+    expect(getSegment('missing-id')).toBeUndefined();
   });
 });

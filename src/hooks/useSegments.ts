@@ -17,3 +17,9 @@ export function useSegments() {
 
   return { segments: list, createSegment };
 }
+
+// Story 1.4: single-segment lookup for the Segment Detail screen.
+export function useSegment(id: string): Segment | undefined {
+  const [segment] = useState<Segment | undefined>(() => segments.getSegment(id));
+  return segment;
+}

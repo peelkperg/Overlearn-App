@@ -11,6 +11,10 @@ export function readSegments(): Segment[] {
   return getObject<Segment[]>(SEGMENTS_KEY) ?? [];
 }
 
+export function getSegment(id: string): Segment | undefined {
+  return readSegments().find((segment) => segment.id === id);
+}
+
 // Segment creation (FR1). Throws on an empty/whitespace-only name — the
 // caller (SegmentForm) is expected to validate before calling, but this is
 // the actual data-writing function, so it guards defensively too.
