@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Overlearn — Active Session Mockup</title>
+<style>
+  :root{
+    --bg:#121212;
+    --correct:#2ecc71;
+    --incorrect:#e74c3c;
+    --alert:#f1c40f;
+    --neutral-text:#b0b0b0;
+    --neutral-text-strong:#e8e8e8;
+    --restart-bg:#2a2a2a;
+    --restart-text:#8a8a8a;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:#1a1a1a;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    color:var(--neutral-text-strong);
+    display:flex;flex-direction:column;align-items:center;
+    gap:20px;padding:24px;
+  }
+  h1{font-size:16px;font-weight:600;color:var(--neutral-text);margin:0;}
+  .caption{font-size:13px;color:var(--neutral-text);max-width:340px;text-align:center;margin:0 0 4px 0;}
+
+  .phone{
+    width:320px;height:640px;
+    background:var(--bg);
+    border-radius:36px;
+    border:8px solid #050505;
+    overflow:hidden;
+    display:flex;flex-direction:column;
+    box-shadow:0 12px 40px rgba(0,0,0,.5);
+    position:relative;
+  }
+  .flash-overlay{
+    position:absolute;inset:0;
+    background:var(--alert);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .12s ease;
+  }
+  .phone.target-raise .flash-overlay{ animation:flashPulse .6s ease; }
+  @keyframes flashPulse{
+    0%{opacity:0;} 15%{opacity:.55;} 40%{opacity:.1;} 60%{opacity:.4;} 100%{opacity:0;}
+  }
+
+  .btn{
+    flex:1 1 40%;
+    display:flex;align-items:center;justify-content:center;
+    border:none;width:100%;
+    transition:filter .15s ease, transform .08s ease;
+  }
+  .btn svg{ width:64px;height:64px; }
+  .btn.correct{ background:var(--correct); }
+  .btn.incorrect{ background:var(--incorrect); }
+  .phone.incorrect-pulse .btn.incorrect{ animation:incPulse .5s ease; }
+  @keyframes incPulse{
+    0%{filter:brightness(1);} 30%{filter:brightness(1.5);} 100%{filter:brightness(1);}
+  }
+
+  .readout-zone{
+    flex:0 0 20%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;
+    background:var(--bg);
+  }
+  .readout{
+    font-size:44px;font-weight:700;letter-spacing:1px;
+    color:var(--neutral-text-strong);
+    font-variant-numeric:tabular-nums;
+  }
+  .readout .slash{ color:var(--neutral-text); font-weight:400; }
+  .segment-name{ font-size:12px;color:var(--neutral-text); }
+
+  .restart-row{
+    position:absolute;
+    bottom:8px;left:0;right:0;
+    display:flex;justify-content:center;
+    pointer-events:none;
+  }
+  .restart-btn{
+    pointer-events:auto;
+    font-size:11px;color:var(--restart-text);
+    background:var(--restart-bg);
+    border:none;border-radius:14px;
+    padding:6px 16px;
+    opacity:.85;
+  }
+
+  /* Completion state overlay */
+  .completion{
+    position:absolute;inset:0;
+    background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;
+    opacity:0;pointer-events:none;
+    transition:opacity .25s ease;
+  }
+  .phone.complete .completion{ opacity:1; pointer-events:auto; }
+  .phone.complete .btn,
+  .phone.complete .readout-zone,
+  .phone.complete .restart-row{ visibility:hidden; }
+  .completion .check{ width:56px;height:56px; }
+  .completion h2{ font-size:18px;margin:0;color:var(--neutral-text-strong); }
+  .completion .stats{ font-size:13px;color:var(--neutral-text);text-align:center;line-height:1.6; }
+  .completion .actions{ display:flex;gap:12px;margin-top:8px; }
+  .completion button{
+    font-size:13px;padding:8px 18px;border-radius:8px;border:none;
+    background:var(--restart-bg);color:var(--neutral-text-strong);
+  }
+  .completion button.primary{ background:var(--correct); color:#0a0a0a; font-weight:600; }
+
+  .controls{
+    display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:340px;
+  }
+  .controls button{
+    font-size:12px;padding:8px 14px;border-radius:8px;border:1px solid #333;
+    background:#202020;color:#ddd;cursor:pointer;
+  }
+  .controls button:hover{ background:#2a2a2a; }
+</style>
+</head>
+<body>
+  <h1>Overlearn — Active Session Screen</h1>
+  <p class="caption">Locked layout: Correct (top, green, checkmark) / streak readout (center) / Incorrect (bottom, red, X) / Restart (subordinate, bottom edge). Use the buttons below to preview feedback states.</p>
+
+  <div class="phone" id="phone">
+    <div class="flash-overlay"></div>
+
+    <button class="btn correct" aria-label="Correct">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0a2c14" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 13 9 18 20 6"></polyline>
+      </svg>
+    </button>
+
+    <div class="readout-zone">
+      <div class="readout" id="readout">4<span class="slash">/</span>6</div>
+      <div class="segment-name">Bar 24 arpeggio</div>
+    </div>
+
+    <button class="btn incorrect" aria-label="Incorrect">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#3a0d08" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="5" x2="19" y2="19"></line>
+        <line x1="19" y1="5" x2="5" y2="19"></line>
+      </svg>
+    </button>
+
+    <div class="restart-row">
+      <button class="restart-btn">Restart</button>
+    </div>
+
+    <div class="completion">
+      <svg class="check" viewBox="0 0 24 24" fill="none" stroke="#2ecc71" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="4 13 9 18 20 6"></polyline>
+      </svg>
+      <h2>Session Complete</h2>
+      <div class="stats">Bar 24 arpeggio<br>Target reached: 6<br>8 correct · 4 incorrect · 12 attempts</div>
+      <div class="actions">
+        <button>Done</button>
+        <button class="primary">Repeat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="setState('normal')">Normal (ordinary tap)</button>
+    <button onclick="setState('incorrect-pulse')">Incorrect — mild pulse</button>
+    <button onclick="setState('target-raise')">Target-raise — flash</button>
+    <button onclick="setState('complete')">Session Complete</button>
+  </div>
+
+<script>
+  const phone = document.getElementById('phone');
+  function setState(state){
+    phone.classList.remove('incorrect-pulse','target-raise','complete');
+    if(state === 'incorrect-pulse'){
+      phone.classList.add('incorrect-pulse');
+      setTimeout(()=>phone.classList.remove('incorrect-pulse'), 500);
+    } else if(state === 'target-raise'){
+      phone.classList.add('target-raise');
+      setTimeout(()=>phone.classList.remove('target-raise'), 650);
+    } else if(state === 'complete'){
+      phone.classList.add('complete');
+    }
+  }
+</script>
+</body>
+</html>
