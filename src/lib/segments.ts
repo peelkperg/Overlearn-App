@@ -34,3 +34,28 @@ export function createSegment(name: string): Segment {
   setObject(SEGMENTS_KEY, [...readSegments(), segment]);
   return segment;
 }
+
+// Archiving (FR5). The segment stays in storage — it's excluded from the
+// default active list at the read site (index.tsx), not deleted here.
+export function archiveSegment(id: string): Segment {
+  const all = readSegments();
+  const index = all.findIndex((segment) => segment.id === id);
+  if (index === -1) {
+    throw new Error(`Segment not found: ${id}`);
+  }
+
+  const updated: Segment = { ...all[index], archived: true };
+  const next = [...all];
+  next[index] = updated;
+  setObject(SEGMENTS_KEY, next);
+  return updated;
+}
+
+// Deletion (FR6). Permanently removes the segment. History entries are not
+// yet a persisted concept (Epic 3) — nothing to purge there until they are.
+export function deleteSegment(id: string): void {
+  setObject(
+    SEGMENTS_KEY,
+    readSegments().filter((segment) => segment.id !== id),
+  );
+}

@@ -9,13 +9,34 @@ import type { Segment } from '@/lib/types';
 export function useSegments() {
   const [list, setList] = useState<Segment[]>(() => segments.readSegments());
 
+  const refresh = () => setList(segments.readSegments());
+
   const createSegment = (name: string): Segment => {
     const segment = segments.createSegment(name);
-    setList(segments.readSegments());
+    refresh();
     return segment;
   };
 
-  return { segments: list, createSegment };
+  // Story 1.5 (FR5): archived segments are excluded from the default
+  // active list here, not deleted — their data (and history) is preserved.
+  const archiveSegment = (id: string): Segment => {
+    const segment = segments.archiveSegment(id);
+    refresh();
+    return segment;
+  };
+
+  // Story 1.6 (FR6): permanent removal.
+  const deleteSegment = (id: string): void => {
+    segments.deleteSegment(id);
+    refresh();
+  };
+
+  return {
+    segments: list.filter((segment) => !segment.archived),
+    createSegment,
+    archiveSegment,
+    deleteSegment,
+  };
 }
 
 // Story 1.4: single-segment lookup for the Segment Detail screen.

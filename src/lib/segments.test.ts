@@ -1,4 +1,4 @@
-import { createSegment, getSegment, readSegments } from './segments';
+import { archiveSegment, createSegment, deleteSegment, getSegment, readSegments } from './segments';
 import { storage } from './storage';
 
 describe('lib/segments createSegment [Story 1.2]', () => {
@@ -52,5 +52,62 @@ describe('lib/segments getSegment [Story 1.4]', () => {
   it('returns undefined for an id that does not exist', () => {
     createSegment('Bar 24 arpeggio');
     expect(getSegment('missing-id')).toBeUndefined();
+  });
+});
+
+describe('lib/segments archiveSegment [Story 1.5]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('marks the segment archived and preserves it in storage', () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    const updated = archiveSegment(segment.id);
+
+    expect(updated.archived).toBe(true);
+    expect(readSegments()).toHaveLength(1);
+    expect(getSegment(segment.id)?.archived).toBe(true);
+  });
+
+  it('does not affect other segments', () => {
+    const a = createSegment('First');
+    const b = createSegment('Second');
+    archiveSegment(a.id);
+
+    expect(getSegment(a.id)?.archived).toBe(true);
+    expect(getSegment(b.id)?.archived).toBe(false);
+  });
+
+  it('throws for an id that does not exist', () => {
+    expect(() => archiveSegment('missing-id')).toThrow();
+  });
+});
+
+describe('lib/segments deleteSegment [Story 1.6]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('permanently removes the segment from storage', () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    deleteSegment(segment.id);
+
+    expect(readSegments()).toHaveLength(0);
+    expect(getSegment(segment.id)).toBeUndefined();
+  });
+
+  it('does not affect other segments', () => {
+    const a = createSegment('First');
+    const b = createSegment('Second');
+    deleteSegment(a.id);
+
+    expect(readSegments()).toHaveLength(1);
+    expect(getSegment(b.id)).toBeTruthy();
+  });
+
+  it('is a no-op for an id that does not exist', () => {
+    createSegment('First');
+    expect(() => deleteSegment('missing-id')).not.toThrow();
+    expect(readSegments()).toHaveLength(1);
   });
 });
