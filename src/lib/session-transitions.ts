@@ -1,9 +1,9 @@
+import { calculateTargetStreak } from '@/lib/mechanic';
 import type { SessionState } from '@/lib/types';
 
 // Pure session-state transitions (Mechanic Specification). No storage I/O —
 // hooks/useActiveSession.ts calls these, then writes the result via
-// lib/storage.ts. Only the Story 2.1 transition (start) exists so far;
-// Correct/Incorrect/Restart land in Stories 2.2-2.4.
+// lib/storage.ts.
 
 // Session start (FR8, FR9): current_streak = 0, session_start_timestamp =
 // now. target_streak isn't part of SessionState — the caller derives it via
@@ -18,12 +18,15 @@ export function startSession(segmentName: string): SessionState {
   };
 }
 
-// Correct (FR16, FR18): current_streak += 1. Assumes the Story 2.2
-// precondition current_streak < target_streak — completion detection
-// (current_streak >= target_streak) is Story 2.5's addition to this
-// transition, not yet implemented here.
+// Correct (FR16, FR18, FR12): current_streak += 1; if that meets or exceeds
+// target_streak, session_complete flips true in the same write (FR22) — the
+// Mechanic Specification's completion check is part of this transition, not
+// a separate step, so there's no window where current_streak >= target with
+// session_complete still false.
 export function logCorrect(session: SessionState): SessionState {
-  return { ...session, currentStreak: session.currentStreak + 1 };
+  const currentStreak = session.currentStreak + 1;
+  const targetStreak = calculateTargetStreak(session.totalIncorrectThisSession);
+  return { ...session, currentStreak, sessionComplete: currentStreak >= targetStreak };
 }
 
 // Incorrect (FR10, FR17, FR18): applied in this exact order per the

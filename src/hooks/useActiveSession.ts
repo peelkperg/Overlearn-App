@@ -25,15 +25,22 @@ export function useActiveSession() {
     return next;
   };
 
-  // Story 2.2 (FR16, FR18): current_streak += 1, minimal feedback tier.
-  // No-op if there's no active session (defensive — the screen only wires
-  // this once start() has run).
+  // Story 2.2/2.5 (FR16, FR18, FR12, FR22): current_streak += 1, minimal
+  // feedback tier, or the completion tier if this tap reaches target_streak.
+  // No-op if there's no active session, or the session is already complete
+  // (FR22 — Correct/Incorrect/Restart stop accepting input once complete).
   const logCorrect = (): SessionState | null => {
-    if (!session) return null;
+    if (!session || session.sessionComplete) return null;
     const next = transitions.logCorrect(session);
     setObject(SESSION_KEY, next);
     setSession(next);
-    feedback.minimal();
+
+    if (next.sessionComplete) {
+      feedback.completion(`Session complete. Target of ${next.currentStreak} reached.`);
+    } else {
+      feedback.minimal();
+    }
+
     return next;
   };
 
@@ -42,9 +49,10 @@ export function useActiveSession() {
   // Tier selection (FR11, UX-DR3): mild if the recalculated target holds at
   // the floor, alert if it rose — comparing target_streak before/after,
   // not total_incorrect_this_session against 10 directly, so the tier
-  // follows the same formula as the target itself.
+  // follows the same formula as the target itself. No-op once complete
+  // (FR22).
   const logIncorrect = (): SessionState | null => {
-    if (!session) return null;
+    if (!session || session.sessionComplete) return null;
     const previousTarget = calculateTargetStreak(session.totalIncorrectThisSession);
     const next = transitions.logIncorrect(session);
     const nextTarget = calculateTargetStreak(next.totalIncorrectThisSession);
@@ -64,9 +72,10 @@ export function useActiveSession() {
   // The confirm gate (FR21) lives in the screen/dialog, not here — by the
   // time this is called, the user has already confirmed. No history entry
   // is written for the discarded attempt (nothing to do — history only
-  // gets written on completion, Epic 3, not on restart).
+  // gets written on completion, Epic 3, not on restart). No-op once
+  // complete (FR22).
   const restart = (): SessionState | null => {
-    if (!session) return null;
+    if (!session || session.sessionComplete) return null;
     const next = transitions.restartSession(session);
     setObject(SESSION_KEY, next);
     setSession(next);
@@ -84,5 +93,6 @@ export function useActiveSession() {
     targetStreak,
     incorrectPulse: feedback.incorrectPulse,
     targetRaiseFlash: feedback.targetRaiseFlash,
+    settled: feedback.settled,
   };
 }

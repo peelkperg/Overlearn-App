@@ -10,10 +10,11 @@ const TARGET_RAISE_FLASH_MS = 600;
 // (ordinary tap, incorrect pulse, target-raise alert, completion) across
 // haptic/visual/audio channels. Sound is a tracked gap — no asset exists
 // yet (src/assets/sounds/ is a placeholder) — every other channel per
-// tier is implemented. Completion tier lands in Story 2.5.
+// tier is implemented.
 export function useFeedbackSignal() {
   const [incorrectPulse, setIncorrectPulse] = useState(false);
   const [targetRaiseFlash, setTargetRaiseFlash] = useState(false);
+  const [settled, setSettled] = useState(false);
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,5 +43,15 @@ export function useFeedbackSignal() {
     flashTimer.current = setTimeout(() => setTargetRaiseFlash(false), TARGET_RAISE_FLASH_MS);
   };
 
-  return { minimal, mild, alert, incorrectPulse, targetRaiseFlash };
+  // Completion tier (FR12, UX-DR3): haptic pulse + visual settle +
+  // screen-reader announcement, distinct from the alert tier — no
+  // auto-clear, since the session stays complete until the screen changes
+  // (Story 2.6). Sound omitted (no asset — see module note above).
+  const completion = (announcement: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    AccessibilityInfo.announceForAccessibility(announcement);
+    setSettled(true);
+  };
+
+  return { minimal, mild, alert, completion, incorrectPulse, targetRaiseFlash, settled };
 }

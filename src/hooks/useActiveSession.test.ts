@@ -203,3 +203,72 @@ describe('useActiveSession restart [Story 2.4]', () => {
     expect(result.current.session).toBeNull();
   });
 });
+
+describe('useActiveSession completion [Story 2.5]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('marks session_complete once current_streak reaches target_streak (5)', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+
+    for (let i = 0; i < 4; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.sessionComplete).toBe(false);
+
+    await act(() => {
+      result.current.logCorrect();
+    });
+    expect(result.current.session?.currentStreak).toBe(5);
+    expect(result.current.session?.sessionComplete).toBe(true);
+  });
+
+  it('locks out logCorrect, logIncorrect, and restart once complete', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 5; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.sessionComplete).toBe(true);
+
+    await act(() => {
+      result.current.logCorrect();
+    });
+    expect(result.current.session?.currentStreak).toBe(5); // unchanged
+
+    await act(() => {
+      result.current.logIncorrect();
+    });
+    expect(result.current.session?.totalIncorrectThisSession).toBe(0); // unchanged
+
+    await act(() => {
+      result.current.restart();
+    });
+    expect(result.current.session?.sessionComplete).toBe(true); // unchanged, not reset
+  });
+
+  it('sets settled once complete', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    expect(result.current.settled).toBe(false);
+
+    for (let i = 0; i < 5; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.settled).toBe(true);
+  });
+});

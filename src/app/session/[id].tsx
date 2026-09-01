@@ -17,10 +17,13 @@ import { useSegment } from '@/hooks/useSegments';
 // Story 2.3: Log an Incorrect Repetition with Live Target Recalculation
 // (FR10, FR11, FR17, FR18, FR19; UX-DR3, UX-DR8).
 // Story 2.4: Restart an In-Progress Session (FR20, FR21, UX-DR2).
+// Story 2.5: Automatic Session Completion (FR12, FR22, UX-DR3). The
+// Completion Summary screen itself is Story 2.6 — this story only locks
+// input and fires the completion feedback tier (settle overlay here).
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
-  const { session, start, logCorrect, logIncorrect, restart, targetStreak, incorrectPulse, targetRaiseFlash } =
+  const { session, start, logCorrect, logIncorrect, restart, targetStreak, incorrectPulse, targetRaiseFlash, settled } =
     useActiveSession();
   const started = useRef(false);
   const [restartDialogVisible, setRestartDialogVisible] = useState(false);
@@ -55,6 +58,7 @@ export default function ActiveSessionScreen() {
       <IncorrectButton onPress={logIncorrect} pulsing={incorrectPulse} />
       <RestartControl onPress={() => setRestartDialogVisible(true)} />
       {targetRaiseFlash && <View testID="target-raise-flash" style={styles.flashOverlay} pointerEvents="none" />}
+      {settled && <View testID="completion-settle" style={styles.settleOverlay} pointerEvents="none" />}
       <RestartConfirmDialog
         visible={restartDialogVisible}
         onCancel={() => setRestartDialogVisible(false)}
@@ -77,6 +81,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: SessionColors.alert,
     opacity: 0.55,
+  },
+  settleOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: SessionColors.background,
+    opacity: 0.7,
   },
   notFound: {
     flex: 1,

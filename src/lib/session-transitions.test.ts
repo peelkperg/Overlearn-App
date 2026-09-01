@@ -51,6 +51,33 @@ describe('lib/session-transitions logCorrect [Story 2.2]', () => {
   });
 });
 
+describe('lib/session-transitions logCorrect completion [Story 2.5]', () => {
+  it('stays incomplete below the target', () => {
+    let session = startSession('Bar 24 arpeggio'); // target = 5
+    for (let i = 0; i < 4; i++) session = logCorrect(session);
+    expect(session.currentStreak).toBe(4);
+    expect(session.sessionComplete).toBe(false);
+  });
+
+  it('marks complete the moment current_streak reaches target_streak', () => {
+    let session = startSession('Bar 24 arpeggio'); // target = 5
+    for (let i = 0; i < 5; i++) session = logCorrect(session);
+    expect(session.currentStreak).toBe(5);
+    expect(session.sessionComplete).toBe(true);
+  });
+
+  it('marks complete against a raised target, not just the floor', () => {
+    let session = startSession('Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 6
+    for (let i = 0; i < 5; i++) session = logCorrect(session);
+    expect(session.sessionComplete).toBe(false); // 5 < target 6
+
+    session = logCorrect(session);
+    expect(session.currentStreak).toBe(6);
+    expect(session.sessionComplete).toBe(true);
+  });
+});
+
 describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
   it('resets current_streak to 0', () => {
     const session = logCorrect(logCorrect(startSession('Bar 24 arpeggio'))); // currentStreak = 2
