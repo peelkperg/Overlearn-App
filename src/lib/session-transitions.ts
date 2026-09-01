@@ -12,21 +12,28 @@ export function startSession(segmentName: string): SessionState {
   return {
     segmentName,
     currentStreak: 0,
+    totalCorrectThisSession: 0,
     totalIncorrectThisSession: 0,
     sessionComplete: false,
     sessionStartTimestamp: new Date().toISOString(),
   };
 }
 
-// Correct (FR16, FR18, FR12): current_streak += 1; if that meets or exceeds
-// target_streak, session_complete flips true in the same write (FR22) — the
-// Mechanic Specification's completion check is part of this transition, not
-// a separate step, so there's no window where current_streak >= target with
-// session_complete still false.
+// Correct (FR16, FR18, FR12): current_streak += 1, total_correct_this_session
+// += 1 (Story 2.6 addition, see lib/types.ts); if current_streak meets or
+// exceeds target_streak, session_complete flips true in the same write
+// (FR22) — the Mechanic Specification's completion check is part of this
+// transition, not a separate step, so there's no window where
+// current_streak >= target with session_complete still false.
 export function logCorrect(session: SessionState): SessionState {
   const currentStreak = session.currentStreak + 1;
   const targetStreak = calculateTargetStreak(session.totalIncorrectThisSession);
-  return { ...session, currentStreak, sessionComplete: currentStreak >= targetStreak };
+  return {
+    ...session,
+    currentStreak,
+    totalCorrectThisSession: session.totalCorrectThisSession + 1,
+    sessionComplete: currentStreak >= targetStreak,
+  };
 }
 
 // Incorrect (FR10, FR17, FR18): applied in this exact order per the

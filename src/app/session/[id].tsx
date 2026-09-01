@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { CompletionScreen } from '@/components/session/CompletionScreen';
 import { CorrectButton } from '@/components/session/CorrectButton';
 import { SessionColors } from '@/components/session/colors';
 import { IncorrectButton } from '@/components/session/IncorrectButton';
@@ -17,13 +18,13 @@ import { useSegment } from '@/hooks/useSegments';
 // Story 2.3: Log an Incorrect Repetition with Live Target Recalculation
 // (FR10, FR11, FR17, FR18, FR19; UX-DR3, UX-DR8).
 // Story 2.4: Restart an In-Progress Session (FR20, FR21, UX-DR2).
-// Story 2.5: Automatic Session Completion (FR12, FR22, UX-DR3). The
-// Completion Summary screen itself is Story 2.6 — this story only locks
-// input and fires the completion feedback tier (settle overlay here).
+// Story 2.5: Automatic Session Completion (FR12, FR22, UX-DR3).
+// Story 2.6: View Session Completion Summary (FR13, UX-DR4). Done/Repeat
+// (FR14, FR15) are wired in Stories 2.7/2.8.
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
-  const { session, start, logCorrect, logIncorrect, restart, targetStreak, incorrectPulse, targetRaiseFlash, settled } =
+  const { session, start, logCorrect, logIncorrect, restart, targetStreak, incorrectPulse, targetRaiseFlash } =
     useActiveSession();
   const started = useRef(false);
   const [restartDialogVisible, setRestartDialogVisible] = useState(false);
@@ -36,7 +37,15 @@ export default function ActiveSessionScreen() {
   useEffect(() => {
     if (started.current || !segment) return;
     started.current = true;
-    start(segment.name);
+    // Story 2.6 (UX-DR4): if a completed session for this segment is
+    // already persisted (e.g. the app was killed on the Completion
+    // screen), show it directly rather than overwriting with a fresh
+    // start. Resuming an *incomplete* interrupted session is Story 2.10 —
+    // out of scope here.
+    const alreadyComplete = session?.sessionComplete && session.segmentName === segment.name;
+    if (!alreadyComplete) {
+      start(segment.name);
+    }
   }, [segment]);
 
   if (!segment) {
@@ -51,6 +60,10 @@ export default function ActiveSessionScreen() {
     return <View style={styles.container} />;
   }
 
+  if (session.sessionComplete) {
+    return <CompletionScreen session={session} finalTarget={targetStreak} onDone={() => {}} onRepeat={() => {}} />;
+  }
+
   return (
     <View style={styles.container}>
       <CorrectButton onPress={logCorrect} />
@@ -58,7 +71,6 @@ export default function ActiveSessionScreen() {
       <IncorrectButton onPress={logIncorrect} pulsing={incorrectPulse} />
       <RestartControl onPress={() => setRestartDialogVisible(true)} />
       {targetRaiseFlash && <View testID="target-raise-flash" style={styles.flashOverlay} pointerEvents="none" />}
-      {settled && <View testID="completion-settle" style={styles.settleOverlay} pointerEvents="none" />}
       <RestartConfirmDialog
         visible={restartDialogVisible}
         onCancel={() => setRestartDialogVisible(false)}
@@ -81,15 +93,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: SessionColors.alert,
     opacity: 0.55,
-  },
-  settleOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: SessionColors.background,
-    opacity: 0.7,
   },
   notFound: {
     flex: 1,

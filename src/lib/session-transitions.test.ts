@@ -2,9 +2,10 @@ import { calculateTargetStreak } from './mechanic';
 import { logCorrect, logIncorrect, restartSession, startSession } from './session-transitions';
 
 describe('lib/session-transitions startSession [Story 2.1]', () => {
-  it('initializes current_streak and total_incorrect_this_session to 0', () => {
+  it('initializes current_streak, total_correct_this_session, and total_incorrect_this_session to 0', () => {
     const session = startSession('Bar 24 arpeggio');
     expect(session.currentStreak).toBe(0);
+    expect(session.totalCorrectThisSession).toBe(0);
     expect(session.totalIncorrectThisSession).toBe(0);
   });
 
@@ -33,6 +34,22 @@ describe('lib/session-transitions logCorrect [Story 2.2]', () => {
     const session = startSession('Bar 24 arpeggio');
     expect(logCorrect(session).currentStreak).toBe(1);
     expect(logCorrect(logCorrect(session)).currentStreak).toBe(2);
+  });
+
+  it('increments total_correct_this_session by 1 [Story 2.6]', () => {
+    const session = startSession('Bar 24 arpeggio');
+    expect(logCorrect(session).totalCorrectThisSession).toBe(1);
+    expect(logCorrect(logCorrect(session)).totalCorrectThisSession).toBe(2);
+  });
+
+  it('keeps total_correct_this_session accumulating across a miss (unlike current_streak) [Story 2.6]', () => {
+    let session = startSession('Bar 24 arpeggio');
+    session = logCorrect(session);
+    session = logCorrect(session);
+    session = logIncorrect(session); // current_streak resets, total_correct doesn't
+    session = logCorrect(session);
+    expect(session.currentStreak).toBe(1);
+    expect(session.totalCorrectThisSession).toBe(3);
   });
 
   it('does not change any other field', () => {
@@ -124,6 +141,7 @@ describe('lib/session-transitions restartSession [Story 2.4]', () => {
     const restarted = restartSession(session);
 
     expect(restarted.currentStreak).toBe(0);
+    expect(restarted.totalCorrectThisSession).toBe(0);
     expect(restarted.totalIncorrectThisSession).toBe(0);
     expect(calculateTargetStreak(restarted.totalIncorrectThisSession)).toBe(5);
     expect(restarted.sessionComplete).toBe(false);
