@@ -13,11 +13,14 @@ import { useSegment } from '@/hooks/useSegments';
 // Story 2.1: Start a Practice Session Immediately (FR8, FR9; UX-DR1, UX-DR2,
 // UX-DR6, UX-DR7, UX-DR8, UX-DR12).
 // Story 2.2: Log a Correct Repetition (FR16, FR18, FR19).
-// Incorrect/Restart tap handling arrives in Stories 2.3-2.4.
+// Story 2.3: Log an Incorrect Repetition with Live Target Recalculation
+// (FR10, FR11, FR17, FR18, FR19; UX-DR3, UX-DR8).
+// Restart tap handling arrives in Story 2.4.
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
-  const { session, start, logCorrect, targetStreak } = useActiveSession();
+  const { session, start, logCorrect, logIncorrect, targetStreak, incorrectPulse, targetRaiseFlash } =
+    useActiveSession();
   const started = useRef(false);
 
   useEffect(() => {
@@ -42,8 +45,9 @@ export default function ActiveSessionScreen() {
     <View style={styles.container}>
       <CorrectButton onPress={logCorrect} />
       <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={session.segmentName} />
-      <IncorrectButton />
+      <IncorrectButton onPress={logIncorrect} pulsing={incorrectPulse} />
       <RestartControl />
+      {targetRaiseFlash && <View testID="target-raise-flash" style={styles.flashOverlay} pointerEvents="none" />}
     </View>
   );
 }
@@ -52,6 +56,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: SessionColors.background,
+  },
+  flashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: SessionColors.alert,
+    opacity: 0.55,
   },
   notFound: {
     flex: 1,

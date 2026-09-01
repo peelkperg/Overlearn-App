@@ -1,5 +1,5 @@
 import { calculateTargetStreak } from './mechanic';
-import { logCorrect, startSession } from './session-transitions';
+import { logCorrect, logIncorrect, startSession } from './session-transitions';
 
 describe('lib/session-transitions startSession [Story 2.1]', () => {
   it('initializes current_streak and total_incorrect_this_session to 0', () => {
@@ -48,5 +48,41 @@ describe('lib/session-transitions logCorrect [Story 2.2]', () => {
     const session = startSession('Bar 24 arpeggio');
     logCorrect(session);
     expect(session.currentStreak).toBe(0);
+  });
+});
+
+describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
+  it('resets current_streak to 0', () => {
+    const session = logCorrect(logCorrect(startSession('Bar 24 arpeggio'))); // currentStreak = 2
+    expect(logIncorrect(session).currentStreak).toBe(0);
+  });
+
+  it('increments total_incorrect_this_session by 1', () => {
+    const session = startSession('Bar 24 arpeggio');
+    expect(logIncorrect(session).totalIncorrectThisSession).toBe(1);
+    expect(logIncorrect(logIncorrect(session)).totalIncorrectThisSession).toBe(2);
+  });
+
+  it('does not mutate the input session', () => {
+    const session = startSession('Bar 24 arpeggio');
+    logIncorrect(session);
+    expect(session.currentStreak).toBe(0);
+    expect(session.totalIncorrectThisSession).toBe(0);
+  });
+
+  // Boundary table from the Mechanic Specification (also covered directly
+  // in mechanic.test.ts) — re-verified here through the actual transition,
+  // not just the formula, per R1's HIGH-risk 10/11 boundary.
+  it.each([
+    [9, 5],
+    [10, 5],
+    [11, 6],
+  ])('after reaching total_incorrect_this_session=%i, target_streak=%i', (totalIncorrect, expectedTarget) => {
+    let session = startSession('Bar 24 arpeggio');
+    for (let i = 0; i < totalIncorrect; i++) {
+      session = logIncorrect(session);
+    }
+    expect(session.totalIncorrectThisSession).toBe(totalIncorrect);
+    expect(calculateTargetStreak(session.totalIncorrectThisSession)).toBe(expectedTarget);
   });
 });

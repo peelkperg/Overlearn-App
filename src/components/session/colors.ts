@@ -8,6 +8,7 @@ export const SessionColors = {
   correct: '#2ecc71',
   correctIcon: '#0a2c14',
   incorrect: '#e74c3c',
+  incorrectPulse: '#f08a7c', // brightened tint for the mild-tier pulse (Story 2.3)
   incorrectIcon: '#3a0d08',
   alert: '#f1c40f',
   textStrong: '#e8e8e8',

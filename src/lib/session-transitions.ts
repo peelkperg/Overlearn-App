@@ -25,3 +25,16 @@ export function startSession(segmentName: string): SessionState {
 export function logCorrect(session: SessionState): SessionState {
   return { ...session, currentStreak: session.currentStreak + 1 };
 }
+
+// Incorrect (FR10, FR17, FR18): applied in this exact order per the
+// Mechanic Specification — current_streak = 0, then
+// total_incorrect_this_session += 1. target_streak isn't stored (derived
+// on read via calculateTargetStreak), so there's no third field to update
+// here; the caller re-derives it from the returned totalIncorrectThisSession.
+export function logIncorrect(session: SessionState): SessionState {
+  return {
+    ...session,
+    currentStreak: 0,
+    totalIncorrectThisSession: session.totalIncorrectThisSession + 1,
+  };
+}

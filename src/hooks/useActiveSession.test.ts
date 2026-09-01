@@ -82,3 +82,68 @@ describe('useActiveSession logCorrect [Story 2.2]', () => {
     expect(result.current.session).toBeNull();
   });
 });
+
+describe('useActiveSession logIncorrect [Story 2.3]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('resets current_streak to 0 and increments total_incorrect_this_session', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    await act(() => {
+      result.current.logCorrect();
+      result.current.logCorrect();
+    });
+
+    await act(() => {
+      result.current.logIncorrect();
+    });
+
+    expect(result.current.session?.currentStreak).toBe(0);
+    expect(result.current.session?.totalIncorrectThisSession).toBe(1);
+  });
+
+  it('keeps target_streak at the floor through the 10th incorrect tap', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+
+    for (let i = 0; i < 10; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+
+    expect(result.current.session?.totalIncorrectThisSession).toBe(10);
+    expect(result.current.targetStreak).toBe(5);
+  });
+
+  it('raises target_streak on the 11th incorrect tap', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+
+    expect(result.current.session?.totalIncorrectThisSession).toBe(11);
+    expect(result.current.targetStreak).toBe(6);
+  });
+
+  it('is a no-op with no active session', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.logIncorrect();
+    });
+
+    expect(result.current.session).toBeNull();
+  });
+});

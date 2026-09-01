@@ -37,7 +37,38 @@ export function useActiveSession() {
     return next;
   };
 
+  // Story 2.3 (FR10, FR17, FR18): current_streak = 0, then
+  // total_incorrect_this_session += 1, then target_streak is re-derived.
+  // Tier selection (FR11, UX-DR3): mild if the recalculated target holds at
+  // the floor, alert if it rose — comparing target_streak before/after,
+  // not total_incorrect_this_session against 10 directly, so the tier
+  // follows the same formula as the target itself.
+  const logIncorrect = (): SessionState | null => {
+    if (!session) return null;
+    const previousTarget = calculateTargetStreak(session.totalIncorrectThisSession);
+    const next = transitions.logIncorrect(session);
+    const nextTarget = calculateTargetStreak(next.totalIncorrectThisSession);
+    setObject(SESSION_KEY, next);
+    setSession(next);
+
+    if (nextTarget > previousTarget) {
+      feedback.alert(`Target raised to ${nextTarget}`);
+    } else {
+      feedback.mild();
+    }
+
+    return next;
+  };
+
   const targetStreak = calculateTargetStreak(session?.totalIncorrectThisSession ?? 0);
 
-  return { session, start, logCorrect, targetStreak };
+  return {
+    session,
+    start,
+    logCorrect,
+    logIncorrect,
+    targetStreak,
+    incorrectPulse: feedback.incorrectPulse,
+    targetRaiseFlash: feedback.targetRaiseFlash,
+  };
 }
