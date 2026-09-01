@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useFeedbackSignal } from '@/components/session/useFeedbackSignal';
 import { calculateTargetStreak } from '@/lib/mechanic';
 import * as transitions from '@/lib/session-transitions';
-import { getObject, setObject } from '@/lib/storage';
+import { deleteKey, getObject, setObject } from '@/lib/storage';
 import type { SessionState } from '@/lib/types';
 
 // MMKV key per architecture.md's MMKV Key Naming section. Only one session
@@ -82,6 +82,16 @@ export function useActiveSession() {
     return next;
   };
 
+  // Story 2.7 (FR14): clears session.active once Done has written the
+  // history entry — nothing left to resume. Without this, a later visit
+  // to the same segment's session screen would show this same completed
+  // session again (Story 2.6's completion-resume check) instead of
+  // starting fresh.
+  const endSession = (): void => {
+    deleteKey(SESSION_KEY);
+    setSession(null);
+  };
+
   const targetStreak = calculateTargetStreak(session?.totalIncorrectThisSession ?? 0);
 
   return {
@@ -90,6 +100,7 @@ export function useActiveSession() {
     logCorrect,
     logIncorrect,
     restart,
+    endSession,
     targetStreak,
     incorrectPulse: feedback.incorrectPulse,
     targetRaiseFlash: feedback.targetRaiseFlash,

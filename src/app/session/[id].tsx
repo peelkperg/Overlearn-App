@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -11,6 +11,7 @@ import { RestartControl } from '@/components/session/RestartControl';
 import { StreakReadout } from '@/components/session/StreakReadout';
 import { useActiveSession } from '@/hooks/useActiveSession';
 import { useSegment } from '@/hooks/useSegments';
+import { writeHistoryEntry } from '@/lib/history';
 
 // Story 2.1: Start a Practice Session Immediately (FR8, FR9; UX-DR1, UX-DR2,
 // UX-DR6, UX-DR7, UX-DR8, UX-DR12).
@@ -19,12 +20,13 @@ import { useSegment } from '@/hooks/useSegments';
 // (FR10, FR11, FR17, FR18, FR19; UX-DR3, UX-DR8).
 // Story 2.4: Restart an In-Progress Session (FR20, FR21, UX-DR2).
 // Story 2.5: Automatic Session Completion (FR12, FR22, UX-DR3).
-// Story 2.6: View Session Completion Summary (FR13, UX-DR4). Done/Repeat
-// (FR14, FR15) are wired in Stories 2.7/2.8.
+// Story 2.6: View Session Completion Summary (FR13, UX-DR4).
+// Story 2.7: End Session and Write History (FR14). Repeat (FR15, Story 2.8)
+// is still a no-op.
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
-  const { session, start, logCorrect, logIncorrect, restart, targetStreak, incorrectPulse, targetRaiseFlash } =
+  const { session, start, logCorrect, logIncorrect, restart, endSession, targetStreak, incorrectPulse, targetRaiseFlash } =
     useActiveSession();
   const started = useRef(false);
   const [restartDialogVisible, setRestartDialogVisible] = useState(false);
@@ -32,6 +34,20 @@ export default function ActiveSessionScreen() {
   const handleRestartConfirm = () => {
     setRestartDialogVisible(false);
     restart();
+  };
+
+  // Story 2.7 (FR14): writes the history entry, clears the active session,
+  // and returns to the segment list.
+  const handleDone = () => {
+    if (!session) return;
+    writeHistoryEntry(id, {
+      date: new Date().toISOString(),
+      finalTarget: targetStreak,
+      totalMistakes: session.totalIncorrectThisSession,
+      totalAttempts: session.totalCorrectThisSession + session.totalIncorrectThisSession,
+    });
+    endSession();
+    router.replace('/');
   };
 
   useEffect(() => {
@@ -61,7 +77,7 @@ export default function ActiveSessionScreen() {
   }
 
   if (session.sessionComplete) {
-    return <CompletionScreen session={session} finalTarget={targetStreak} onDone={() => {}} onRepeat={() => {}} />;
+    return <CompletionScreen session={session} finalTarget={targetStreak} onDone={handleDone} onRepeat={() => {}} />;
   }
 
   return (

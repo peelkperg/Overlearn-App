@@ -24,3 +24,12 @@ export interface SessionState {
   sessionComplete: boolean;
   sessionStartTimestamp: string; // ISO 8601
 }
+
+// One completed-session record (FR28). Written only on Done (FR14) — never
+// for a restarted or otherwise abandoned session (FR29).
+export interface HistoryEntry {
+  date: string; // ISO 8601
+  finalTarget: number;
+  totalMistakes: number;
+  totalAttempts: number;
+}

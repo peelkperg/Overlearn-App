@@ -272,3 +272,35 @@ describe('useActiveSession completion [Story 2.5]', () => {
     expect(result.current.settled).toBe(true);
   });
 });
+
+describe('useActiveSession endSession [Story 2.7]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('clears the session', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+
+    await act(() => {
+      result.current.endSession();
+    });
+
+    expect(result.current.session).toBeNull();
+  });
+
+  it('clears the persisted session too, not just local state', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    await act(() => {
+      result.current.endSession();
+    });
+
+    const { result: reloaded } = await renderHook(() => useActiveSession());
+    expect(reloaded.current.session).toBeNull();
+  });
+});
