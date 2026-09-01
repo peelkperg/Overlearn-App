@@ -147,3 +147,59 @@ describe('useActiveSession logIncorrect [Story 2.3]', () => {
     expect(result.current.session).toBeNull();
   });
 });
+
+describe('useActiveSession restart [Story 2.4]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('resets all four session fields to starting values', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    await act(() => {
+      result.current.logCorrect();
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    expect(result.current.targetStreak).toBe(6); // sanity check before restart
+
+    await act(() => {
+      result.current.restart();
+    });
+
+    expect(result.current.session?.currentStreak).toBe(0);
+    expect(result.current.session?.totalIncorrectThisSession).toBe(0);
+    expect(result.current.targetStreak).toBe(5);
+    expect(result.current.session?.segmentName).toBe('Bar 24 arpeggio');
+  });
+
+  it('persists the reset via the MMKV write helpers', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('Bar 24 arpeggio');
+    });
+    await act(() => {
+      result.current.logCorrect();
+    });
+    await act(() => {
+      result.current.restart();
+    });
+
+    const { result: reloaded } = await renderHook(() => useActiveSession());
+    expect(reloaded.current.session?.currentStreak).toBe(0);
+  });
+
+  it('is a no-op with no active session', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.restart();
+    });
+
+    expect(result.current.session).toBeNull();
+  });
+});

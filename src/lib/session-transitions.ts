@@ -38,3 +38,12 @@ export function logIncorrect(session: SessionState): SessionState {
     totalIncorrectThisSession: session.totalIncorrectThisSession + 1,
   };
 }
+
+// Restart (FR20): all four session fields reset to starting values —
+// current_streak = 0, total_incorrect_this_session = 0, target back to the
+// floor (derived, not stored, from totalIncorrectThisSession = 0), and
+// session_start_timestamp = now. Equivalent to starting fresh on the same
+// segment; kept as its own named transition per the Mechanic Specification.
+export function restartSession(session: SessionState): SessionState {
+  return startSession(session.segmentName);
+}

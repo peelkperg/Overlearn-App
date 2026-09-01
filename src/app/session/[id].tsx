@@ -1,10 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { CorrectButton } from '@/components/session/CorrectButton';
 import { SessionColors } from '@/components/session/colors';
 import { IncorrectButton } from '@/components/session/IncorrectButton';
+import { RestartConfirmDialog } from '@/components/session/RestartConfirmDialog';
 import { RestartControl } from '@/components/session/RestartControl';
 import { StreakReadout } from '@/components/session/StreakReadout';
 import { useActiveSession } from '@/hooks/useActiveSession';
@@ -15,13 +16,19 @@ import { useSegment } from '@/hooks/useSegments';
 // Story 2.2: Log a Correct Repetition (FR16, FR18, FR19).
 // Story 2.3: Log an Incorrect Repetition with Live Target Recalculation
 // (FR10, FR11, FR17, FR18, FR19; UX-DR3, UX-DR8).
-// Restart tap handling arrives in Story 2.4.
+// Story 2.4: Restart an In-Progress Session (FR20, FR21, UX-DR2).
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
-  const { session, start, logCorrect, logIncorrect, targetStreak, incorrectPulse, targetRaiseFlash } =
+  const { session, start, logCorrect, logIncorrect, restart, targetStreak, incorrectPulse, targetRaiseFlash } =
     useActiveSession();
   const started = useRef(false);
+  const [restartDialogVisible, setRestartDialogVisible] = useState(false);
+
+  const handleRestartConfirm = () => {
+    setRestartDialogVisible(false);
+    restart();
+  };
 
   useEffect(() => {
     if (started.current || !segment) return;
@@ -46,8 +53,13 @@ export default function ActiveSessionScreen() {
       <CorrectButton onPress={logCorrect} />
       <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={session.segmentName} />
       <IncorrectButton onPress={logIncorrect} pulsing={incorrectPulse} />
-      <RestartControl />
+      <RestartControl onPress={() => setRestartDialogVisible(true)} />
       {targetRaiseFlash && <View testID="target-raise-flash" style={styles.flashOverlay} pointerEvents="none" />}
+      <RestartConfirmDialog
+        visible={restartDialogVisible}
+        onCancel={() => setRestartDialogVisible(false)}
+        onConfirm={handleRestartConfirm}
+      />
     </View>
   );
 }

@@ -60,6 +60,19 @@ export function useActiveSession() {
     return next;
   };
 
+  // Story 2.4 (FR20): all four session fields reset to starting values.
+  // The confirm gate (FR21) lives in the screen/dialog, not here — by the
+  // time this is called, the user has already confirmed. No history entry
+  // is written for the discarded attempt (nothing to do — history only
+  // gets written on completion, Epic 3, not on restart).
+  const restart = (): SessionState | null => {
+    if (!session) return null;
+    const next = transitions.restartSession(session);
+    setObject(SESSION_KEY, next);
+    setSession(next);
+    return next;
+  };
+
   const targetStreak = calculateTargetStreak(session?.totalIncorrectThisSession ?? 0);
 
   return {
@@ -67,6 +80,7 @@ export function useActiveSession() {
     start,
     logCorrect,
     logIncorrect,
+    restart,
     targetStreak,
     incorrectPulse: feedback.incorrectPulse,
     targetRaiseFlash: feedback.targetRaiseFlash,
