@@ -23,6 +23,9 @@ import { writeHistoryEntry } from '@/lib/history';
 // Story 2.6: View Session Completion Summary (FR13, UX-DR4).
 // Story 2.7: End Session and Write History (FR14).
 // Story 2.8: Repeat Session Immediately (FR15).
+// Story 2.10: an existing persisted session for this exact segment (complete
+// or a just-Resumed incomplete one) is never silently overwritten here —
+// only a genuinely different/absent session triggers a fresh start.
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
@@ -56,20 +59,22 @@ export default function ActiveSessionScreen() {
   // writeHistoryEntry, so nothing is recorded unless Done was tapped first.
   const handleRepeat = () => {
     if (!segment) return;
-    start(segment.name);
+    start(segment.id, segment.name);
   };
 
   useEffect(() => {
     if (started.current || !segment) return;
     started.current = true;
-    // Story 2.6 (UX-DR4): if a completed session for this segment is
-    // already persisted (e.g. the app was killed on the Completion
-    // screen), show it directly rather than overwriting with a fresh
-    // start. Resuming an *incomplete* interrupted session is Story 2.10 —
-    // out of scope here.
-    const alreadyComplete = session?.sessionComplete && session.segmentName === segment.name;
-    if (!alreadyComplete) {
-      start(segment.name);
+    // Story 2.6/2.10: a persisted session already exists for this exact
+    // segment — either completed (app killed on the Completion screen) or
+    // incomplete-but-just-Resumed from the list screen's resume/discard
+    // prompt. Either way, show it as-is rather than overwriting with a
+    // fresh start. Any *other* stale session (a different segment, or one
+    // the user already chose to Discard) has already been resolved by the
+    // time navigation reaches here — see app/index.tsx.
+    const existingForThisSegment = session?.segmentId === segment.id;
+    if (!existingForThisSegment) {
+      start(segment.id, segment.name);
     }
   }, [segment]);
 

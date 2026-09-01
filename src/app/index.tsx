@@ -1,16 +1,50 @@
 import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ResumeDiscardDialog } from '@/components/ResumeDiscardDialog';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useActiveSession } from '@/hooks/useActiveSession';
 import { useSegments } from '@/hooks/useSegments';
 import type { Segment } from '@/lib/types';
 
 // Story 1.3: View the Segment List (FR2, FR4, FR7, UX-DR11).
+// Story 2.10: interruption resume/discard gate (FR24-FR26, NFR4). This is
+// the app's landing screen, so it's the one place that can catch an
+// interrupted session before the user navigates anywhere else.
 export default function HomeScreen() {
   const { segments } = useSegments();
+  const { session, endSession } = useActiveSession();
+  const [resumeDialogVisible, setResumeDialogVisible] = useState(false);
+  const checked = useRef(false);
+
+  useEffect(() => {
+    if (checked.current) return;
+    checked.current = true;
+    if (!session) return;
+    if (session.sessionComplete) {
+      // Already-complete interrupted session (Story 2.6's AC): route
+      // straight to its Completion screen, no prompt.
+      router.replace(`/session/${session.segmentId}`);
+    } else {
+      // Incomplete interrupted session: always ask — never silently
+      // resumed or discarded (FR24).
+      setResumeDialogVisible(true);
+    }
+  }, [session]);
+
+  const handleDiscard = () => {
+    setResumeDialogVisible(false);
+    endSession(); // FR26: cleared, no history entry is ever written for it
+  };
+
+  const handleResume = () => {
+    setResumeDialogVisible(false);
+    if (session) router.push(`/session/${session.segmentId}`);
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -27,6 +61,14 @@ export default function HomeScreen() {
           />
         )}
       </SafeAreaView>
+      {session && (
+        <ResumeDiscardDialog
+          visible={resumeDialogVisible}
+          segmentName={session.segmentName}
+          onDiscard={handleDiscard}
+          onResume={handleResume}
+        />
+      )}
     </ThemedView>
   );
 }

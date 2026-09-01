@@ -8,8 +8,9 @@ import type { SessionState } from '@/lib/types';
 // Session start (FR8, FR9): current_streak = 0, session_start_timestamp =
 // now. target_streak isn't part of SessionState — the caller derives it via
 // calculateTargetStreak(0), which evaluates to TARGET_FLOOR (5).
-export function startSession(segmentName: string): SessionState {
+export function startSession(segmentId: string, segmentName: string): SessionState {
   return {
+    segmentId,
     segmentName,
     currentStreak: 0,
     totalCorrectThisSession: 0,
@@ -55,5 +56,5 @@ export function logIncorrect(session: SessionState): SessionState {
 // session_start_timestamp = now. Equivalent to starting fresh on the same
 // segment; kept as its own named transition per the Mechanic Specification.
 export function restartSession(session: SessionState): SessionState {
-  return startSession(session.segmentName);
+  return startSession(session.segmentId, session.segmentName);
 }

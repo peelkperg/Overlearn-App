@@ -11,12 +11,11 @@ export interface Segment {
 // Mechanic Specification's Session State (architecture.md's camelCase
 // mapping). target_streak is intentionally absent — it's derived on every
 // read via calculateTargetStreak(totalIncorrectThisSession), never stored.
-// totalCorrectThisSession is a Story 2.6 addition beyond the Mechanic
-// Specification's six fields — FR13's Completion summary needs total
-// attempts (correct + incorrect), which isn't reconstructable from
-// current_streak alone once a session has had a miss-then-recover cycle.
-// See architecture.md's Session State section.
+// totalCorrectThisSession (Story 2.6) and segmentId (Story 2.10) are
+// additions beyond the Mechanic Specification's six fields — see
+// architecture.md's Session State section for why each was needed.
 export interface SessionState {
+  segmentId: string;
   segmentName: string;
   currentStreak: number;
   totalCorrectThisSession: number;

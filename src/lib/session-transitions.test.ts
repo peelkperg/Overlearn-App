@@ -3,47 +3,49 @@ import { logCorrect, logIncorrect, restartSession, startSession } from './sessio
 
 describe('lib/session-transitions startSession [Story 2.1]', () => {
   it('initializes current_streak, total_correct_this_session, and total_incorrect_this_session to 0', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     expect(session.currentStreak).toBe(0);
     expect(session.totalCorrectThisSession).toBe(0);
     expect(session.totalIncorrectThisSession).toBe(0);
   });
 
   it('initializes session_complete to false', () => {
-    expect(startSession('Bar 24 arpeggio').sessionComplete).toBe(false);
+    expect(startSession('segment-1', 'Bar 24 arpeggio').sessionComplete).toBe(false);
   });
 
   it('sets session_start_timestamp to an ISO 8601 string', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     expect(session.sessionStartTimestamp).toBeTruthy();
     expect(new Date(session.sessionStartTimestamp).toISOString()).toBe(session.sessionStartTimestamp);
   });
 
-  it('carries the segment name through unchanged', () => {
-    expect(startSession('Bar 24 arpeggio').segmentName).toBe('Bar 24 arpeggio');
+  it('carries the segment id and name through unchanged', () => {
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
+    expect(session.segmentId).toBe('segment-1');
+    expect(session.segmentName).toBe('Bar 24 arpeggio');
   });
 
   it('derives an initial target_streak of the floor (5) via calculateTargetStreak', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     expect(calculateTargetStreak(session.totalIncorrectThisSession)).toBe(5);
   });
 });
 
 describe('lib/session-transitions logCorrect [Story 2.2]', () => {
   it('increments current_streak by 1', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     expect(logCorrect(session).currentStreak).toBe(1);
     expect(logCorrect(logCorrect(session)).currentStreak).toBe(2);
   });
 
   it('increments total_correct_this_session by 1 [Story 2.6]', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     expect(logCorrect(session).totalCorrectThisSession).toBe(1);
     expect(logCorrect(logCorrect(session)).totalCorrectThisSession).toBe(2);
   });
 
   it('keeps total_correct_this_session accumulating across a miss (unlike current_streak) [Story 2.6]', () => {
-    let session = startSession('Bar 24 arpeggio');
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
     session = logCorrect(session);
     session = logCorrect(session);
     session = logIncorrect(session); // current_streak resets, total_correct doesn't
@@ -53,7 +55,7 @@ describe('lib/session-transitions logCorrect [Story 2.2]', () => {
   });
 
   it('does not change any other field', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     const next = logCorrect(session);
     expect(next.segmentName).toBe(session.segmentName);
     expect(next.totalIncorrectThisSession).toBe(session.totalIncorrectThisSession);
@@ -62,7 +64,7 @@ describe('lib/session-transitions logCorrect [Story 2.2]', () => {
   });
 
   it('does not mutate the input session', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     logCorrect(session);
     expect(session.currentStreak).toBe(0);
   });
@@ -70,21 +72,21 @@ describe('lib/session-transitions logCorrect [Story 2.2]', () => {
 
 describe('lib/session-transitions logCorrect completion [Story 2.5]', () => {
   it('stays incomplete below the target', () => {
-    let session = startSession('Bar 24 arpeggio'); // target = 5
+    let session = startSession('segment-1', 'Bar 24 arpeggio'); // target = 5
     for (let i = 0; i < 4; i++) session = logCorrect(session);
     expect(session.currentStreak).toBe(4);
     expect(session.sessionComplete).toBe(false);
   });
 
   it('marks complete the moment current_streak reaches target_streak', () => {
-    let session = startSession('Bar 24 arpeggio'); // target = 5
+    let session = startSession('segment-1', 'Bar 24 arpeggio'); // target = 5
     for (let i = 0; i < 5; i++) session = logCorrect(session);
     expect(session.currentStreak).toBe(5);
     expect(session.sessionComplete).toBe(true);
   });
 
   it('marks complete against a raised target, not just the floor', () => {
-    let session = startSession('Bar 24 arpeggio');
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
     for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 6
     for (let i = 0; i < 5; i++) session = logCorrect(session);
     expect(session.sessionComplete).toBe(false); // 5 < target 6
@@ -97,18 +99,18 @@ describe('lib/session-transitions logCorrect completion [Story 2.5]', () => {
 
 describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
   it('resets current_streak to 0', () => {
-    const session = logCorrect(logCorrect(startSession('Bar 24 arpeggio'))); // currentStreak = 2
+    const session = logCorrect(logCorrect(startSession('segment-1', 'Bar 24 arpeggio'))); // currentStreak = 2
     expect(logIncorrect(session).currentStreak).toBe(0);
   });
 
   it('increments total_incorrect_this_session by 1', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     expect(logIncorrect(session).totalIncorrectThisSession).toBe(1);
     expect(logIncorrect(logIncorrect(session)).totalIncorrectThisSession).toBe(2);
   });
 
   it('does not mutate the input session', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     logIncorrect(session);
     expect(session.currentStreak).toBe(0);
     expect(session.totalIncorrectThisSession).toBe(0);
@@ -122,7 +124,7 @@ describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
     [10, 5],
     [11, 6],
   ])('after reaching total_incorrect_this_session=%i, target_streak=%i', (totalIncorrect, expectedTarget) => {
-    let session = startSession('Bar 24 arpeggio');
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
     for (let i = 0; i < totalIncorrect; i++) {
       session = logIncorrect(session);
     }
@@ -133,7 +135,7 @@ describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
 
 describe('lib/session-transitions restartSession [Story 2.4]', () => {
   it('resets all four session fields to starting values', () => {
-    let session = startSession('Bar 24 arpeggio');
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
     session = logCorrect(session);
     session = logIncorrect(session);
     session = logIncorrect(session);
@@ -147,20 +149,22 @@ describe('lib/session-transitions restartSession [Story 2.4]', () => {
     expect(restarted.sessionComplete).toBe(false);
   });
 
-  it('preserves the segment name', () => {
-    const session = startSession('Bar 24 arpeggio');
-    expect(restartSession(session).segmentName).toBe('Bar 24 arpeggio');
+  it('preserves the segment id and name [Story 2.10]', () => {
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
+    const restarted = restartSession(session);
+    expect(restarted.segmentId).toBe('segment-1');
+    expect(restarted.segmentName).toBe('Bar 24 arpeggio');
   });
 
   it('sets a fresh session_start_timestamp', () => {
-    const session = startSession('Bar 24 arpeggio');
+    const session = startSession('segment-1', 'Bar 24 arpeggio');
     const restarted = restartSession(session);
     expect(restarted.sessionStartTimestamp).toBeTruthy();
     expect(new Date(restarted.sessionStartTimestamp).toISOString()).toBe(restarted.sessionStartTimestamp);
   });
 
   it('does not mutate the input session', () => {
-    const session = logIncorrect(startSession('Bar 24 arpeggio'));
+    const session = logIncorrect(startSession('segment-1', 'Bar 24 arpeggio'));
     restartSession(session);
     expect(session.totalIncorrectThisSession).toBe(1);
   });

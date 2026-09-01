@@ -18,8 +18,8 @@ export function useActiveSession() {
   const feedback = useFeedbackSignal();
 
   // Story 2.1 (FR8, FR9): begins a session immediately, no input/confirmation.
-  const start = (segmentName: string): SessionState => {
-    const next = transitions.startSession(segmentName);
+  const start = (segmentId: string, segmentName: string): SessionState => {
+    const next = transitions.startSession(segmentId, segmentName);
     setObject(SESSION_KEY, next);
     setSession(next);
     return next;

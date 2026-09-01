@@ -20,9 +20,10 @@ describe('useActiveSession [Story 2.1]', () => {
     const { result } = await renderHook(() => useActiveSession());
 
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
+    expect(result.current.session?.segmentId).toBe('segment-1');
     expect(result.current.session?.segmentName).toBe('Bar 24 arpeggio');
     expect(result.current.session?.currentStreak).toBe(0);
     expect(result.current.session?.totalIncorrectThisSession).toBe(0);
@@ -34,7 +35,7 @@ describe('useActiveSession [Story 2.1]', () => {
     const { result } = await renderHook(() => useActiveSession());
 
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
     const { result: reloaded } = await renderHook(() => useActiveSession());
@@ -50,7 +51,7 @@ describe('useActiveSession logCorrect [Story 2.2]', () => {
   it('increments current_streak by 1', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
     await act(() => {
@@ -63,7 +64,7 @@ describe('useActiveSession logCorrect [Story 2.2]', () => {
   it('persists the increment via the MMKV write helpers', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     await act(() => {
       result.current.logCorrect();
@@ -91,7 +92,7 @@ describe('useActiveSession logIncorrect [Story 2.3]', () => {
   it('resets current_streak to 0 and increments total_incorrect_this_session', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     await act(() => {
       result.current.logCorrect();
@@ -109,7 +110,7 @@ describe('useActiveSession logIncorrect [Story 2.3]', () => {
   it('keeps target_streak at the floor through the 10th incorrect tap', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
     for (let i = 0; i < 10; i++) {
@@ -125,7 +126,7 @@ describe('useActiveSession logIncorrect [Story 2.3]', () => {
   it('raises target_streak on the 11th incorrect tap', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
     for (let i = 0; i < 11; i++) {
@@ -156,7 +157,7 @@ describe('useActiveSession restart [Story 2.4]', () => {
   it('resets all four session fields to starting values', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     await act(() => {
       result.current.logCorrect();
@@ -181,7 +182,7 @@ describe('useActiveSession restart [Story 2.4]', () => {
   it('persists the reset via the MMKV write helpers', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     await act(() => {
       result.current.logCorrect();
@@ -212,7 +213,7 @@ describe('useActiveSession completion [Story 2.5]', () => {
   it('marks session_complete once current_streak reaches target_streak (5)', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
     for (let i = 0; i < 4; i++) {
@@ -232,7 +233,7 @@ describe('useActiveSession completion [Story 2.5]', () => {
   it('locks out logCorrect, logIncorrect, and restart once complete', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     for (let i = 0; i < 5; i++) {
       await act(() => {
@@ -260,7 +261,7 @@ describe('useActiveSession completion [Story 2.5]', () => {
   it('sets settled once complete', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     expect(result.current.settled).toBe(false);
 
@@ -281,7 +282,7 @@ describe('useActiveSession endSession [Story 2.7]', () => {
   it('clears the session', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
 
     await act(() => {
@@ -294,7 +295,7 @@ describe('useActiveSession endSession [Story 2.7]', () => {
   it('clears the persisted session too, not just local state', async () => {
     const { result } = await renderHook(() => useActiveSession());
     await act(() => {
-      result.current.start('Bar 24 arpeggio');
+      result.current.start('segment-1', 'Bar 24 arpeggio');
     });
     await act(() => {
       result.current.endSession();
