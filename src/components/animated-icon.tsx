@@ -35,8 +35,15 @@ export function AnimatedSplashOverlay() {
 
   const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
 
+  // pointerEvents="none": this overlay is purely decorative (the splash
+  // exit transition) and must never intercept touches — including while
+  // still mid-animation, and as a defensive fallback if the `finished`
+  // callback below doesn't fire (observed on-device: an invisible
+  // zIndex:1000 view silently swallowing every tap in the app once
+  // opacity animated to 0 without ever unmounting).
   return animate ? (
     <Animated.View
+      pointerEvents="none"
       entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
         'worklet';
         if (finished) {
@@ -48,6 +55,7 @@ export function AnimatedSplashOverlay() {
     </Animated.View>
   ) : (
     <View
+      pointerEvents="none"
       onLayout={() => {
         SplashScreen.hideAsync().finally(() => {
           setAnimate(true);
