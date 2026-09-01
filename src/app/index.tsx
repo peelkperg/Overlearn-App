@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,31 +18,28 @@ import type { Segment } from '@/lib/types';
 export default function HomeScreen() {
   const { segments } = useSegments();
   const { session, endSession } = useActiveSession();
-  const [resumeDialogVisible, setResumeDialogVisible] = useState(false);
-  const checked = useRef(false);
+  const redirectedToCompletion = useRef(false);
+
+  // Incomplete interrupted session: always ask — never silently resumed or
+  // discarded (FR24). Derived directly from session state rather than
+  // mirrored into its own useState — session already reflects the
+  // persisted value synchronously on first render, nothing async to wait
+  // for, and this stays correct for free after Discard/Resume update it.
+  const showResumeDialog = !!session && !session.sessionComplete;
 
   useEffect(() => {
-    if (checked.current) return;
-    checked.current = true;
-    if (!session) return;
-    if (session.sessionComplete) {
-      // Already-complete interrupted session (Story 2.6's AC): route
-      // straight to its Completion screen, no prompt.
-      router.replace(`/session/${session.segmentId}`);
-    } else {
-      // Incomplete interrupted session: always ask — never silently
-      // resumed or discarded (FR24).
-      setResumeDialogVisible(true);
-    }
+    if (redirectedToCompletion.current || !session?.sessionComplete) return;
+    redirectedToCompletion.current = true;
+    // Already-complete interrupted session (Story 2.6's AC): route
+    // straight to its Completion screen, no prompt.
+    router.replace(`/session/${session.segmentId}`);
   }, [session]);
 
   const handleDiscard = () => {
-    setResumeDialogVisible(false);
     endSession(); // FR26: cleared, no history entry is ever written for it
   };
 
   const handleResume = () => {
-    setResumeDialogVisible(false);
     if (session) router.push(`/session/${session.segmentId}`);
   };
 
@@ -63,7 +60,7 @@ export default function HomeScreen() {
       </SafeAreaView>
       {session && (
         <ResumeDiscardDialog
-          visible={resumeDialogVisible}
+          visible={showResumeDialog}
           segmentName={session.segmentName}
           onDiscard={handleDiscard}
           onResume={handleResume}
