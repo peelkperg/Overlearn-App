@@ -38,6 +38,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ced6251a-4ebb-4d92-a86f-cf706af5f9c5"
+      }
+    },
+    "owner": "peelkperg"
   }
 }
