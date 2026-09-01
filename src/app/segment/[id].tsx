@@ -1,19 +1,21 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HistoryEntryRow } from '@/components/HistoryEntryRow';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSegment, useSegments } from '@/hooks/useSegments';
+import { useSegmentHistory } from '@/hooks/useSegmentHistory';
 
 // Story 1.4: Select a Segment to Practice or Review (FR3).
-// Navigation + screen shell only — the Start action's session behavior is
-// delivered in Epic 2, history in Epic 3.
+// Story 3.1: View Completed Session History for a Segment (FR27, FR28, FR29).
 export default function SegmentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
   const { archiveSegment, deleteSegment } = useSegments();
+  const history = useSegmentHistory(id);
 
   const handleArchive = () => {
     archiveSegment(id);
@@ -58,6 +60,21 @@ export default function SegmentDetailScreen() {
               >
                 <Text style={styles.secondaryButtonText}>Delete</Text>
               </Pressable>
+            </View>
+            <View testID="segment-detail-history" style={styles.historySection}>
+              <ThemedText type="smallBold">History</ThemedText>
+              {history.length === 0 ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  No completed sessions yet.
+                </ThemedText>
+              ) : (
+                <FlatList
+                  testID="segment-detail-history-list"
+                  data={history}
+                  keyExtractor={(entry) => entry.date}
+                  renderItem={({ item }) => <HistoryEntryRow entry={item} />}
+                />
+              )}
             </View>
           </>
         ) : (
@@ -113,4 +130,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryButtonText: { fontWeight: '600', fontSize: 14 },
+  historySection: {
+    alignSelf: 'stretch',
+    flex: 1,
+    gap: Spacing.two,
+  },
 });
