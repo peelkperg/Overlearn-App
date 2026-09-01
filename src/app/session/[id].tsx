@@ -21,8 +21,8 @@ import { writeHistoryEntry } from '@/lib/history';
 // Story 2.4: Restart an In-Progress Session (FR20, FR21, UX-DR2).
 // Story 2.5: Automatic Session Completion (FR12, FR22, UX-DR3).
 // Story 2.6: View Session Completion Summary (FR13, UX-DR4).
-// Story 2.7: End Session and Write History (FR14). Repeat (FR15, Story 2.8)
-// is still a no-op.
+// Story 2.7: End Session and Write History (FR14).
+// Story 2.8: Repeat Session Immediately (FR15).
 export default function ActiveSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const segment = useSegment(id);
@@ -48,6 +48,15 @@ export default function ActiveSessionScreen() {
     });
     endSession();
     router.replace('/');
+  };
+
+  // Story 2.8 (FR15): begins a new session immediately, same start
+  // behavior as Story 2.1 (0/5). No history entry for the just-completed
+  // session — start() overwrites session.active without ever calling
+  // writeHistoryEntry, so nothing is recorded unless Done was tapped first.
+  const handleRepeat = () => {
+    if (!segment) return;
+    start(segment.name);
   };
 
   useEffect(() => {
@@ -77,7 +86,7 @@ export default function ActiveSessionScreen() {
   }
 
   if (session.sessionComplete) {
-    return <CompletionScreen session={session} finalTarget={targetStreak} onDone={handleDone} onRepeat={() => {}} />;
+    return <CompletionScreen session={session} finalTarget={targetStreak} onDone={handleDone} onRepeat={handleRepeat} />;
   }
 
   return (
