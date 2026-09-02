@@ -35,7 +35,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** App opens to the segment list (empty state, since this is a first install) with no crash, no splash screen stuck on top of the UI, no immediate white/black screen. This is the first real-device check since the splash-overlay and navigation-Stack fixes earlier this project — confirm taps register normally on the very first screen before continuing.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: ___________________________
 
 ---
 
@@ -50,7 +50,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** Returns to the list; the new segment appears immediately.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Functionality correct. Layout bug found: the name input sat almost under the Android status bar (`segment/new.tsx` was the only screen not wrapped in `SafeAreaView`). Fixed same session — screen now wraps its content in `SafeAreaView` like every other screen. Re-verify on next build.
 
 ### UAT-02: Empty-name validation
 

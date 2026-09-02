@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SegmentForm } from '@/components/SegmentForm';
 import { ThemedText } from '@/components/themed-text';
@@ -30,25 +31,28 @@ export default function NewSegmentScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {error && (
-        <View style={styles.errorRow}>
-          <ThemedText
-            testID="segment-create-error"
-            type="small"
-            themeColor="danger"
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-          >
-            {error}
-          </ThemedText>
-        </View>
-      )}
-      <SegmentForm key={attempt} submitLabel="Create" onSubmit={handleSubmit} />
+      <SafeAreaView style={styles.safeArea}>
+        {error && (
+          <View style={styles.errorRow}>
+            <ThemedText
+              testID="segment-create-error"
+              type="small"
+              themeColor="danger"
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+            >
+              {error}
+            </ThemedText>
+          </View>
+        )}
+        <SegmentForm key={attempt} submitLabel="Create" onSubmit={handleSubmit} />
+      </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  safeArea: { flex: 1 },
   errorRow: { paddingHorizontal: Spacing.four, paddingTop: Spacing.four },
 });
