@@ -1,9 +1,15 @@
+// Lives outside src/app/ deliberately: expo-router scans that directory
+// for route files during bundling, and .test.tsx files there get pulled
+// into the production Android/iOS bundle along with @testing-library —
+// which fails Metro bundling (it imports Node's `console` module, which
+// doesn't exist in the RN runtime). Confirmed on an EAS build. Import the
+// screen under test via the @/app alias instead of colocating.
 import { fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { createSegment } from '@/lib/segments';
 
-import HomeScreen from './index';
+import HomeScreen from '@/app/index';
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },

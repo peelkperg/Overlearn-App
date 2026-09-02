@@ -1,4 +1,6 @@
-import { STACK_SCREENS } from './stack-screens';
+// Lives outside src/app/ deliberately — see index.test.tsx in this same
+// directory for why.
+import { STACK_SCREENS } from '@/app/stack-screens';
 
 // Regression test for commit b2dc4e6: router.push()/replace() to a route
 // with no Stack.Screen ancestor is silently dropped in production, with no
