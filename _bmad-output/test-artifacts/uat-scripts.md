@@ -174,6 +174,8 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 - [ ] Pass — Notes: ___________________________
 
+**Known fixed issue (found outside this checklist, on-device):** the Restart button itself sat at a fixed 8px from the bottom edge, landing directly under a 3-button-nav-bar phone's system Home button — unreliably tappable, sometimes swallowed by the OS instead of reaching the app. Fixed by insetting Restart's position by the device's actual bottom safe-area inset (`RestartControl.tsx`); Correct/Incorrect stay full-bleed as designed. Re-verify Restart is easily tappable near the very bottom edge on the next build.
+
 ### UAT-13: Session auto-completes at target, input locks
 
 **Priority:** P0 · **FRs:** FR12, FR22 · **UX:** UX-DR3
