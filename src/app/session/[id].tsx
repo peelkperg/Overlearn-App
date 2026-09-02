@@ -84,6 +84,24 @@ export default function ActiveSessionScreen() {
     }
   }, [segment]);
 
+  // Defensive: session can be cleared out from under this screen — Home
+  // stays mounted underneath and owns the resume/discard prompt (see
+  // app/index.tsx), and a Discard tapped there while this screen is
+  // showing removes session.active globally. A silent blank screen with no
+  // way back is worse than bouncing to the list; only fires once a session
+  // has actually been seen here, never on the single normal blank frame
+  // before start() above completes. [Review][Patch, CRITICAL]
+  const hasSeenSession = useRef(false);
+  useEffect(() => {
+    if (session) {
+      hasSeenSession.current = true;
+      return;
+    }
+    if (hasSeenSession.current) {
+      router.replace('/');
+    }
+  }, [session]);
+
   if (!segment) {
     return (
       <View style={styles.container}>

@@ -81,7 +81,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** Opens the Segment Detail screen showing the segment's name and a **Start** action.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Opening the segment itself worked fine. The bug reported against this step turned out to actually be in UAT-07 (tapping **Start**) — see that script.
 
 ### UAT-05: Archive a segment
 
@@ -120,7 +120,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 - Layout: Correct button top (~40%, green, checkmark, no text), Incorrect button bottom (~40%, red, ✕, no text), readout centered with segment name, Restart small/subordinate at the bottom edge.
 - Dark background; Correct/Incorrect distinguishable by position + icon even if you can't see color.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: **Found a critical bug**, fixed same session. Tapping Start showed Home's resume/discard prompt over the just-started session (a false "interrupted session" — Home stays mounted underneath every pushed screen and was reading any incomplete session, including a brand-new one, as if it were a leftover interruption). Tapping Discard on it then left the Active Session screen on a dead blank view with no way out. Root cause: `showResumeDialog` in `app/index.tsx` wasn't distinguishing "a session that existed before this screen mounted" from "a session just started normally." Fixed by snapshotting the interrupted session's identity at mount and gating the prompt on that snapshot, plus a defensive fallback in `session/[id].tsx` so a session vanishing out from under that screen bounces to the list instead of rendering blank. New regression test (`src/app-tests/home-session-interaction.test.tsx`) renders both screens together, the way the real navigator does, and would have caught this. Re-verify on next build.
 
 ### UAT-08: Log Correct — streak progresses
 

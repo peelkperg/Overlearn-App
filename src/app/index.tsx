@@ -26,14 +26,32 @@ export default function HomeScreen() {
   // stranded with no route to its Completion screen.
   const redirectedFor = useRef<string | null>(null);
 
+  // Snapshot of whatever incomplete session already existed the moment this
+  // screen mounted — i.e. a genuine interruption from before this app
+  // lifetime, the only case FR24 is about. Home stays mounted underneath
+  // every pushed screen (Segment Detail, Active Session), so without this
+  // snapshot showResumeDialog below would also fire for a session the user
+  // just started normally via Segment Detail's Start button — that session
+  // is just as "incomplete" from Home's still-subscribed point of view, but
+  // is not an interruption at all. [Review][Patch, CRITICAL] found via UAT:
+  // tapping Start showed this prompt, and Discard from it left the Active
+  // Session screen with no session at all (see hasSeenSession below).
+  const [interruptedSessionAtMount] = useState(() =>
+    session && !session.sessionComplete ? session.sessionStartTimestamp : null,
+  );
+
   // Incomplete interrupted session: always ask — never silently resumed or
-  // discarded (FR24). Derived directly from session state rather than
-  // mirrored into its own useState — session already reflects the
-  // persisted value synchronously on first render, nothing async to wait
-  // for, and this stays correct for free after Discard/Resume update it.
+  // discarded (FR24). Matched against the mount-time snapshot above by
+  // sessionStartTimestamp, not just "any incomplete session exists" — a
+  // session started after mount (normal in-app Start/Repeat flow) must
+  // never trigger this, only the one that was already there on arrival.
   // Resume dismisses it explicitly: it pushes rather than mutating the
   // session, so nothing else would take the dialog down.
-  const showResumeDialog = !!session && !session.sessionComplete && !resumed;
+  const showResumeDialog =
+    !!session &&
+    !session.sessionComplete &&
+    !resumed &&
+    session.sessionStartTimestamp === interruptedSessionAtMount;
 
   useEffect(() => {
     if (!session?.sessionComplete) return;
