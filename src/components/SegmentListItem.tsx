@@ -10,14 +10,13 @@ import type { Segment } from '@/lib/types';
 type SegmentListItemProps = {
   segment: Segment;
   onOpen: () => void;
-  onArchive: () => void;
   onDelete: () => void;
 };
 
-// Row in the segment list (FR5, FR6). The UX spec allows swipe-actions or a
-// menu for archive/delete; a menu is used because it is reachable by screen
-// readers and keyboard/switch control, which a swipe gesture is not (NFR6).
-export function SegmentListItem({ segment, onOpen, onArchive, onDelete }: SegmentListItemProps) {
+// Row in the segment list (FR6). The UX spec allows swipe-actions or a menu
+// for delete; a menu is used because it is reachable by screen readers and
+// keyboard/switch control, which a swipe gesture is not (NFR6).
+export function SegmentListItem({ segment, onOpen, onDelete }: SegmentListItemProps) {
   const [menuVisible, setMenuVisible] = useState(false);
   const theme = useTheme();
 
@@ -64,14 +63,6 @@ export function SegmentListItem({ segment, onOpen, onArchive, onDelete }: Segmen
             <ThemedText type="smallBold" numberOfLines={1} style={styles.menuTitle}>
               {segment.name}
             </ThemedText>
-            <Pressable
-              testID={`segment-row-archive-${segment.id}`}
-              style={styles.menuItem}
-              onPress={() => runAction(onArchive)}
-              accessibilityRole="button"
-            >
-              <ThemedText>Archive</ThemedText>
-            </Pressable>
             <Pressable
               testID={`segment-row-delete-${segment.id}`}
               style={styles.menuItem}

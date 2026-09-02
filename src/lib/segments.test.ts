@@ -1,5 +1,5 @@
 import { readHistory, writeHistoryEntry } from './history';
-import { archiveSegment, createSegment, deleteSegment, getSegment, readSegments } from './segments';
+import { createSegment, deleteSegment, getSegment, readSegments } from './segments';
 import { readSession, writeSession } from './session';
 import { storage } from './storage';
 
@@ -12,7 +12,6 @@ describe('lib/segments createSegment [Story 1.2]', () => {
     const segment = createSegment('Bar 24 arpeggio');
 
     expect(segment.name).toBe('Bar 24 arpeggio');
-    expect(segment.archived).toBe(false);
     expect(segment.id).toBeTruthy();
     expect(segment.createdAt).toBeTruthy();
 
@@ -120,12 +119,6 @@ describe('lib/segments duplicate names [Review][Decision 3]', () => {
     expect(createSegment('bar 24').name).toBe('bar 24 (2)');
   });
 
-  it('disambiguates against archived segments too', () => {
-    const first = createSegment('Bar 24');
-    archiveSegment(first.id);
-    expect(createSegment('Bar 24').name).toBe('Bar 24 (2)');
-  });
-
   it('leaves a non-colliding name untouched', () => {
     createSegment('Bar 24');
     expect(createSegment('Bar 25').name).toBe('Bar 25');
@@ -173,34 +166,6 @@ describe('lib/segments getSegment [Story 1.4]', () => {
   it('returns undefined for an id that does not exist', () => {
     createSegment('Bar 24 arpeggio');
     expect(getSegment('missing-id')).toBeUndefined();
-  });
-});
-
-describe('lib/segments archiveSegment [Story 1.5]', () => {
-  beforeEach(() => {
-    storage.clearAll();
-  });
-
-  it('marks the segment archived and preserves it in storage', () => {
-    const segment = createSegment('Bar 24 arpeggio');
-    const updated = archiveSegment(segment.id);
-
-    expect(updated.archived).toBe(true);
-    expect(readSegments()).toHaveLength(1);
-    expect(getSegment(segment.id)?.archived).toBe(true);
-  });
-
-  it('does not affect other segments', () => {
-    const a = createSegment('First');
-    const b = createSegment('Second');
-    archiveSegment(a.id);
-
-    expect(getSegment(a.id)?.archived).toBe(true);
-    expect(getSegment(b.id)?.archived).toBe(false);
-  });
-
-  it('throws for an id that does not exist', () => {
-    expect(() => archiveSegment('missing-id')).toThrow();
   });
 });
 

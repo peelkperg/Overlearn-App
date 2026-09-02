@@ -21,7 +21,7 @@ FR1: User can create a named practice segment
 FR2: User can view a list of their segments
 FR3: User can select a segment to practice or to review its history
 FR4: User can maintain segments simultaneously with no enforced limit on their number, each with independent state
-FR5: User can archive a segment
+FR5: **REMOVED** — was "User can archive a segment." Cut post-implementation (2026-09-02): the feature had no way to view or restore an archived segment through the UI, making it a one-way hide that only wasted storage. ID retained, not reassigned, to avoid renumbering every FR/story reference below.
 FR6: User can delete a segment
 FR7: User is presented with a means to create a first segment when none exist
 
@@ -111,7 +111,7 @@ FR1: Epic 1 - Create a named segment
 FR2: Epic 1 - View segment list
 FR3: Epic 1 - Select segment to practice/review
 FR4: Epic 1 - Multiple concurrent segments, independent state
-FR5: Epic 1 - Archive a segment
+FR5: REMOVED (was Epic 1 - Archive a segment)
 FR6: Epic 1 - Delete a segment
 FR7: Epic 1 - First-segment empty state
 FR8: Epic 2 - Start session, no upfront input
@@ -141,7 +141,7 @@ FR29: Epic 3 - Non-completed sessions excluded
 
 ### Epic 1: Segment Management
 Users can create, organize, and maintain their practice segments — the foundation everything else builds on.
-**FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7
+**FRs covered:** FR1, FR2, FR3, FR4, FR6, FR7 (FR5 removed post-implementation, see Requirements Inventory)
 **Implementation notes:** Includes the starter-template project initialization as its first story (blocking prerequisite). Standard design-system screens/components per architecture.md and UX-DR9/UX-DR11.
 
 ### Epic 2: The Overlearning Session
@@ -224,17 +224,9 @@ So that I can start practicing it or review its history.
 
 **Note:** This story's user story text references practicing and reviewing history — those capabilities are delivered incrementally by Epic 2 (practice) and Epic 3 (history) respectively; this story alone only builds the navigable shell, which is complete and independently valuable on its own.
 
-### Story 1.5: Archive a Segment
+### Story 1.5: REMOVED — Archive a Segment
 
-As a musician,
-I want to archive a segment I'm no longer actively practicing,
-So that my active list stays focused without losing the segment's history.
-
-**Acceptance Criteria:**
-
-**Given** a segment exists in the active list
-**When** the user archives it
-**Then** the segment is marked archived and no longer appears in the default active segment list, but its data (including any history) is preserved (FR5)
+Implemented, then removed post-implementation (2026-09-02) to optimize data storage: the feature had no way to view or restore an archived segment through the UI, so it functioned as a one-way hide that only accumulated unreachable data. Story number retained, not reassigned. See git history for the original implementation and its removal commit.
 
 ### Story 1.6: Delete a Segment
 

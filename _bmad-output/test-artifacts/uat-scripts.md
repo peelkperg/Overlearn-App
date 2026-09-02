@@ -83,15 +83,9 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 - [x] Pass — Notes: Opening the segment itself worked fine. The bug reported against this step turned out to actually be in UAT-07 (tapping **Start**) — see that script.
 
-### UAT-05: Archive a segment
+### UAT-05: REMOVED — Archive a segment
 
-**Priority:** P1 · **FR:** FR5
-
-1. From the list, open a segment's row menu and choose **Archive**.
-
-**Expected:** Segment disappears from the default list. (No "view archived" UI exists yet by design — data preservation is verified structurally, not visually, in this build.)
-
-- [x] Pass — Notes: ___________________________
+FR5/Archive was removed from the app on 2026-09-02, after this script passed against the build then installed (see `epics.md`). Script number retained, not reassigned, so later script numbers stay stable. **If you still have a build from before the removal**, any segment you archived under it will simply reappear in the active list on the next build — that's expected, not a bug: there is no more archived state to hide it.
 
 ### UAT-06: Delete a segment
 
@@ -404,12 +398,12 @@ These need a human judgment call a test renderer can't make — device feel, rea
 | Section | Scripts | P0 | P1 | P2 | P3 |
 |---|---|---|---|---|---|
 | 0. Setup | 1 | 1 | – | – | – |
-| 1. Segment Management | 6 | 2 | 4 | – | – |
+| 1. Segment Management | 5 (+1 removed) | 2 | 3 | – | – |
 | 2. Session Lifecycle & Interaction | 10 | 8 | 1 | 1 | – |
 | 3. Interruption & Recovery | 5 | 4 | 1 | – | – |
 | 4. Practice History | 3 | 1 | 1 | 1 | – |
 | 5. Accessibility & NFR | 7 | – | 2 | 4 | 1 |
-| **Total** | **32** | **16** | **9** | **6** | **1** |
+| **Total** | **31 active (+1 removed)** | **16** | **8** | **6** | **1** |
 
 **Minimum bar before calling this build release-ready:** all P0 scripts pass, especially §3 (UAT-17 through UAT-21) — that section is the direct manual stand-in for the traceability trace's single biggest gap (FR24, previously zero coverage) and for the on-device E2E suite (P0-007/P0-008 in `test-design-qa.md`) that was planned but never built.
 

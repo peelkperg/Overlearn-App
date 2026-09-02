@@ -66,16 +66,6 @@ describe('HomeScreen [Story 1.3]', () => {
     expect(await view.findByTestId(`segment-row-${created.id}`)).toBeTruthy();
   });
 
-  it('drops an archived segment from the list while it is mounted (FR5)', async () => {
-    const created = createSegment('Bar 24 arpeggio');
-    const view = await render(<HomeScreen />);
-
-    await fireEvent.press(view.getByTestId(`segment-row-menu-${created.id}`));
-    await fireEvent.press(view.getByTestId(`segment-row-archive-${created.id}`));
-
-    expect(view.queryByTestId(`segment-row-${created.id}`)).toBeNull();
-  });
-
   it('drops a deleted segment from the list while it is mounted (FR6)', async () => {
     const created = createSegment('Bar 24 arpeggio');
     const view = await render(<HomeScreen />);

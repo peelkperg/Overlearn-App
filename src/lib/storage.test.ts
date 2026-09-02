@@ -33,7 +33,7 @@ describe('lib/storage getObject corruption handling', () => {
   });
 
   it('round-trips a valid object that passes its shape guard', () => {
-    const segments = [{ id: 'a', name: 'Bar 24', archived: false, createdAt: '2026-01-01T00:00:00.000Z' }];
+    const segments = [{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }];
     setObject(KEY, segments);
 
     expect(getObject(KEY, isSegmentArray)).toEqual(segments);

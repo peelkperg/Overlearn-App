@@ -17,7 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 // the app's landing screen, so it's the one place that can catch an
 // interrupted session before the user navigates anywhere else.
 export default function HomeScreen() {
-  const { segments, archiveSegment, deleteSegment } = useSegments();
+  const { segments, deleteSegment } = useSegments();
   const { session, endSession } = useActiveSession();
   const [resumed, setResumed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +111,6 @@ export default function HomeScreen() {
                 <SegmentListItem
                   segment={item}
                   onOpen={() => router.push(`/segment/${item.id}`)}
-                  onArchive={() => runAction(() => archiveSegment(item.id), 'Could not archive that segment.')}
                   onDelete={() => runAction(() => deleteSegment(item.id), 'Could not delete that segment.')}
                 />
               )}

@@ -17,6 +17,8 @@ externalPointerStatus: 'not_used'
 **Date:** 2026-09-02
 **Project:** Overlearn
 
+**Post-hoc note (2026-09-02, later same day):** FR5 (Archive a segment) was removed from the product after this matrix was generated — see `epics.md`. FR5's row below is marked N/A and excluded from every count. **The Step 4/Step 5 statistics tables and gate decision below still reflect the original 29-FR run and were not recomputed** — recomputing them correctly means re-running `bmad-testarch-trace`, not hand-editing aggregate numbers. Treat this file's narrative/per-FR findings as current, and its summary percentages/gate verdict as one FR-count off (28 real FRs now, not 29) until the next full trace run.
+
 ## Step 1: Coverage Oracle Resolution
 
 **Resolved oracle:** Formal requirements — `epics.md`'s Requirements Inventory (FR1–FR29, NFR1–NFR9) plus each story's own Acceptance Criteria (Stories 1.1–3.1, all 17 implemented). This is the strongest available oracle: every FR is already individually numbered, and every story's AC already states its Given/When/Then in testable form. No inference or synthetic journey construction was needed.
@@ -77,7 +79,7 @@ externalPointerStatus: 'not_used'
 | FR2 | View segment list | `app-tests/index.test.tsx:43` | **FULL** |
 | FR3 | Select segment to practice/review history | `SegmentListItem.test.tsx:24` (row tap callback only); `app-tests/index.test.tsx` (row renders) | **PARTIAL** — selecting in the list is tested; the resulting Segment Detail screen (Start action + history) is not rendered by any test |
 | FR4 | Unlimited segments, independent state | `app-tests/index.test.tsx:43` | **FULL** |
-| FR5 | Archive a segment | `segments.test.ts:184,193`; `SegmentListItem.test.tsx:38`; `app-tests/index.test.tsx:66` | **FULL** |
+| FR5 | ~~Archive a segment~~ — **REMOVED post-implementation (2026-09-02)**, see epics.md. Row and its former test citations kept for the historical record only; excluded from the counts below. | — | **N/A** |
 | FR6 | Delete a segment | `segments.test.ts:212,220,45` (cascade); `SegmentListItem.test.tsx:48`; `app-tests/index.test.tsx:76` | **FULL** |
 | FR7 | Empty-state create prompt | `app-tests/index.test.tsx:26` | **FULL** |
 
@@ -127,12 +129,12 @@ externalPointerStatus: 'not_used'
 
 | Status | Count | FRs |
 |---|---|---|
-| FULL | 7 | FR2, FR4, FR5, FR6, FR7, FR11, FR18 |
+| FULL | 6 (was 7) | FR2, FR4, FR6, FR7, FR11, FR18 (FR5 removed, see note above) |
 | PARTIAL | 8 | FR1, FR3, FR13, FR22, FR23, FR25, FR26, FR28 |
 | UNIT-ONLY | 10 | FR8, FR9, FR10, FR12, FR14, FR15, FR16, FR17, FR20, FR27 |
 | NONE | 4 | FR19, FR21, FR24, FR29 |
 
-Total: 29 FRs traced (FR1–FR29). FR19 and FR29 are negative/absence requirements, harder to test in the conventional sense — their NONE status is lower-priority than FR21 and FR24, which are real, actionable gaps in observable behavior.
+Total: 28 active FRs traced (FR1–FR29, FR5 removed post-implementation). FR19 and FR29 are negative/absence requirements, harder to test in the conventional sense — their NONE status is lower-priority than FR21 and FR24, which are real, actionable gaps in observable behavior.
 
 ### Coverage Logic Validation
 

@@ -296,7 +296,7 @@ From the established system (React Native Paper / Flutter Material-Cupertino, pe
 - Text input / form fields (segment creation/rename)
 - Standard dialog/modal (resume vs. discard prompt, Restart confirm)
 - Basic navigation (segment list ↔ segment history ↔ active session)
-- Swipe-actions or menu (archive/delete on a segment row)
+- Swipe-actions or menu (delete on a segment row)
 - Simple list/table rows (history log entries)
 
 ### Custom Components
@@ -352,7 +352,7 @@ From the established system (React Native Paper / Flutter Material-Cupertino, pe
 - Completion screen (standard layout + custom completion beat trigger)
 
 **Phase 3 — Standard CRUD (lowest risk, design-system-only):**
-- Segment list, creation form, archive/delete actions
+- Segment list, creation form, delete action
 - History log list
 
 ## UX Consistency Patterns
@@ -374,7 +374,7 @@ Four tiers only, applied consistently everywhere they occur (defined in Core Use
 | Alert | Incorrect tap causing target-raise | Screen flash + sound + vibration |
 | Distinct | Session completion | Haptic pulse + short sound + visual settle |
 
-No fifth tier is introduced anywhere else in the app (e.g., segment creation, archive/delete) — those use plain design-system default feedback (e.g., a standard toast/snackbar or instant list update), since they carry no gameplay weight.
+No fifth tier is introduced anywhere else in the app (e.g., segment creation, delete) — those use plain design-system default feedback (e.g., a standard toast/snackbar or instant list update), since they carry no gameplay weight.
 
 ### Form Patterns
 

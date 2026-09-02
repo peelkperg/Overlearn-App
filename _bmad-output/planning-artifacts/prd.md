@@ -138,13 +138,13 @@ Metronome, tuner, practice time tracking, audio-based automatic correctness dete
 
 **Opening:** A month into using Overlearn, Mara has 6 segments — some resolved, some abandoned mid-piece for a different recital. This journey is where the app's entire value proposition gets checked: Overlearn never automates "is this fixed for good," so the history log is the only place that question gets answered at all.
 
-**Rising action:** She archives 2 segments for a piece she's no longer performing, keeps the rest active, and opens "Bar 24 arpeggio" to check its history before a lesson.
+**Rising action:** She opens "Bar 24 arpeggio," one of the resolved ones, to check its history before a lesson.
 
 **Climax:** The history log shows every *completed* session for that segment (never abandoned or restarted attempts): date, final target streak achieved, total mistakes that session, and total attempts — a simple list, no charts. Because each entry shows mistakes alongside the target, she can tell "target 5" from a light session and "target 7" from a rough one, instead of a bare number she can't interpret.
 
 **Resolution:** She sees the passage has been solidified 3 separate times across different practice weeks, with the target climbing on the roughest day — real signal about whether this passage is actually settling, not just a receipt. The app doesn't tell her whether to re-practice it before the recital; it gives her the honest record to decide for herself.
 
-**Capabilities revealed:** multiple concurrent segments; archive/delete actions; per-segment history log (date, final target achieved, total mistakes, total attempts) as a plain list, completed-sessions-only.
+**Capabilities revealed:** multiple concurrent segments; delete action; per-segment history log (date, final target achieved, total mistakes, total attempts) as a plain list, completed-sessions-only.
 
 ### Journey Requirements Summary
 
@@ -225,7 +225,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR2: User can view a list of their segments
 - FR3: User can select a segment to practice or to review its history
 - FR4: User can maintain segments simultaneously with no enforced limit on their number, each with independent state
-- FR5: User can archive a segment
+- FR5: **REMOVED** — was "User can archive a segment." Cut post-implementation (2026-09-02) to optimize data storage: the feature had no way to view or restore an archived segment, making it a one-way hide. ID retained, not reassigned.
 - FR6: User can delete a segment
 - FR7: User is presented with a means to create a first segment when none exist
 

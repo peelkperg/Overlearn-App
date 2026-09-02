@@ -13,7 +13,7 @@ import { useSegmentHistory } from '@/hooks/useSegmentHistory';
 
 // Story 1.4: Select a Segment to Practice or Review (FR3).
 // Story 3.1: View Completed Session History for a Segment (FR27, FR28, FR29).
-// Archive/delete (FR5, FR6) live on the segment row, not here — see
+// Delete (FR6) lives on the segment row, not here — see
 // architecture.md's components/SegmentListItem.tsx.
 export default function SegmentDetailScreen() {
   const id = useRouteId(useLocalSearchParams());

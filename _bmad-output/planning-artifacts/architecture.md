@@ -274,7 +274,7 @@ overlearn/
 │       └── [id].tsx                   # Active Session screen (FR8–22), transitions in-place
 │                                       # to Completion state per UX spec (no separate route)
 ├── components/
-│   ├── SegmentListItem.tsx            # Row in segment list (archive/delete actions, FR5–6)
+│   ├── SegmentListItem.tsx            # Row in segment list (delete action, FR6)
 │   ├── SegmentForm.tsx                # Shared create/rename form (FR1)
 │   ├── HistoryEntryRow.tsx            # One history log row (FR28)
 │   ├── ResumeDiscardDialog.tsx        # Standard dialog (FR24, NFR4)

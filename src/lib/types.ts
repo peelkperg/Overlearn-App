@@ -4,7 +4,6 @@
 export interface Segment {
   id: string;
   name: string;
-  archived: boolean;
   createdAt: string; // ISO 8601
 }
 
@@ -54,7 +53,6 @@ export function isSegmentArray(value: unknown): value is Segment[] {
         isRecord(item) &&
         typeof item.id === 'string' &&
         typeof item.name === 'string' &&
-        typeof item.archived === 'boolean' &&
         typeof item.createdAt === 'string',
     )
   );

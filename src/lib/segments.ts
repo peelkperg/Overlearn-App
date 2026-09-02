@@ -32,7 +32,7 @@ export function subscribeToSegments(onChange: () => void): () => void {
 }
 
 // Same-millisecond creation can otherwise repeat an id, which would make
-// archive/delete act on the wrong record and collide FlatList keys.
+// delete act on the wrong record and collide FlatList keys.
 function generateId(existing: Segment[]): string {
   const taken = new Set(existing.map((segment) => segment.id));
   let id = '';
@@ -49,8 +49,7 @@ export function getSegment(id: string): Segment | undefined {
 // Two segments sharing a name are indistinguishable in the list and in the
 // Resume/Discard prompt, where a wrong Discard destroys the wrong session's
 // progress. Names are disambiguated rather than rejected so creation never
-// fails on something the user cannot see. Compared case-insensitively, and
-// against archived segments too — they still own history and can resurface.
+// fails on something the user cannot see. Compared case-insensitively.
 function disambiguate(name: string, existing: Segment[]): string {
   const taken = new Set(existing.map((segment) => segment.name.toLowerCase()));
   if (!taken.has(name.toLowerCase())) return name;
@@ -84,28 +83,11 @@ export function createSegment(name: string): Segment {
   const segment: Segment = {
     id: generateId(existing),
     name: disambiguate(trimmed, existing),
-    archived: false,
     createdAt: new Date().toISOString(),
   };
 
   setObject(SEGMENTS_KEY, [...existing, segment]);
   return segment;
-}
-
-// Archiving (FR5). The segment stays in storage — it's excluded from the
-// default active list at the read site (index.tsx), not deleted here.
-export function archiveSegment(id: string): Segment {
-  const all = readSegments();
-  const index = all.findIndex((segment) => segment.id === id);
-  if (index === -1) {
-    throw new Error(`Segment not found: ${id}`);
-  }
-
-  const updated: Segment = { ...all[index], archived: true };
-  const next = [...all];
-  next[index] = updated;
-  setObject(SEGMENTS_KEY, next);
-  return updated;
 }
 
 // Deletion (FR6): the segment *and all its associated data*. The history

@@ -187,7 +187,7 @@ test('target rises past the floor once total_incorrect exceeds 10 @P0', () => {
 | **P1-002** | Input rejected once session completes (FR22) | Component | — | Story 2.5 |
 | **P1-003** | Four feedback tiers fire on correct trigger, distinguishable via injected spy | Component | Testability Concern #2 | Story 2.5, needs the observability hook dependency |
 | **P1-004** | Target-raise tier includes screen-reader announcement | Component | NFR6/NFR7 | Story 2.3 |
-| **P1-005** | Segment CRUD: create (validation), archive (preserved data), delete (cascades correctly) | Component | R4 | Stories 1.2, 1.5, 1.6 |
+| **P1-005** | Segment CRUD: create (validation), delete (cascades correctly) | Component | R4 | Stories 1.2, 1.6 (Story 1.5 Archive removed post-implementation, 2026-09-02) |
 | **P1-006** | Segment list: independent state across segments, empty-state prompt | Component | — | Story 1.3 |
 | **P1-007** | History log: chronological, correct fields, non-completed sessions excluded | Component | — | Story 3.1 |
 | **P1-008** | Discard/Restart leave zero history record | Component/E2E | — | Stories 2.4, 2.10 |
