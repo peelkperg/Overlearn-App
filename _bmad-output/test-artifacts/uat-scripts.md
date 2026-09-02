@@ -61,7 +61,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** Inline validation error shown; no segment created; form stays open.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: ___________________________
 
 ### UAT-03: Multiple segments, no limit
 
@@ -71,7 +71,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** All appear in the list, each independently; no cap encountered; scrolling works if the list exceeds one screen.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: ___________________________
 
 ### UAT-04: Select a segment
 
@@ -91,7 +91,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** Segment disappears from the default list. (No "view archived" UI exists yet by design — data preservation is verified structurally, not visually, in this build.)
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: ___________________________
 
 ### UAT-06: Delete a segment
 
@@ -102,7 +102,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** Segment disappears from the list permanently. Re-creating a segment with the same name afterward shows no leftover history (confirms the cascade).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Cascade with history not fully exercised (session flow was blocked by UAT-07's bug at the time), but basic delete confirmed. Worth a quick re-check once the new build is up and §2 is retested.
 
 ---
 
