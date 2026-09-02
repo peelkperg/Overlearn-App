@@ -1,16 +1,35 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
+// Backstop for the `finished` callback not firing (see the comment at its
+// call site below) — generous enough to never preempt a completing
+// animation, tight enough that a hung one doesn't linger.
+const FALLBACK_UNMOUNT_MS = DURATION * 2;
 
 export function AnimatedSplashOverlay() {
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
+  // onLayout can fire more than once before the async hideAsync().finally()
+  // commits `animate` — orientation change, safe-area/dimension change,
+  // font-load reflow — and each firing would otherwise re-invoke
+  // hideAsync() with no guard against re-entry.
+  const hidingSplash = useRef(false);
+
+  useEffect(() => {
+    if (!animate) return;
+    // If `finished` never fires (the underlying bug this doesn't attempt to
+    // fix), this is the only thing that ever unmounts the overlay — without
+    // it, the invisible Image/Animated.View stay resident, and reachable by
+    // a screen reader, for the entire app session.
+    const timer = setTimeout(() => setVisible(false), FALLBACK_UNMOUNT_MS);
+    return () => clearTimeout(timer);
+  }, [animate]);
 
   if (!visible) return null;
 
@@ -40,10 +59,16 @@ export function AnimatedSplashOverlay() {
   // still mid-animation, and as a defensive fallback if the `finished`
   // callback below doesn't fire (observed on-device: an invisible
   // zIndex:1000 view silently swallowing every tap in the app once
-  // opacity animated to 0 without ever unmounting).
+  // opacity animated to 0 without ever unmounting). pointerEvents only
+  // excludes it from touch hit-testing, not from screen-reader traversal —
+  // accessibilityElementsHidden/importantForAccessibility hide it from
+  // TalkBack/VoiceOver too, on both branches, since the fallback timer
+  // above means the `animate` branch can also be what's left mounted.
   return animate ? (
     <Animated.View
       pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
         'worklet';
         if (finished) {
@@ -56,7 +81,11 @@ export function AnimatedSplashOverlay() {
   ) : (
     <View
       pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
       onLayout={() => {
+        if (hidingSplash.current) return;
+        hidingSplash.current = true;
         SplashScreen.hideAsync().finally(() => {
           setAnimate(true);
         });

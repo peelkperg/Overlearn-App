@@ -10,6 +10,7 @@ import { RestartConfirmDialog } from '@/components/session/RestartConfirmDialog'
 import { RestartControl } from '@/components/session/RestartControl';
 import { StreakReadout } from '@/components/session/StreakReadout';
 import { useActiveSession } from '@/hooks/useActiveSession';
+import { useRouteId } from '@/hooks/useRouteId';
 import { useSegment } from '@/hooks/useSegments';
 import { writeHistoryEntry } from '@/lib/history';
 
@@ -27,7 +28,7 @@ import { writeHistoryEntry } from '@/lib/history';
 // or a just-Resumed incomplete one) is never silently overwritten here —
 // only a genuinely different/absent session triggers a fresh start.
 export default function ActiveSessionScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId(useLocalSearchParams());
   const segment = useSegment(id);
   const { session, start, logCorrect, logIncorrect, restart, endSession, targetStreak, incorrectPulse, targetRaiseFlash } =
     useActiveSession();
@@ -43,11 +44,16 @@ export default function ActiveSessionScreen() {
   // and returns to the segment list.
   const handleDone = () => {
     if (!session) return;
-    writeHistoryEntry(id, {
+    // Keyed on segment.id, not the raw route param — the two can diverge
+    // for an array-valued or stale param. sessionStartTimestamp lets
+    // writeHistoryEntry dedupe a retry after a kill between this write
+    // and endSession() below.
+    writeHistoryEntry(session.segmentId, {
       date: new Date().toISOString(),
       finalTarget: targetStreak,
       totalMistakes: session.totalIncorrectThisSession,
       totalAttempts: session.totalCorrectThisSession + session.totalIncorrectThisSession,
+      sessionStartTimestamp: session.sessionStartTimestamp,
     });
     endSession();
     router.replace('/');

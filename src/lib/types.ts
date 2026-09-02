@@ -31,4 +31,62 @@ export interface HistoryEntry {
   finalTarget: number;
   totalMistakes: number;
   totalAttempts: number;
+  // Dedup key: the completed session's own sessionStartTimestamp. Done's
+  // history write and its session.active clear are two separate MMKV
+  // writes with no atomicity between them — a kill in that window and a
+  // retry on relaunch must not double-record the same practice run.
+  sessionStartTimestamp: string; // ISO 8601
+}
+
+// Runtime shape guards for everything read back out of MMKV. On-device data
+// is untrusted input: a `getObject<T>` cast alone is an unchecked assertion,
+// and a parseable-but-wrong payload would reach the UI and throw there.
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isSegmentArray(value: unknown): value is Segment[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.id === 'string' &&
+        typeof item.name === 'string' &&
+        typeof item.archived === 'boolean' &&
+        typeof item.createdAt === 'string',
+    )
+  );
+}
+
+export function isHistoryEntryArray(value: unknown): value is HistoryEntry[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.date === 'string' &&
+        typeof item.finalTarget === 'number' &&
+        typeof item.totalMistakes === 'number' &&
+        typeof item.totalAttempts === 'number' &&
+        typeof item.sessionStartTimestamp === 'string',
+    )
+  );
+}
+
+export function isSessionState(value: unknown): value is SessionState {
+  return (
+    isRecord(value) &&
+    typeof value.segmentId === 'string' &&
+    typeof value.segmentName === 'string' &&
+    // Number.isFinite, not typeof: a NaN/Infinity counter (corrupted-but
+    // -typeof-number data) would make calculateTargetStreak's output
+    // non-finite too, permanently soft-locking the session.
+    Number.isFinite(value.currentStreak) &&
+    Number.isFinite(value.totalCorrectThisSession) &&
+    Number.isFinite(value.totalIncorrectThisSession) &&
+    typeof value.sessionComplete === 'boolean' &&
+    typeof value.sessionStartTimestamp === 'string'
+  );
 }

@@ -6,5 +6,12 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
+  },
+  {
+    // Test files and the Jest setup run under Jest's globals.
+    files: ["**/*.test.ts", "**/*.test.tsx", "jest.setup.js"],
+    languageOptions: {
+      globals: { ...require("globals").jest },
+    },
   }
 ]);

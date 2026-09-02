@@ -1,66 +1,44 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HistoryEntryRow } from '@/components/HistoryEntryRow';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useSegment, useSegments } from '@/hooks/useSegments';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useRouteId } from '@/hooks/useRouteId';
+import { useTheme } from '@/hooks/use-theme';
+import { useSegment } from '@/hooks/useSegments';
 import { useSegmentHistory } from '@/hooks/useSegmentHistory';
 
 // Story 1.4: Select a Segment to Practice or Review (FR3).
 // Story 3.1: View Completed Session History for a Segment (FR27, FR28, FR29).
+// Archive/delete (FR5, FR6) live on the segment row, not here — see
+// architecture.md's components/SegmentListItem.tsx.
 export default function SegmentDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId(useLocalSearchParams());
   const segment = useSegment(id);
-  const { archiveSegment, deleteSegment } = useSegments();
   const history = useSegmentHistory(id);
-
-  const handleArchive = () => {
-    archiveSegment(id);
-    router.replace('/');
-  };
-
-  const handleDelete = () => {
-    deleteSegment(id);
-    router.replace('/');
-  };
+  const theme = useTheme();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         {segment ? (
           <>
-            <ThemedText type="title" style={styles.title}>
+            <ThemedText type="title" numberOfLines={2} style={styles.title}>
               {segment.name}
             </ThemedText>
             <Pressable
               testID="segment-detail-start"
-              style={styles.button}
-              onPress={() => router.push(`/session/${id}`)}
+              style={[styles.button, { backgroundColor: theme.accent }]}
+              onPress={() => router.push(`/session/${segment.id}`)}
               accessibilityRole="button"
             >
-              <Text style={styles.buttonText}>Start</Text>
+              <ThemedText themeColor="accentText" style={styles.buttonText}>
+                Start
+              </ThemedText>
             </Pressable>
-            <View style={styles.secondaryActions}>
-              <Pressable
-                testID="segment-detail-archive"
-                style={styles.secondaryButton}
-                onPress={handleArchive}
-                accessibilityRole="button"
-              >
-                <Text style={styles.secondaryButtonText}>Archive</Text>
-              </Pressable>
-              <Pressable
-                testID="segment-detail-delete"
-                style={styles.secondaryButton}
-                onPress={handleDelete}
-                accessibilityRole="button"
-              >
-                <Text style={styles.secondaryButtonText}>Delete</Text>
-              </Pressable>
-            </View>
             <View testID="segment-detail-history" style={styles.historySection}>
               <ThemedText type="smallBold">History</ThemedText>
               {history.length === 0 ? (
@@ -71,7 +49,7 @@ export default function SegmentDetailScreen() {
                 <FlatList
                   testID="segment-detail-history-list"
                   data={history}
-                  keyExtractor={(entry) => entry.date}
+                  keyExtractor={(entry, index) => `${entry.date}-${index}`}
                   renderItem={({ item }) => <HistoryEntryRow entry={item} />}
                 />
               )}
@@ -97,7 +75,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.three,
+    paddingBottom: Spacing.three,
     paddingTop: Spacing.five,
     gap: Spacing.four,
     maxWidth: MaxContentWidth,
@@ -106,7 +84,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#2ecc71',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 32,
@@ -114,22 +91,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
   },
-  buttonText: { color: '#0a2c14', fontWeight: '600', fontSize: 16 },
-  secondaryActions: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#888',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  secondaryButtonText: { fontWeight: '600', fontSize: 14 },
+  buttonText: { fontWeight: '600', fontSize: 16 },
   historySection: {
     alignSelf: 'stretch',
     flex: 1,

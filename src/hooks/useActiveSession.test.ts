@@ -305,3 +305,86 @@ describe('useActiveSession endSession [Story 2.7]', () => {
     expect(reloaded.current.session).toBeNull();
   });
 });
+
+describe('useActiveSession rapid taps [Review][Patch, CRITICAL]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('compounds two Correct taps issued before a re-render, instead of dropping one', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+
+    // Both calls happen synchronously in one act(), before React commits
+    // the first setSession — this is what a fast double-tap looks like.
+    // Previously both mutators read the same stale `session` from the
+    // render closure, so the second overwrote the first instead of
+    // compounding on it, and this asserted 1.
+    await act(() => {
+      result.current.logCorrect();
+      result.current.logCorrect();
+    });
+
+    expect(result.current.session?.currentStreak).toBe(2);
+  });
+
+  it('compounds two Incorrect taps issued before a re-render', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+
+    await act(() => {
+      result.current.logIncorrect();
+      result.current.logIncorrect();
+    });
+
+    expect(result.current.session?.totalIncorrectThisSession).toBe(2);
+  });
+
+  it('two mounted instances stay in sync — a mutation on one is visible on the other', async () => {
+    // Mirrors app/index.tsx and app/session/[id].tsx both holding their
+    // own useActiveSession() instance at the same time.
+    const a = await renderHook(() => useActiveSession());
+    const b = await renderHook(() => useActiveSession());
+
+    await act(() => {
+      a.result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+
+    expect(b.result.current.session?.segmentId).toBe('segment-1');
+
+    await act(() => {
+      b.result.current.logCorrect();
+    });
+
+    expect(a.result.current.session?.currentStreak).toBe(1);
+  });
+});
+
+describe('useActiveSession feedback reset on Repeat [Review][Patch]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('clears settled when a new session starts on the same mounted instance', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    // Reach completion (target floor is 5).
+    await act(() => {
+      for (let i = 0; i < 5; i += 1) result.current.logCorrect();
+    });
+    expect(result.current.settled).toBe(true);
+
+    // Story 2.8: Repeat calls start() again on this same instance.
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+
+    expect(result.current.settled).toBe(false);
+  });
+});

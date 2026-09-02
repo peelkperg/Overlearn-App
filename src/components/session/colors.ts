@@ -14,5 +14,5 @@ export const SessionColors = {
   textStrong: '#e8e8e8',
   textNeutral: '#b0b0b0',
   restartBackground: '#2a2a2a',
-  restartText: '#8a8a8a',
+  restartText: '#a0a0a0', // 5.5:1 against restartBackground — was #8a8a8a at ~4.2:1, below AA's 4.5:1 floor
 } as const;

@@ -1,46 +1,35 @@
-import { useState } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import * as segments from '@/lib/segments';
 import type { Segment } from '@/lib/types';
 
-// Thin React wrapper over lib/segments.ts's pure CRUD functions. Screens go
-// through this hook, not lib/segments.ts directly, so state updates trigger
-// re-renders.
+// Subscribed to the storage layer rather than holding a private `useState`
+// snapshot: two screens are mounted at once (the list stays mounted while
+// segment/new and segment/[id] are pushed over it), and a private snapshot
+// makes the list show stale data after a create, archive, or delete
+// performed from the screen on top of it.
+function useSegmentStore(): Segment[] {
+  return useSyncExternalStore(segments.subscribeToSegments, segments.readSegments);
+}
+
 export function useSegments() {
-  const [list, setList] = useState<Segment[]>(() => segments.readSegments());
+  const all = useSegmentStore();
 
-  const refresh = () => setList(segments.readSegments());
-
-  const createSegment = (name: string): Segment => {
-    const segment = segments.createSegment(name);
-    refresh();
-    return segment;
-  };
-
-  // Story 1.5 (FR5): archived segments are excluded from the default
-  // active list here, not deleted — their data (and history) is preserved.
-  const archiveSegment = (id: string): Segment => {
-    const segment = segments.archiveSegment(id);
-    refresh();
-    return segment;
-  };
-
-  // Story 1.6 (FR6): permanent removal.
-  const deleteSegment = (id: string): void => {
-    segments.deleteSegment(id);
-    refresh();
-  };
+  // Story 1.5 (FR5): archived segments are excluded from the default active
+  // list here, not deleted — their data (and history) is preserved.
+  const active = useMemo(() => all.filter((segment) => !segment.archived), [all]);
 
   return {
-    segments: list.filter((segment) => !segment.archived),
-    createSegment,
-    archiveSegment,
-    deleteSegment,
+    segments: active,
+    createSegment: segments.createSegment,
+    archiveSegment: segments.archiveSegment,
+    deleteSegment: segments.deleteSegment,
   };
 }
 
-// Story 1.4: single-segment lookup for the Segment Detail screen.
-export function useSegment(id: string): Segment | undefined {
-  const [segment] = useState<Segment | undefined>(() => segments.getSegment(id));
-  return segment;
+// Story 1.4: single-segment lookup for the Segment Detail screen. Derived
+// from the same store, so a rename or archive elsewhere is reflected here.
+export function useSegment(id: string | undefined): Segment | undefined {
+  const all = useSegmentStore();
+  return useMemo(() => (id ? all.find((segment) => segment.id === id) : undefined), [all, id]);
 }

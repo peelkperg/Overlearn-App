@@ -76,7 +76,7 @@ NFR9: No account creation, authentication, or any form of user identification �
 
 ### Additional Requirements
 
-**Starter Template (blocks Epic 1 Story 1):** `npx create-expo-app@latest Overlearn --template default@sdk-57` — Expo SDK 57, React Native 0.85, React 19.2, TypeScript, Expo Router (file-based navigation) by default.
+**Starter Template (blocks Epic 1 Story 1):** `npx create-expo-app@latest Overlearn --template default@sdk-57` — Expo SDK 57, React Native 0.86, React 19.2, TypeScript, Expo Router (file-based navigation) by default.
 
 - Requires `expo-dev-client` (custom dev build) — `react-native-mmkv` is a native module and is not compatible with plain Expo Go.
 - Persistence: `react-native-mmkv` for all local data (session state, segments, history) — single library, no SQLite, no AsyncStorage.
@@ -168,7 +168,7 @@ So that every subsequent story builds on a consistent, working foundation.
 
 **Given** no project exists yet
 **When** the project is initialized via `npx create-expo-app@latest Overlearn --template default@sdk-57`
-**Then** a working Expo SDK 57 / React Native 0.85 / TypeScript / Expo Router project exists and runs in a dev client
+**Then** a working Expo SDK 57 / React Native 0.86 / TypeScript / Expo Router project exists and runs in a dev client
 
 **Given** the base project exists
 **When** `expo-dev-client` and `react-native-mmkv` are installed and configured

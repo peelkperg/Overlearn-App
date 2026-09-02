@@ -8,7 +8,7 @@ import type { HistoryEntry } from '@/lib/types';
 // 2.7's writeHistoryEntry always appends, never inserts) — no sort needed
 // here. Only completed sessions are ever written (FR29), so nothing to
 // filter either.
-export function useSegmentHistory(segmentId: string): HistoryEntry[] {
-  const [history] = useState<HistoryEntry[]>(() => readHistory(segmentId));
+export function useSegmentHistory(segmentId: string | undefined): HistoryEntry[] {
+  const [history] = useState<HistoryEntry[]>(() => (segmentId ? readHistory(segmentId) : []));
   return history;
 }

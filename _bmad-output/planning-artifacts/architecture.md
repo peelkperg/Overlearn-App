@@ -55,7 +55,7 @@ Mobile app — React Native, chosen per user preference (existing familiarity) o
 
 ### Starter Options Considered
 
-- **Expo (create-expo-app, SDK 57)** — the dominant, actively maintained RN starter as of August 2026 (Expo SDK 57.0.18, React Native 0.85, React 19.2). Ships TypeScript config, Expo Router (file-based navigation) by default.
+- **Expo (create-expo-app, SDK 57)** — the dominant, actively maintained RN starter as of August 2026 (Expo SDK 57.0.18, React Native 0.86, React 19.2). Ships TypeScript config, Expo Router (file-based navigation) by default.
 - **React Native CLI (bare, no Expo)** — rejected: requires native tooling (Xcode/Android Studio) setup and manual native module linking, adding solo-dev maintenance burden with no offsetting benefit for an app with no exotic native requirements.
 
 ### Selected Starter: Expo (create-expo-app, SDK 57)
@@ -74,7 +74,7 @@ npx create-expo-app@latest Overlearn --template default@sdk-57
 
 **Architectural Decisions Provided by Starter:**
 
-**Language & Runtime:** TypeScript by default, React Native 0.85, React 19.2.
+**Language & Runtime:** TypeScript by default, React Native 0.86, React 19.2.
 
 **Styling Solution:** No opinionated styling library imposed — React Native's built-in `StyleSheet` is sufficient given the app's minimal, non-decorative visual language (per UX spec Visual Design Foundation); no need to add a styling dependency.
 
@@ -361,7 +361,7 @@ overlearn/
 
 ### Coherence Validation ✅
 
-**Decision Compatibility:** Expo (SDK 57) + TypeScript + React Native 0.85 + react-native-mmkv (via expo-dev-client) + Expo Router are all mutually compatible, actively maintained as of August 2026, with no version conflicts identified.
+**Decision Compatibility:** Expo (SDK 57) + TypeScript + React Native 0.86 + react-native-mmkv (via expo-dev-client) + Expo Router are all mutually compatible, actively maintained as of August 2026, with no version conflicts identified.
 
 **Pattern Consistency:** Naming, structure, and communication patterns (Implementation Patterns & Consistency Rules) align directly with the chosen stack — MMKV key naming, TypeScript conventions, and the one-directional UI→hooks→lib→storage data flow are all internally consistent.
 
@@ -381,7 +381,7 @@ overlearn/
 
 ### Implementation Readiness Validation ✅
 
-**Decision Completeness:** All critical decisions (framework, persistence, state management, derive-vs-store) documented with rationale; Expo SDK 57 / React Native 0.85 / React 19.2 versions verified via web search.
+**Decision Completeness:** All critical decisions (framework, persistence, state management, derive-vs-store) documented with rationale; Expo SDK 57 / React Native 0.86 / React 19.2 versions verified via web search.
 
 **Structure Completeness:** Complete file tree provided, every FR group mapped to specific files, no placeholder/generic directories.
 

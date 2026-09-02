@@ -16,8 +16,20 @@ describe('useSegmentHistory [Story 3.1]', () => {
   });
 
   it('returns entries in chronological (write) order', async () => {
-    const first = { date: '2026-08-31T12:00:00.000Z', finalTarget: 5, totalMistakes: 0, totalAttempts: 5 };
-    const second = { date: '2026-08-31T13:00:00.000Z', finalTarget: 6, totalMistakes: 11, totalAttempts: 17 };
+    const first = {
+      date: '2026-08-31T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-08-31T11:00:00.000Z',
+    };
+    const second = {
+      date: '2026-08-31T13:00:00.000Z',
+      finalTarget: 6,
+      totalMistakes: 11,
+      totalAttempts: 17,
+      sessionStartTimestamp: '2026-08-31T12:30:00.000Z',
+    };
     writeHistoryEntry('segment-1', first);
     writeHistoryEntry('segment-1', second);
 
@@ -26,8 +38,20 @@ describe('useSegmentHistory [Story 3.1]', () => {
   });
 
   it('only returns history for the requested segment', async () => {
-    writeHistoryEntry('segment-1', { date: '2026-08-31T12:00:00.000Z', finalTarget: 5, totalMistakes: 0, totalAttempts: 5 });
-    writeHistoryEntry('segment-2', { date: '2026-08-31T13:00:00.000Z', finalTarget: 6, totalMistakes: 11, totalAttempts: 17 });
+    writeHistoryEntry('segment-1', {
+      date: '2026-08-31T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-08-31T11:00:00.000Z',
+    });
+    writeHistoryEntry('segment-2', {
+      date: '2026-08-31T13:00:00.000Z',
+      finalTarget: 6,
+      totalMistakes: 11,
+      totalAttempts: 17,
+      sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+    });
 
     const { result } = await renderHook(() => useSegmentHistory('segment-1'));
     expect(result.current).toHaveLength(1);

@@ -14,6 +14,13 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    // UX-DR6: primary action and error pairings, contrast-checked against
+    // the surface each is used on (accentText on accent, danger on
+    // background) to clear WCAG AA for normal text.
+    accent: '#127A45',
+    accentText: '#FFFFFF',
+    danger: '#B3261E',
+    border: '#C7C9CE',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +28,10 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    accent: '#2ECC71',
+    accentText: '#0A2C14',
+    danger: '#F2B8B5',
+    border: '#3A3D42',
   },
 } as const;
 
@@ -61,5 +72,4 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
