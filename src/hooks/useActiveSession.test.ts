@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native';
 
+import { readHistory } from '@/lib/history';
 import { storage } from '@/lib/storage';
 
 import { useActiveSession } from './useActiveSession';
@@ -202,6 +203,31 @@ describe('useActiveSession restart [Story 2.4]', () => {
     });
 
     expect(result.current.session).toBeNull();
+  });
+
+  // FR29: a restarted/abandoned attempt must never appear in history — only
+  // Done (Story 2.7) writes an entry. restart() has no reference to
+  // lib/history at all; this asserts that at the observable-behavior level
+  // rather than relying on that structural fact holding under refactor.
+  it('writes no history entry (FR29)', async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    await act(() => {
+      result.current.logCorrect();
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+
+    await act(() => {
+      result.current.restart();
+    });
+
+    expect(readHistory('segment-1')).toEqual([]);
   });
 });
 

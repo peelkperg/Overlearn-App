@@ -4,10 +4,13 @@
 // which fails Metro bundling (it imports Node's `console` module, which
 // doesn't exist in the RN runtime). Confirmed on an EAS build. Import the
 // screen under test via the @/app alias instead of colocating.
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, renderHook } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
+import { useActiveSession } from '@/hooks/useActiveSession';
 import { createSegment } from '@/lib/segments';
+import { getObject } from '@/lib/storage';
+import type { SessionState } from '@/lib/types';
 
 import HomeScreen from '@/app/index';
 
@@ -81,5 +84,60 @@ describe('HomeScreen [Story 1.3]', () => {
     await fireEvent.press(view.getByTestId(`segment-row-delete-${created.id}`));
 
     expect(view.queryByTestId(`segment-row-${created.id}`)).toBeNull();
+  });
+});
+
+// Story 2.10 (FR24-FR26): an interrupted (session_complete = false) session
+// must always surface the resume/discard prompt on the landing screen —
+// never silently resumed or discarded. Prior to this, only the underlying
+// hook was tested; nothing rendered the screen that actually shows the
+// dialog to the user.
+describe('HomeScreen resume/discard prompt [Story 2.10]', () => {
+  beforeEach(() => {
+    pushed.mockClear();
+  });
+
+  async function startInterruptedSession() {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    return result;
+  }
+
+  it('prompts resume/discard when an interrupted session exists (FR24)', async () => {
+    await startInterruptedSession();
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByTestId('resume-discard-resume')).toBeTruthy();
+    expect(view.getByTestId('resume-discard-discard')).toBeTruthy();
+    expect(view.getByText(/Bar 24 arpeggio/)).toBeTruthy();
+  });
+
+  it('never shows the prompt when there is no active session', async () => {
+    const view = await render(<HomeScreen />);
+    expect(view.queryByTestId('resume-discard-resume')).toBeNull();
+  });
+
+  it('Resume navigates to the session screen and dismisses the prompt (FR25)', async () => {
+    await startInterruptedSession();
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('resume-discard-resume'));
+
+    expect(pushed).toHaveBeenCalledWith('/session/segment-1');
+    expect(view.queryByTestId('resume-discard-resume')).toBeNull();
+  });
+
+  it('Discard clears the session and writes no history entry (FR26)', async () => {
+    await startInterruptedSession();
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('resume-discard-discard'));
+
+    expect(view.queryByTestId('resume-discard-discard')).toBeNull();
+    expect(getObject<SessionState>('session.active')).toBeUndefined();
+    expect(getObject('history.segment-1')).toBeUndefined();
+    expect(pushed).not.toHaveBeenCalled();
   });
 });

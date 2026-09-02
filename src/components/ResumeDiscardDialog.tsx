@@ -16,7 +16,13 @@ export function ResumeDiscardDialog({ visible, segmentName, onDiscard, onResume 
     // onRequestClose is a deliberate no-op, not an omission: the Android
     // back button must not dismiss this dialog without a choice — that
     // would be a silent resume/discard, exactly what FR24 forbids.
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => {}}>
+    <Modal
+      testID="resume-discard-modal"
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => {}}
+    >
       <View style={styles.backdrop}>
         <View style={styles.dialog}>
           <Text style={styles.message}>
