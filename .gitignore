@@ -43,3 +43,6 @@ credentials.json
 # Generated native folders (Expo managed workflow / dev-client prebuild)
 /ios
 /android
+
+# BMad personal overrides (team overrides in _bmad/custom/*.toml are committed)
+_bmad/custom/*.user.toml
