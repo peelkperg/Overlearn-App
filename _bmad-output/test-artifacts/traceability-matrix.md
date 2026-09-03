@@ -2,7 +2,7 @@
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-criteria', 'step-04-analyze-gaps', 'step-05-gate-decision']
 lastStep: 'step-05-gate-decision'
 lastSaved: '2026-09-03'
-gateStatus: 'CONCERNS'
+gateStatus: 'WAIVED'
 coverageBasis: 'acceptance_criteria'
 oracleConfidence: 'high'
 oracleResolutionMode: 'formal_requirements'
@@ -98,8 +98,8 @@ externalPointerStatus: 'not_used'
 
 | NFR | Requirement | Test(s) | Status |
 |---|---|---|---|
-| NFR1 | Tap-to-render <100ms | UAT-08, UAT-29 (subjective "feels instant," rapid-tap check) | **PARTIAL** — no objective timing measurement exists; see Gap Analysis (this is `test-design-qa.md`'s P0-009, never built) |
-| NFR2 | Latency budget holds under sync write | Architecturally resolved (synchronous MMKV, no async queue) + same UAT as NFR1 | **PARTIAL** — same underlying gap as NFR1 |
+| NFR1 | Tap-to-render <100ms | UAT-08, UAT-29 (subjective "feels instant," rapid-tap check) | **WAIVED** — no objective timing measurement exists; risk accepted 2026-09-03, see Step 5 |
+| NFR2 | Latency budget holds under sync write | Architecturally resolved (synchronous MMKV, no async queue) + same UAT as NFR1 | **WAIVED** — same waiver as NFR1 |
 | NFR3 | State survives background/kill | Same as FR23 | **FULL** |
 | NFR4 | Always prompted, never silent | Same as FR24 | **FULL** |
 | NFR5 | History durable across restart/update/backgrounding; **uninstall is the one acceptable loss point** | `history.test.ts`; **UAT-00 (genuine uninstall/reinstall — now correctly loses data, matching this NFR's own carve-out, where before the Auto Backup bug silently violated it by preserving data across uninstall)** | **FULL** — the Auto Backup fix this session makes this NFR newly, verifiably true; see note below |
@@ -116,10 +116,10 @@ externalPointerStatus: 'not_used'
 |---|---|---|
 | FULL | 32 | FR1–FR4, FR6–FR18, FR20–FR29 (27 FRs), NFR3, NFR4, NFR5, NFR8, NFR9 (5 NFRs) |
 | FULL (UAT) | 3 | FR19, NFR6, NFR7 |
-| PARTIAL | 2 | NFR1, NFR2 |
+| WAIVED | 2 | NFR1, NFR2 |
 | NONE | 0 | — |
 
-**Total: 28 active FRs + 9 NFRs = 37 requirements traced.** 35 fully covered (32 FULL + 3 FULL-via-UAT), 2 PARTIAL (NFR1/NFR2), 0 NONE. Every FR that was NONE or UNIT-ONLY in the prior run (FR3, FR8, FR9, FR10, FR12, FR14, FR15, FR16, FR17, FR19, FR20, FR21, FR24, FR27, plus the PARTIALs) is now FULL.
+**Total: 28 active FRs + 9 NFRs = 37 requirements traced.** 35 fully covered (32 FULL + 3 FULL-via-UAT), 2 WAIVED (NFR1/NFR2, risk formally accepted 2026-09-03 — see Step 5), 0 NONE. Every FR that was NONE or UNIT-ONLY in the prior run (FR3, FR8, FR9, FR10, FR12, FR14, FR15, FR16, FR17, FR19, FR20, FR21, FR24, FR27, plus the PARTIALs) is now FULL.
 
 ## Step 4: Gap Analysis & Coverage Statistics
 
@@ -149,21 +149,30 @@ externalPointerStatus: 'not_used'
 
 ## Step 5: Gate Decision
 
-### Gate Decision: **CONCERNS**
+### Gate Decision: **WAIVED** (was CONCERNS)
 
-**Rationale:** One P0-scored risk remains open (NFR1/NFR2's performance guarantee, risk score 6 — MITIGATE tier, not BLOCK). Zero requirements at NONE. Zero other open P0 items — both P0-007 and P0-008, the on-device E2E gaps that drove the prior FAIL, are now closed via the UAT pass.
+**Waiver record:**
+
+| Field | Value |
+|---|---|
+| Risk | NFR1/NFR2 — tap-to-render latency (`test-design-qa.md`'s P0-009) has no objective measurement, only architectural guarantee + subjective on-device confirmation |
+| Score | 6 (probability 2 × impact 3) — MITIGATE tier, not BLOCK |
+| Reason | Synchronous MMKV writes (no async queue) architecturally guarantee the budget by construction; every tap across this session's full 31-script on-device UAT pass, including after the Feedback Signal System's haptics/vibration/screen-reader calls were added to the tap path, showed no perceptible lag (UAT-08, UAT-29). Risk accepted as low-probability given that guarantee. |
+| Approver | Gerardo (product owner; solo-dev project, no separate QA authority) |
+| Date | 2026-09-03 |
+| Expiry / review trigger | No fixed date. **Re-open this waiver if:** the write path changes (any move away from synchronous MMKV writes, e.g. batching or an async queue), a genuine on-device lag is ever reported, or before any release beyond personal/private use (e.g. a public store listing) where a rigorous performance claim becomes warranted. |
+
+Rationale for CONCERNS → WAIVED rather than a silent downgrade to PASS: the underlying evidence didn't change — no new measurement was taken. What changed is that the risk was explicitly reviewed and knowingly accepted, with an owner and a re-open condition on record, rather than the gap disappearing from view. This is the intended distinction the risk-governance framework draws between the two states.
+
+**Rationale for the CONCERNS verdict this waiver overrides:** one P0-scored risk was open (score 6, MITIGATE tier — not BLOCK), zero requirements at NONE, and zero other open P0 items — both P0-007 and P0-008, the on-device E2E gaps that drove the prior FAIL, closed via the UAT pass.
 
 | Criterion | Required | Actual | Status |
 |---|---|---|---|
 | No score=9 (BLOCK-tier) risks | 0 | 0 | ✅ MET |
-| P0 coverage | 100% | 83% (10/12) | ❌ NOT MET — one item (NFR1/NFR2, counted as a single gap) |
+| P0 coverage | 100% | 83% (10/12) pre-waiver, 100% post-waiver | ✅ MET (via waiver) |
 | P1 coverage | 90% target | 100% (15/15) | ✅ MET |
 | Overall coverage | 80% minimum | 95% | ✅ MET |
 
-**This is not the same kind of gap as the prior FAIL.** The prior FAIL was about *missing tests for things that could be silently broken* — the highest-stakes example being FR24, a whole interaction flow with zero coverage. This CONCERNS is about *one specific unmeasured number* on a mechanism that was deliberately architected to guarantee it and has held up under extensive subjective on-device use. It is a real gap, not a formality, but it is a narrower and lower-probability one than what FAIL described three days ago.
-
-**Two ways to close this, your call:**
-1. **Accept the risk, downgrade to PASS by explicit decision** — reasonable given the architectural guarantee and the volume of subjective confirmation (every one of this session's dozens of on-device taps across 31 UAT scripts never once showed lag). This is a legitimate call for a solo-dev personal-use app.
-2. **Build the objective measurement** — a simple instrumented timing test (timestamp on tap, timestamp on next render commit, assert <100ms) would close this permanently and is not large scope, given the tap handlers are already isolated in `useActiveSession.ts`.
+**This was not the same kind of gap as the prior FAIL.** The prior FAIL was about *missing tests for things that could be silently broken* — the highest-stakes example being FR24, a whole interaction flow with zero coverage. This waived item was always *one specific unmeasured number* on a mechanism deliberately architected to guarantee it and that held up under extensive subjective on-device use — a narrower, lower-probability gap than what FAIL described three days earlier, and one a reasonable owner can knowingly accept rather than build a new test to close.
 
 **Full report:** `_bmad-output/test-artifacts/traceability-matrix.md` (this file)
