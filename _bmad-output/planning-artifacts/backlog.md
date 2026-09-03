@@ -42,6 +42,35 @@ Named in the brief's out-of-scope list, but this one needs a real decision befor
 
 ### Platform/technical gaps
 
-- **iOS support** — never built, never verified, at any point in this project's history. Everything shipped so far is Android-only.
-- **iOS backup equivalent** — iCloud's app-data backup is the iOS analogue of the Android Auto Backup issue fixed 2026-09-02 (`architecture.md`'s NFR8/NFR9 section). Unaddressed; blocked on iOS support existing at all.
 - **Landscape orientation** — app is portrait-only by design; UX-DR12 and the UX spec both flag this as an explicit open question for architecture/implementation, not a settled decision. Active Session screen's proportional (percentage-of-height) layout was built for portrait only.
+
+### iOS support
+
+**Discussed:** 2026-09-02. Decision: hold off, not started.
+
+Never built, never verified, at any point in this project's history — everything shipped so far is Android-only. This was never a deliberate scope cut, though: the PRD's "Mobile App Specific Requirements" section states iOS+Android from the start ("Platform: iOS and Android... undecided [between RN/Flutter], left to the architecture stage"). Android-only is what got built and tested first, not a decision to drop iOS. Codebase is already cross-platform-clean (MMKV, `expo-haptics`, `react-native-safe-area-context`, `expo-router` all work identically on iOS; the only two `Platform.select` calls in the app are starter-template font boilerplate) — this is a low-risk port from a pure code standpoint.
+
+**Why it's on hold, not blocked on engineering:**
+- Requires an Apple Developer Program membership ($99/year) — no free tier equivalent to Google Play's one-time fee. Needed for any EAS-managed real-device build, TestFlight, or App Store distribution.
+- No way to build locally from Windows, ever — iOS builds require macOS. EAS cloud build is the only path without acquiring a Mac.
+- No way to sideload/test a build without either the paid account or a Mac (for the free-but-limited Xcode "Personal Team" signing route, itself capped at 7-day-expiring installs). Unofficial tools (Sideloadly, AltStore) exist but aren't something to build a real testing process on.
+
+**Known engineering work once unblocked:**
+- **iCloud backup equivalent of the Android Auto Backup bug fixed 2026-09-02** (`architecture.md`'s NFR8/NFR9 section) — iOS backs up app data to iCloud by default the same way Android does to Google Drive; MMKV's storage files would very likely need the same kind of explicit backup-exclusion fix (`NSURLIsExcludedFromBackupKey`), not an assumption it's already safe.
+- Full UAT-equivalent pass on real iOS hardware — nothing from the Android run transfers automatically. Particular risk areas: §3 Interruption & Recovery (iOS's app-lifecycle model differs from Android's), Modal swipe-to-dismiss behavior vs. FR24's "never silently dismissed" requirement, VoiceOver vs. TalkBack announcement behavior.
+
+### Web version ("Overlearn Web")
+
+**Discussed:** 2026-09-02, requested by Gerardo — a non-Android/non-iOS-account option for users. Decision: hold off, not started.
+
+**Recommendation: extend this project, do not create a separate one.** `react-native-web` and `react-dom` are already installed dependencies (bundled with the Expo starter template since Story 1.1; `app.json`'s `web` section has sat unused). A separate "Overlearn Web" project would mean maintaining two independent implementations of the target-streak mechanic and every FR — for an app whose entire value proposition is that the mechanic is provably correct. That risk outweighs any benefit of a clean split.
+
+**The one hard blocker:** `react-native-mmkv` is Nitro-modules-based (pure native code via JSI) — confirmed zero web support, not even listed as a target platform. Everything else in the app already goes through `lib/storage.ts` as its sole point of contact with persistence (an existing architectural boundary, not something to newly introduce), so this is a contained fix: branch that one module on `Platform.OS === 'web'` to use `localStorage` instead (its synchronous get/set API maps cleanly onto MMKV's, so `lib/segments.ts`/`session.ts`/`history.ts` likely don't need to change at all).
+
+**Other real implications, not just the storage swap:**
+- **Feedback signals degrade, not break** — haptics/vibration are inconsistent-to-absent on the web (no iOS Safari support at all). `useFeedbackSignal.ts` already wraps these defensively; they'll silently no-op, which is correct behavior, not a bug — but worth documenting explicitly like the "no sound" gap, so it isn't misreported.
+- **NFR8/9 needs a precise rewrite, not a reversal.** "Zero data leaves the device" still holds (`localStorage` never leaves the browser), but the *durability* guarantee is genuinely weaker: no OS-level app-private sandbox, no separate "backup" mechanism to worry about disabling (there isn't one) — but also no protection from a user clearing browser data, private/incognito mode, or a different browser/profile just losing everything. That's a different risk profile than mobile's, and should be stated to users precisely, not silently inherited by assumption.
+- **True offline support needs a scope decision.** A plain static export still needs one network fetch to load initially. Actually offline-after-first-load requires a PWA (manifest + service worker) — real, additional scope, not automatic from `expo export --platform web`.
+- **Interruption/recovery (FR23–26) may get *simpler*, not harder** — there's no OS background-vs-kill distinction on the web; a tab is either open (same as native backgrounding) or closed (next load reads `localStorage` fresh, same as native kill). Worth confirming during design, but likely less new logic than it sounds.
+- **Full UAT-equivalent pass needed** — different backgrounding semantics, mouse vs. touch, browser-specific quirks (Safari in particular is known for aggressive storage eviction on infrequently-visited sites — a real risk for an app meant to be reopened days apart).
+- **Hosting is cheap/free** (Vercel, Netlify, Cloudflare Pages, GitHub Pages all have zero-cost static tiers) — but be precise in messaging: the *app bundle* is hosted; the *user's data* still never leaves their browser. Easy to conflate, worth stating carefully.
