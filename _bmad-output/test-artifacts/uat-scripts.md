@@ -7,7 +7,7 @@ inputDocuments:
   - _bmad-output/test-artifacts/traceability-matrix.md
   - _bmad-output/test-artifacts/test-design-qa.md
   - _bmad-output/test-artifacts/test-design-architecture.md
-build: EAS Android preview 47808a93 (main @ 27fc77d)
+build: EAS Android preview 47808a93 (main @ 27fc77d); full re-run and all 31 active scripts passing on build 5a47a7a5 (main @ 2cd9fa2), 2026-09-02
 ---
 
 # UAT Scripts: Overlearn
@@ -37,7 +37,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 - [x] Pass — Notes: ___________________________
 
-**Found via a genuine uninstall/reinstall test, fixed same session:** a full clear-data + force-stop + uninstall + reinstall still came back with old segments and an interrupted-session prompt — "empty state" was not actually reachable. Root cause: Android's Auto Backup (on by default, not something the app code controls) had silently copied app-private storage, MMKV's files included, to the device's Google account, and restored it on reinstall — a real conflict with this app's "zero data leaves the device" design despite no app code doing anything wrong. Fixed via `app.json`'s `android.allowBackup: false`. **Re-verify with the exact same uninstall/reinstall procedure on the next build** — this one can only be confirmed by genuinely removing the app and its Google-account backup, not just clearing local data.
+**Found via a genuine uninstall/reinstall test, fixed same session:** a full clear-data + force-stop + uninstall + reinstall still came back with old segments and an interrupted-session prompt — "empty state" was not actually reachable. Root cause: Android's Auto Backup (on by default, not something the app code controls) had silently copied app-private storage, MMKV's files included, to the device's Google account, and restored it on reinstall — a real conflict with this app's "zero data leaves the device" design despite no app code doing anything wrong. Fixed via `app.json`'s `android.allowBackup: false`. **Re-verified 2026-09-02 on build 5a47a7a5, same uninstall/reinstall procedure — CONFIRMED FIXED.**
 
 ---
 
@@ -52,7 +52,7 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 **Expected:** Returns to the list; the new segment appears immediately.
 
-- [x] Pass — Notes: Functionality correct. Layout bug found: the name input sat almost under the Android status bar (`segment/new.tsx` was the only screen not wrapped in `SafeAreaView`). Fixed same session — screen now wraps its content in `SafeAreaView` like every other screen. Re-verify on next build.
+- [x] Pass — Notes: Functionality correct. Layout bug found: the name input sat almost under the Android status bar (`segment/new.tsx` was the only screen not wrapped in `SafeAreaView`). Fixed same session — screen now wraps its content in `SafeAreaView` like every other screen. **Re-verified 2026-09-02 on build 5a47a7a5 — CONFIRMED FIXED.**
 
 ### UAT-02: Empty-name validation
 
@@ -98,7 +98,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** Segment disappears from the list permanently. Re-creating a segment with the same name afterward shows no leftover history (confirms the cascade).
 
-- [x] Pass — Notes: Cascade with history not fully exercised (session flow was blocked by UAT-07's bug at the time), but basic delete confirmed. Worth a quick re-check once the new build is up and §2 is retested.
+- [x] Pass — Notes: Cascade with history re-verified 2026-09-02 on build 5a47a7a5 (§2 now fully passing).
 
 ---
 
@@ -116,7 +116,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 - Layout: Correct button top (~40%, green, checkmark, no text), Incorrect button bottom (~40%, red, ✕, no text), readout centered with segment name, Restart small/subordinate at the bottom edge.
 - Dark background; Correct/Incorrect distinguishable by position + icon even if you can't see color.
 
-- [x] Pass — Notes: **Found a critical bug**, fixed same session. Tapping Start showed Home's resume/discard prompt over the just-started session (a false "interrupted session" — Home stays mounted underneath every pushed screen and was reading any incomplete session, including a brand-new one, as if it were a leftover interruption). Tapping Discard on it then left the Active Session screen on a dead blank view with no way out. Root cause: `showResumeDialog` in `app/index.tsx` wasn't distinguishing "a session that existed before this screen mounted" from "a session just started normally." Fixed by snapshotting the interrupted session's identity at mount and gating the prompt on that snapshot, plus a defensive fallback in `session/[id].tsx` so a session vanishing out from under that screen bounces to the list instead of rendering blank. New regression test (`src/app-tests/home-session-interaction.test.tsx`) renders both screens together, the way the real navigator does, and would have caught this. Re-verify on next build.
+- [x] Pass — Notes: **Found a critical bug**, fixed same session. Tapping Start showed Home's resume/discard prompt over the just-started session (a false "interrupted session" — Home stays mounted underneath every pushed screen and was reading any incomplete session, including a brand-new one, as if it were a leftover interruption). Tapping Discard on it then left the Active Session screen on a dead blank view with no way out. Root cause: `showResumeDialog` in `app/index.tsx` wasn't distinguishing "a session that existed before this screen mounted" from "a session just started normally." Fixed by snapshotting the interrupted session's identity at mount and gating the prompt on that snapshot, plus a defensive fallback in `session/[id].tsx` so a session vanishing out from under that screen bounces to the list instead of rendering blank. New regression test (`src/app-tests/home-session-interaction.test.tsx`) renders both screens together, the way the real navigator does, and would have caught this. **Re-verified 2026-09-02 on build 5a47a7a5 — CONFIRMED FIXED.**
 
 ### UAT-08: Log Correct — streak progresses
 
@@ -126,7 +126,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** Each tap increments the numerator and *feels* instant (no visible lag before the number changes) — light haptic tick on each tap, nothing else.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-09: Log Incorrect — streak resets, target holds at the floor
 
@@ -136,7 +136,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** Numerator resets to 0. Denominator stays at `5` (still under the raise threshold). A visible pulse + light haptic fires — no alert-tier flash/vibration yet.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-10: Target raises past the miss threshold
 
@@ -146,7 +146,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** On the 11th tap specifically: screen flash (amber, distinct from green/red), a noticeable vibration, and — if TalkBack/VoiceOver is on — an announcement of "Target raised to 6". Denominator visibly changes from `5` to `6`. **No sound is expected** (known gap, not a bug).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-11: No undo affordance
 
@@ -156,7 +156,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** None exists anywhere on the Active Session screen. The tap is final.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-12: Restart requires confirmation
 
@@ -168,9 +168,9 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** Step 1 shows a dialog reading exactly "Restart session? Progress will be lost." Step 2 leaves the session completely unchanged (streak/target as before). Step 3 resets to `0/5` and returns to the Active Session screen — no history entry is created for the discarded attempt (verify later via UAT-19).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
-**Known fixed issue (found outside this checklist, on-device):** the Restart button itself sat at a fixed 8px from the bottom edge, landing directly under a 3-button-nav-bar phone's system Home button — unreliably tappable, sometimes swallowed by the OS instead of reaching the app. Fixed by insetting Restart's position by the device's actual bottom safe-area inset (`RestartControl.tsx`); Correct/Incorrect stay full-bleed as designed. Re-verify Restart is easily tappable near the very bottom edge on the next build.
+**Known fixed issue (found outside this checklist, on-device):** the Restart button itself sat at a fixed 8px from the bottom edge, landing directly under a 3-button-nav-bar phone's system Home button — unreliably tappable, sometimes swallowed by the OS instead of reaching the app. Fixed by insetting Restart's position by the device's actual bottom safe-area inset (`RestartControl.tsx`); Correct/Incorrect stay full-bleed as designed. **Re-verified 2026-09-02 on build 5a47a7a5 — CONFIRMED FIXED, Restart easily tappable.**
 
 ### UAT-13: Session auto-completes at target, input locks
 
@@ -180,7 +180,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** On the 5th tap, the screen transitions automatically to the Completion screen — no manual "I'm done" action. A haptic pulse fires (distinct feel from the alert-tier vibration). Correct/Incorrect/Restart are gone, not just disabled.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-14: Completion summary is accurate
 
@@ -190,7 +190,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** Shows the segment name, final target reached (`5`), total correct, total incorrect, total attempts — all matching what you actually did. Done and Repeat actions both present.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-15: Done writes history and returns to the list
 
@@ -200,7 +200,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** Returns to the segment list (not the detail screen). Opening that segment's detail screen afterward shows the completed session in its history (verify fully in §4).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-16: Repeat starts a new session immediately
 
@@ -211,7 +211,7 @@ FR5/Archive was removed from the app on 2026-09-02, after this script passed aga
 
 **Expected:** A fresh session starts immediately at `0/5`, same segment, no navigation detour. The just-finished session does **not** appear in history (only a later Done would record it) — check this once you've done a Done afterward.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ---
 
@@ -229,7 +229,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** Returns to the exact same Active Session screen, same state — no resume/discard prompt (the session was never actually killed, just backgrounded).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-18: Force-kill mid-session, relaunch → resume/discard prompt
 
@@ -241,7 +241,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** A dialog appears naming the interrupted segment and offering **Resume** / **Discard** — never silently resuming into the session, never silently dropping it back to an empty list. The Android back button must **not** dismiss this dialog (try it) — it stays up until you tap one of the two buttons.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-19: Resume restores exact prior state
 
@@ -252,7 +252,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** Active Session screen reappears with the exact streak/target/miss-count you left it at (not reset to `0/5`).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-20: Discard clears state, no history written
 
@@ -263,7 +263,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** Returns to the segment list; no active session remains (relaunching the app again shows no prompt). Opening that segment's history afterward (§4) shows **no entry** for the discarded attempt.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-21: Kill while Completion screen is showing → relaunch goes straight there
 
@@ -275,7 +275,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** Goes directly to the Completion screen with the same summary — **not** the resume/discard prompt. This is the third branch of the relaunch decision (no session / interrupted session / already-complete session) and is easy to get wrong if only two branches were tested.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ---
 
@@ -290,7 +290,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** Each entry shows date, final target streak achieved, total mistakes, and total attempts — in chronological order (most recent session distinguishable from earlier ones by date/order).
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-23: Non-completed sessions never appear in history
 
@@ -302,7 +302,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** History is unchanged from before step 1 — the restarted and discarded attempts do not appear anywhere in the list.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-24: Empty history state
 
@@ -312,7 +312,7 @@ This is the one area Jest structurally cannot verify (it never renders a real OS
 
 **Expected:** History section shows an empty/no-sessions message — no error, no placeholder/fake data.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ---
 
@@ -328,7 +328,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** All three register reliably even on an off-center tap — no need to hit a tiny hotspot.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-26: Correct vs. Incorrect distinguishable without color
 
@@ -338,7 +338,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** Still obviously clear which button is Correct (top, ✓) vs. Incorrect (bottom, ✕) without relying on the green/red color alone.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-27: TalkBack announcements
 
@@ -349,7 +349,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** TalkBack speaks "Target raised to 6" (or the actual new target) on the raise, and something to the effect of "Session complete. Target of 5 reached." on completion — in addition to the visual/haptic feedback, not instead of it.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-28: Dynamic type scaling
 
@@ -360,7 +360,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** The streak readout remains legible and doesn't get clipped or overlap other elements.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-29: Tap-to-render latency feel
 
@@ -370,7 +370,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** No perceptible lag or dropped taps between tap and the readout updating — should feel instant, not "eventually catches up."
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-30: No network activity
 
@@ -381,7 +381,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** Everything works identically with no connectivity — no error banners, no degraded behavior, no hidden retry/sync attempts.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ### UAT-31: No account or identity concept
 
@@ -391,7 +391,7 @@ These need a human judgment call a test renderer can't make — device feel, rea
 
 **Expected:** No login, sign-up, profile, or account screen exists anywhere.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: Verified on build 5a47a7a5 (main @ 2cd9fa2).
 
 ---
 
@@ -410,3 +410,13 @@ These need a human judgment call a test renderer can't make — device feel, rea
 **Minimum bar before calling this build release-ready:** all P0 scripts pass, especially §3 (UAT-17 through UAT-21) — that section is the direct manual stand-in for the traceability trace's single biggest gap (FR24, previously zero coverage) and for the on-device E2E suite (P0-007/P0-008 in `test-design-qa.md`) that was planned but never built.
 
 **When a script fails:** note it under that script rather than stopping — file it the same way you would a bug found in code review (what happened vs. expected, exact repro steps), and keep going through the rest of the list. A failed P0 script blocks release; a failed P1/P2 is a triage decision, not an automatic blocker.
+
+---
+
+## Final Result — 2026-09-02
+
+**All 31 active scripts passing on build `5a47a7a5` (`main` @ `2cd9fa2`), including a full re-verification of every previously-fixed bug** (Auto Backup, `segment/new.tsx` status-bar overlap, the Start/false-prompt/blank-screen defect, Restart-button nav-bar overlap) via the exact repro procedure that originally found each one.
+
+Minimum release bar (all P0 pass, §3 in full) is met.
+
+Two things this checklist does not cover and remain open regardless of this result: iOS has never been built or verified (Android-only through this entire pass), and no formal `bmad-testarch-trace` re-run has happened since the FR5 removal and this session's fixes — the last formal gate decision (FAIL, 17% P0) predates all of it.
