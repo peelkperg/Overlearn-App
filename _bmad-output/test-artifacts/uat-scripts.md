@@ -37,6 +37,8 @@ build: EAS Android preview 47808a93 (main @ 27fc77d)
 
 - [x] Pass — Notes: ___________________________
 
+**Found via a genuine uninstall/reinstall test, fixed same session:** a full clear-data + force-stop + uninstall + reinstall still came back with old segments and an interrupted-session prompt — "empty state" was not actually reachable. Root cause: Android's Auto Backup (on by default, not something the app code controls) had silently copied app-private storage, MMKV's files included, to the device's Google account, and restored it on reinstall — a real conflict with this app's "zero data leaves the device" design despite no app code doing anything wrong. Fixed via `app.json`'s `android.allowBackup: false`. **Re-verify with the exact same uninstall/reinstall procedure on the next build** — this one can only be confirmed by genuinely removing the app and its Google-account backup, not just clearing local data.
+
 ---
 
 ## 1. Segment Management (Epic 1)

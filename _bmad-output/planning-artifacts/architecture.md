@@ -377,7 +377,7 @@ overlearn/
 - NFR4 (mandatory resume/discard prompt): `ResumeDiscardDialog.tsx` + `useActiveSession` session restoration logic.
 - NFR5 (durable history): MMKV-backed history JSON collections, per Core Architectural Decisions.
 - NFR6/NFR7 (accessibility): addressed in UX spec, carried into Project Structure via `useFeedbackSignal.ts`; see Gap Analysis for one ownership clarification.
-- NFR8/NFR9 (privacy): architecturally guaranteed by omission — no networking library appears anywhere in the dependency tree or project structure.
+- NFR8/NFR9 (privacy): architecturally guaranteed by omission — no networking library appears anywhere in the dependency tree or project structure. One platform-level gap found via UAT and closed 2026-09-02: Android's Auto Backup is opt-out, not opt-in, and by default silently copies app-private storage (MMKV's files included) to the user's Google Drive, restoring it on reinstall — a real conflict with "zero data leaves the device" even though no app code initiates it. Closed via `app.json`'s `android.allowBackup: false` (maps to the manifest's `android:allowBackup`). iOS has an equivalent iCloud-backup concern, unaddressed — deferred along with the rest of iOS support, which has never been built or verified for this app.
 
 ### Implementation Readiness Validation ✅
 

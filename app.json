@@ -18,7 +18,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.peelkperg.overlearn"
+      "package": "com.peelkperg.overlearn",
+      "allowBackup": false
     },
     "web": {
       "output": "static",
