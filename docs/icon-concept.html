@@ -1,0 +1,181 @@
+<title>Overlearn Icon Concept</title>
+<style>
+  :root {
+    --page-bg: #f4f4f5;
+    --page-text: #18181b;
+    --page-secondary: #71717a;
+    --card-bg: #ffffff;
+    --card-border: #e4e4e7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: #0b0b0c;
+      --page-text: #f4f4f5;
+      --page-secondary: #9a9aa2;
+      --card-bg: #17171a;
+      --card-border: #2a2a2e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page-bg: #0b0b0c;
+    --page-text: #f4f4f5;
+    --page-secondary: #9a9aa2;
+    --card-bg: #17171a;
+    --card-border: #2a2a2e;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page-bg);
+    color: var(--page-text);
+    font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 48px 24px 96px;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 6px; }
+  .sub { color: var(--page-secondary); font-size: 14px; margin: 0 0 40px; max-width: 60ch; line-height: 1.5; }
+
+  .hero { display: flex; justify-content: center; margin-bottom: 20px; }
+  .icon {
+    background: #000000;
+    border-radius: 22%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+    font-size: 12px;
+    color: var(--page-secondary);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  .row-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--page-secondary);
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+  .scales {
+    display: flex;
+    align-items: flex-end;
+    gap: 28px;
+    flex-wrap: wrap;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 40px;
+  }
+  .scale-item { text-align: center; }
+  .scale-item .icon { margin: 0 auto 8px; }
+  .scale-item span { display: block; font-size: 12px; color: var(--page-secondary); }
+
+  .context {
+    background: #000000;
+    border-radius: 16px;
+    padding: 32px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 40px;
+  }
+  .context .icon { border-radius: 22%; }
+  .context p { color: #B0B4BA; font-size: 13px; margin: 0; line-height: 1.5; }
+  .context strong { color: #2ECC71; }
+
+  .note {
+    font-size: 13px;
+    color: var(--page-secondary);
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="mark" viewBox="0 0 100 100">
+    <!-- Myelin sheaths: segmented capsules, thickening left to right as the
+         pathway gets reinforced through repetition -->
+    <rect x="18" y="71.5" width="14" height="3" rx="1.5" fill="#1B5E3A" opacity="0.85"/>
+    <rect x="39" y="70.75" width="10" height="4.5" rx="2.25" fill="#1B5E3A" opacity="0.85"/>
+    <rect x="55" y="70" width="10" height="6" rx="3" fill="#1B5E3A" opacity="0.85"/>
+    <rect x="71" y="69.25" width="10" height="7.5" rx="3.75" fill="#1B5E3A" opacity="0.85"/>
+
+    <!-- Signal: four pulses rising from the myelin band, intensifying -->
+    <path d="M20,70 L26,54 L32,70 Z" fill="#2ECC71"/>
+    <path d="M38,70 L44,46 L50,70 Z" fill="#2ECC71"/>
+    <path d="M54,70 L60,36 L66,70 Z" fill="#2ECC71"/>
+    <path d="M70,70 L76,22 L82,70 Z" fill="#2ECC71"/>
+
+    <!-- Nodes of Ranvier: where the signal jumps, node to node -->
+    <circle cx="14" cy="70" r="2" fill="#7FE8AC"/>
+    <circle cx="36" cy="70" r="2" fill="#7FE8AC"/>
+    <circle cx="52" cy="70" r="2" fill="#7FE8AC"/>
+    <circle cx="68" cy="70" r="2" fill="#7FE8AC"/>
+    <circle cx="84" cy="70" r="2.4" fill="#7FE8AC"/>
+  </symbol>
+</svg>
+
+<main>
+  <h1>Icon concept — pulse, reinforced</h1>
+  <p class="sub">Four pulses reading as both a firing neural pathway and a sound waveform, growing stronger left to right. New this pass: the base band is segmented into myelin sheaths that thicken with each repetition, meeting at brighter nodes of Ranvier — the actual biological mechanism the app's tagline points to, worked into the mark's structure rather than added as decoration.</p>
+
+  <div class="hero">
+    <div class="icon" style="width:280px;height:280px;">
+      <svg width="280" height="280" viewBox="0 0 100 100"><use href="#mark"/></svg>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:#2ECC71"></i>signal (the pulse)</span>
+    <span><i style="background:#1B5E3A"></i>myelin (thickens with repetition)</span>
+    <span><i style="background:#7FE8AC"></i>node of Ranvier (signal jumps here)</span>
+  </div>
+
+  <p class="row-label">At real launcher sizes</p>
+  <div class="scales">
+    <div class="scale-item">
+      <div class="icon" style="width:96px;height:96px;border-radius:22%;">
+        <svg width="96" height="96" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      </div>
+      <span>96px</span>
+    </div>
+    <div class="scale-item">
+      <div class="icon" style="width:60px;height:60px;border-radius:22%;">
+        <svg width="60" height="60" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      </div>
+      <span>60px</span>
+    </div>
+    <div class="scale-item">
+      <div class="icon" style="width:40px;height:40px;border-radius:22%;">
+        <svg width="40" height="40" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      </div>
+      <span>40px</span>
+    </div>
+    <div class="scale-item">
+      <div class="icon" style="width:24px;height:24px;border-radius:22%;">
+        <svg width="24" height="24" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      </div>
+      <span>24px</span>
+    </div>
+  </div>
+
+  <p class="row-label">Against the app's own screen</p>
+  <div class="context">
+    <div class="icon" style="width:64px;height:64px;">
+      <svg width="64" height="64" viewBox="0 0 100 100"><use href="#mark"/></svg>
+    </div>
+    <p>Same near-black ground and the exact accent green (<strong>#2ECC71</strong>) as the in-app Active Session screen — the icon and the app read as one system, not a separate marketing layer.</p>
+  </div>
+
+  <p class="note">The myelin/node detail is intentionally subtle — it's there to reward a closer look (full app size, feature graphic, About screen) without competing with the pulse shape at launcher scale, where legibility matters most. If this reads right: next step generates the full Android asset set from this shape — adaptive icon foreground/background layers, a single-color monochrome variant for Android 13+ themed icons, and the 512×512 Play Store listing icon — then swaps <code>app.json</code>'s icon references and rebuilds.</p>
+</main>
