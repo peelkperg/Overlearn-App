@@ -9,6 +9,11 @@ import { normalizeSegmentName } from '@/lib/segments';
 type SegmentFormProps = {
   submitLabel: string;
   onSubmit: (name: string) => void;
+  // [Review][Patch] found via code review 2026-09-05: the parent remounts
+  // this form (via `key`) after a failed save to reset `submitting`, which
+  // previously also wiped whatever the user had typed. Re-seeding from this
+  // prop on remount preserves it.
+  initialName?: string;
 };
 
 // A name is capped rather than truncated silently: without a limit, a very
@@ -19,8 +24,8 @@ const MaxNameLength = 80;
 // Create form (FR1). Non-empty-name validation happens here, inline — no
 // segment is created for a name that is empty, whitespace-only, or made up
 // entirely of invisible characters.
-export function SegmentForm({ submitLabel, onSubmit }: SegmentFormProps) {
-  const [name, setName] = useState('');
+export function SegmentForm({ submitLabel, onSubmit, initialName = '' }: SegmentFormProps) {
+  const [name, setName] = useState(initialName);
   const [touched, setTouched] = useState(false);
   // Navigation away is not instantaneous, so without this a second tap
   // landing before the screen unmounts submits the same name twice. The

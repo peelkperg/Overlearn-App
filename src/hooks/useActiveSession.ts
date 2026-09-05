@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import { useFeedbackSignal } from '@/components/session/useFeedbackSignal';
+import { writeHistoryEntry } from '@/lib/history';
 import { calculateTargetStreak } from '@/lib/mechanic';
 import * as sessionStore from '@/lib/session';
 import * as transitions from '@/lib/session-transitions';
@@ -100,6 +101,27 @@ export function useActiveSession() {
     sessionStore.clearSession();
   };
 
+  // Story 2.7 (FR14): writes the completed session's history entry and
+  // clears session.active as one call. [Review][Patch] found via code
+  // review 2026-09-05: this used to be built and called from
+  // app/session/[id].tsx directly, bypassing the Active Session screen's
+  // "talks only to useActiveSession" rule (architecture.md's Component
+  // Boundaries) — the screen had no other reason to import lib/history.
+  // No-op if there's no session, or it isn't actually complete yet, so a
+  // stray call can't record an in-progress session.
+  const complete = (): void => {
+    const current = sessionStore.readSession();
+    if (!current || !current.sessionComplete) return;
+    writeHistoryEntry(current.segmentId, {
+      date: new Date().toISOString(),
+      finalTarget: calculateTargetStreak(current.totalIncorrectThisSession),
+      totalMistakes: current.totalIncorrectThisSession,
+      totalAttempts: current.totalCorrectThisSession + current.totalIncorrectThisSession,
+      sessionStartTimestamp: current.sessionStartTimestamp,
+    });
+    sessionStore.clearSession();
+  };
+
   const targetStreak = calculateTargetStreak(session?.totalIncorrectThisSession ?? 0);
 
   return {
@@ -109,6 +131,7 @@ export function useActiveSession() {
     logIncorrect,
     restart,
     endSession,
+    complete,
     targetStreak,
     incorrectPulse: feedback.incorrectPulse,
     targetRaiseFlash: feedback.targetRaiseFlash,

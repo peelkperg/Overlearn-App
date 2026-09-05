@@ -12,7 +12,6 @@ import { StreakReadout } from '@/components/session/StreakReadout';
 import { useActiveSession } from '@/hooks/useActiveSession';
 import { useRouteId } from '@/hooks/useRouteId';
 import { useSegment } from '@/hooks/useSegments';
-import { writeHistoryEntry } from '@/lib/history';
 
 // Story 2.1: Start a Practice Session Immediately (FR8, FR9; UX-DR1, UX-DR2,
 // UX-DR6, UX-DR7, UX-DR8, UX-DR12).
@@ -30,33 +29,40 @@ import { writeHistoryEntry } from '@/lib/history';
 export default function ActiveSessionScreen() {
   const id = useRouteId(useLocalSearchParams());
   const segment = useSegment(id);
-  const { session, start, logCorrect, logIncorrect, restart, endSession, targetStreak, incorrectPulse, targetRaiseFlash } =
+  const { session, start, logCorrect, logIncorrect, restart, complete, targetStreak, incorrectPulse, targetRaiseFlash } =
     useActiveSession();
   const started = useRef(false);
   const [restartDialogVisible, setRestartDialogVisible] = useState(false);
+  // [Review][Patch] found via code review 2026-09-05: every write on this
+  // screen (start/logCorrect/logIncorrect/restart) previously had no error
+  // handling at all, unlike index.tsx/segment/new.tsx's runAction pattern —
+  // a storage failure (e.g. full disk) mid-session threw uncaught out of a
+  // press handler and crashed the app instead of the screen.
+  const [error, setError] = useState<string | null>(null);
+
+  const runAction = (action: () => void, failureMessage: string) => {
+    try {
+      setError(null);
+      action();
+    } catch {
+      setError(failureMessage);
+    }
+  };
 
   const handleRestartConfirm = () => {
     setRestartDialogVisible(false);
-    restart();
+    runAction(restart, 'Could not restart. Check that the device has free storage.');
   };
 
-  // Story 2.7 (FR14): writes the history entry, clears the active session,
-  // and returns to the segment list.
+  // Story 2.7 (FR14): writes the history entry and clears the active session
+  // (both via useActiveSession's complete()), then returns to the segment
+  // list.
   const handleDone = () => {
     if (!session) return;
-    // Keyed on segment.id, not the raw route param — the two can diverge
-    // for an array-valued or stale param. sessionStartTimestamp lets
-    // writeHistoryEntry dedupe a retry after a kill between this write
-    // and endSession() below.
-    writeHistoryEntry(session.segmentId, {
-      date: new Date().toISOString(),
-      finalTarget: targetStreak,
-      totalMistakes: session.totalIncorrectThisSession,
-      totalAttempts: session.totalCorrectThisSession + session.totalIncorrectThisSession,
-      sessionStartTimestamp: session.sessionStartTimestamp,
-    });
-    endSession();
-    router.replace('/');
+    runAction(() => {
+      complete();
+      router.replace('/');
+    }, 'Could not save that session. Check that the device has free storage.');
   };
 
   // Story 2.8 (FR15): begins a new session immediately, same start
@@ -65,7 +71,7 @@ export default function ActiveSessionScreen() {
   // writeHistoryEntry, so nothing is recorded unless Done was tapped first.
   const handleRepeat = () => {
     if (!segment) return;
-    start(segment.id, segment.name);
+    runAction(() => start(segment.id, segment.name), 'Could not start a new session. Check that the device has free storage.');
   };
 
   useEffect(() => {
@@ -80,7 +86,15 @@ export default function ActiveSessionScreen() {
     // time navigation reaches here — see app/index.tsx.
     const existingForThisSegment = session?.segmentId === segment.id;
     if (!existingForThisSegment) {
-      start(segment.id, segment.name);
+      // Not routed through runAction: react-hooks/set-state-in-effect
+      // disallows a synchronous setState from an effect body. Deferred one
+      // tick instead — the effect's own job (starting the session) still
+      // runs synchronously; only surfacing the failure is delayed.
+      try {
+        start(segment.id, segment.name);
+      } catch {
+        queueMicrotask(() => setError('Could not start a session. Check that the device has free storage.'));
+      }
     }
   }, [segment]);
 
@@ -111,7 +125,15 @@ export default function ActiveSessionScreen() {
   }
 
   if (!session) {
-    return <View style={styles.container} />;
+    return (
+      <View style={styles.container}>
+        {error && (
+          <Text testID="session-error" style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        )}
+      </View>
+    );
   }
 
   if (session.sessionComplete) {
@@ -120,9 +142,17 @@ export default function ActiveSessionScreen() {
 
   return (
     <View style={styles.container}>
-      <CorrectButton onPress={logCorrect} />
+      {error && (
+        <Text testID="session-error" style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      )}
+      <CorrectButton onPress={() => runAction(logCorrect, 'Could not record that. Check that the device has free storage.')} />
       <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={session.segmentName} />
-      <IncorrectButton onPress={logIncorrect} pulsing={incorrectPulse} />
+      <IncorrectButton
+        onPress={() => runAction(logIncorrect, 'Could not record that. Check that the device has free storage.')}
+        pulsing={incorrectPulse}
+      />
       <RestartControl onPress={() => setRestartDialogVisible(true)} />
       {targetRaiseFlash && <View testID="target-raise-flash" style={styles.flashOverlay} pointerEvents="none" />}
       <RestartConfirmDialog
@@ -153,5 +183,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textAlignVertical: 'center',
     color: SessionColors.textStrong,
+  },
+  error: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    textAlign: 'center',
+    fontSize: 13,
+    color: SessionColors.incorrect,
   },
 });

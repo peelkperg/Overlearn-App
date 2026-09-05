@@ -15,6 +15,11 @@ export default function NewSegmentScreen() {
   const [error, setError] = useState<string | null>(null);
   // Remounts the form after a failed write so its submit guard resets.
   const [attempt, setAttempt] = useState(0);
+  // [Review][Patch] found via code review 2026-09-05: the remount above used
+  // to reset the typed name to '' along with the submit guard, forcing a
+  // retype after a transient failure (full disk). Carried across the
+  // remount via SegmentForm's initialName prop instead.
+  const [lastAttemptedName, setLastAttemptedName] = useState('');
 
   // The write can still fail underneath a valid name — a full disk, most
   // plausibly — and an exception out of a press handler is caught by no
@@ -25,6 +30,7 @@ export default function NewSegmentScreen() {
       router.replace('/');
     } catch {
       setError('Could not save that segment. Check that the device has free storage.');
+      setLastAttemptedName(name);
       setAttempt((count) => count + 1);
     }
   };
@@ -45,7 +51,7 @@ export default function NewSegmentScreen() {
             </ThemedText>
           </View>
         )}
-        <SegmentForm key={attempt} submitLabel="Create" onSubmit={handleSubmit} />
+        <SegmentForm key={attempt} submitLabel="Create" onSubmit={handleSubmit} initialName={lastAttemptedName} />
       </SafeAreaView>
     </ThemedView>
   );

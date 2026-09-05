@@ -204,5 +204,9 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
   },
-  buttonText: { color: '#0a2c14', fontWeight: '600', fontSize: 16 },
+  // [Review][Patch] found via code review 2026-09-05: a hardcoded color here
+  // used to win over the ThemedText themeColor="accentText" prop (style
+  // array's last entry wins in RN), silently defeating dark-mode adaptation
+  // on this button — segment/[id].tsx's equivalent button correctly omits it.
+  buttonText: { fontWeight: '600', fontSize: 16 },
 });
