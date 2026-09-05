@@ -86,9 +86,15 @@ export function AnimatedSplashOverlay() {
       onLayout={() => {
         if (hidingSplash.current) return;
         hidingSplash.current = true;
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
+        // [Review][Patch] found via code review 2026-09-05: no .catch() meant
+        // a rejected hideAsync() surfaced as an unhandled promise rejection —
+        // .finally() alone still ran (so setAnimate still fired), but the
+        // rejection itself went unswallowed.
+        SplashScreen.hideAsync()
+          .catch(() => {})
+          .finally(() => {
+            setAnimate(true);
+          });
       }}
       style={styles.splashOverlay}>
       {image}
