@@ -21,6 +21,14 @@ Add a **Rename** option to the segment row's action menu (`SegmentListItem.tsx`)
 - Does a rename mid-active-session update the segment name shown on that session's Active Session screen and any history entries already recorded for it, or only future ones? (`SessionState.segmentName` and `HistoryEntry` don't currently store a live reference back to the segment — they copy the name at the time.)
 - Does the resume/discard prompt's segment name (`ResumeDiscardDialog`) need to reflect a rename that happened while a session was interrupted?
 
+## Open (release)
+
+### Publish v1.0 to Google Play
+
+**Requested:** 2026-09-04, by Gerardo. Decision: hold off, not started — publish later.
+
+All engineering/prep work is done: `eas.json` production + submit profiles configured, privacy policy drafted (`docs/privacy-policy.html`, published as a Claude Artifact, needs to be made public via Share before use), custom app icon shipped, production AAB and preview APK both built successfully via EAS (icon confirmed on-device). Remaining steps are Play Console account actions requiring Gerardo's own login — see chat history 2026-09-03/04 session for the full walkthrough (app creation, API access/service account for `eas submit`, content rating + data safety forms, store listing incl. a not-yet-designed 1024×500 feature graphic, internal testing track, then promote to production).
+
 ## Open (strategic scope, from product-brief-Overlearn.md)
 
 Named explicitly as out-of-scope-for-v1 in the brief (2026-08-xx planning phase). Listed here individually so each can be pulled forward and scoped on its own — per the brief's own note, "each needs its own scoping pass before being pulled forward."
@@ -62,6 +70,12 @@ Never built, never verified, at any point in this project's history — everythi
 ### Web version ("Overlearn Web")
 
 **Discussed:** 2026-09-02, requested by Gerardo — a non-Android/non-iOS-account option for users. Decision: hold off, not started.
+
+**Scope reaffirmed 2026-09-05:** full functional parity with the Android app — no cut to Segment Management or Practice History. Two scope-reduction options were considered (dropping segments/history entirely; using cookies instead of `localStorage`) and both rejected:
+- Cookies rejected outright — too small (~4KB/cookie, low total-cookie caps vs. `localStorage`'s ~5-10MB), no clean structured-data API, no durability advantage over `localStorage`, and the request-header-attachment mechanism is meaningless for a backend-less app.
+- Cutting segments/history rejected because it wouldn't reduce the actual engineering work (the `react-native-mmkv`→`localStorage` swap below already covers segments, history, and session state equally via the single `lib/storage.ts` boundary) while it would remove real product value — the PRD's Journey 5 names the history log as "the only place" the passage-actually-fixed question gets answered at all.
+
+Decision: proceed toward full parity when this is picked up; revisit approach (e.g. a partial-scope cut) only if a specific implementation challenge actually forces it, not preemptively.
 
 **Recommendation: extend this project, do not create a separate one.** `react-native-web` and `react-dom` are already installed dependencies (bundled with the Expo starter template since Story 1.1; `app.json`'s `web` section has sat unused). A separate "Overlearn Web" project would mean maintaining two independent implementations of the target-streak mechanic and every FR — for an app whose entire value proposition is that the mechanic is provably correct. That risk outweighs any benefit of a clean split.
 
