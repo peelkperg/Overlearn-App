@@ -85,3 +85,42 @@ describe('lib/storage getObject corruption handling', () => {
     expect(getObject(KEY)).toEqual({ anything: true });
   });
 });
+
+describe('lib/storage schema-version envelope [NFR assessment 2026-09-05]', () => {
+  const KEY = 'schema-version-test.list';
+
+  const corruptBackups = () => storage.getAllKeys().filter((key) => key.startsWith(`${KEY}.corrupt.`));
+
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('wraps written values in a { __v, data } envelope', () => {
+    setObject(KEY, { anything: true });
+    expect(JSON.parse(getString(KEY)!)).toEqual({ __v: 1, data: { anything: true } });
+  });
+
+  it('reads a pre-versioning (un-enveloped) payload as version 0 and quarantines it when no migration exists', () => {
+    // Simulates data written before this feature existed — no migrations[0]
+    // is registered, so there is genuinely no path forward for it yet.
+    setString(KEY, JSON.stringify([{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }]));
+
+    expect(getObject(KEY, isSegmentArray)).toBeUndefined();
+    expect(corruptBackups()).toHaveLength(1);
+  });
+
+  it('quarantines an envelope from a future schema version this build does not understand', () => {
+    setString(KEY, JSON.stringify({ __v: 99, data: { anything: true } }));
+
+    expect(getObject(KEY)).toBeUndefined();
+    expect(corruptBackups()).toHaveLength(1);
+  });
+
+  it('round-trips a current-version envelope through the shape guard unchanged', () => {
+    const segments = [{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }];
+    setObject(KEY, segments);
+
+    expect(getObject(KEY, isSegmentArray)).toEqual(segments);
+    expect(corruptBackups()).toHaveLength(0);
+  });
+});
