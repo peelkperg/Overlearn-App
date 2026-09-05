@@ -6,8 +6,16 @@ import { createMMKV } from 'react-native-mmkv';
 // helpers below.
 export const storage = createMMKV();
 
+// [Review][Patch] found via code review 2026-09-05: a native MMKV read
+// failure previously propagated as an uncaught throw, crashing the app on
+// exactly the kind of corrupted-local-data case architecture.md's Error
+// Handling pattern says must degrade gracefully instead.
 export function getString(key: string): string | undefined {
-  return storage.getString(key);
+  try {
+    return storage.getString(key);
+  } catch {
+    return undefined;
+  }
 }
 
 export function setString(key: string, value: string): void {
@@ -66,7 +74,16 @@ function isVersionedEnvelope(value: unknown): value is VersionedEnvelope<unknown
 // steps — a version with no registered migration (including any version
 // newer than this build knows about) has no path forward and is treated as
 // unreadable, same as a parse failure.
-const migrations: Record<number, (data: unknown) => unknown> = {};
+//
+// migrations[0] is the un-enveloped, pre-versioning shape (everything written
+// before this feature existed). v1 only added the { __v, data } wrapper — it
+// didn't reshape any field — so version 0 → 1 is an identity passthrough.
+// [Review][Patch, CRITICAL] found via code review 2026-09-05: without this
+// entry, every pre-existing on-device segment/history/session record was
+// silently discarded (quarantined) on first read after this envelope shipped.
+const migrations: Record<number, (data: unknown) => unknown> = {
+  0: (data) => data,
+};
 
 function migrate(fromVersion: number, data: unknown): unknown {
   let version = fromVersion;
@@ -84,7 +101,7 @@ function migrate(fromVersion: number, data: unknown): unknown {
 // succeeds on `{}`, `5`, `null` and friends, and without a shape check those
 // reach callers cast as T and throw on the first array method.
 export function getObject<T>(key: string, isValid?: (value: unknown) => value is T): T | undefined {
-  const raw = storage.getString(key);
+  const raw = getString(key);
   if (raw == null) return undefined;
 
   let parsed: unknown;
@@ -98,7 +115,7 @@ export function getObject<T>(key: string, isValid?: (value: unknown) => value is
   // A payload with no envelope (pre-versioning data, or a raw value written
   // directly rather than through setObject — see storage.test.ts) is treated
   // as version 0 and run through the same migration chain as a real old
-  // version would be.
+  // version would be — migrations[0] passes it through unchanged (see above).
   let version = 0;
   let data: unknown = parsed;
   if (isVersionedEnvelope(parsed)) {

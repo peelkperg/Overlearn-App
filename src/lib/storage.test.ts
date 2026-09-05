@@ -100,13 +100,17 @@ describe('lib/storage schema-version envelope [NFR assessment 2026-09-05]', () =
     expect(JSON.parse(getString(KEY)!)).toEqual({ __v: 1, data: { anything: true } });
   });
 
-  it('reads a pre-versioning (un-enveloped) payload as version 0 and quarantines it when no migration exists', () => {
-    // Simulates data written before this feature existed — no migrations[0]
-    // is registered, so there is genuinely no path forward for it yet.
-    setString(KEY, JSON.stringify([{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }]));
+  it('reads a pre-versioning (un-enveloped) payload as version 0 and migrates it through unchanged [Review][Patch, CRITICAL]', () => {
+    // Simulates data written before this feature existed. migrations[0] is
+    // registered as an identity passthrough — v1 only added the envelope,
+    // it didn't reshape any field — so this must NOT be quarantined; doing
+    // so would silently discard every user's pre-existing on-device data
+    // the first time this build reads it.
+    const segments = [{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }];
+    setString(KEY, JSON.stringify(segments));
 
-    expect(getObject(KEY, isSegmentArray)).toBeUndefined();
-    expect(corruptBackups()).toHaveLength(1);
+    expect(getObject(KEY, isSegmentArray)).toEqual(segments);
+    expect(corruptBackups()).toHaveLength(0);
   });
 
   it('quarantines an envelope from a future schema version this build does not understand', () => {

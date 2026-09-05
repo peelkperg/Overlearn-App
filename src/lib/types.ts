@@ -45,6 +45,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+// [Review][Patch] found via code review 2026-09-05: Number.isFinite alone
+// accepts a finite-but-nonsensical counter (e.g. -3.7) from corrupted local
+// data, which then flows straight into calculateTargetStreak/logCorrect
+// arithmetic. Session counters are non-negative integers by construction —
+// enforce that at the untrusted-storage boundary, not just "not NaN".
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
 export function isSegmentArray(value: unknown): value is Segment[] {
   return (
     Array.isArray(value) &&
@@ -78,12 +87,15 @@ export function isSessionState(value: unknown): value is SessionState {
     isRecord(value) &&
     typeof value.segmentId === 'string' &&
     typeof value.segmentName === 'string' &&
-    // Number.isFinite, not typeof: a NaN/Infinity counter (corrupted-but
-    // -typeof-number data) would make calculateTargetStreak's output
-    // non-finite too, permanently soft-locking the session.
-    Number.isFinite(value.currentStreak) &&
-    Number.isFinite(value.totalCorrectThisSession) &&
-    Number.isFinite(value.totalIncorrectThisSession) &&
+    // Non-negative integer, not just Number.isFinite: a NaN/Infinity counter
+    // (corrupted-but-typeof-number data) would make calculateTargetStreak's
+    // output non-finite too, permanently soft-locking the session — and a
+    // finite-but-negative/fractional counter (e.g. -3.7) is equally
+    // nonsensical for a streak/attempt count, even though it passes
+    // Number.isFinite.
+    isNonNegativeInteger(value.currentStreak) &&
+    isNonNegativeInteger(value.totalCorrectThisSession) &&
+    isNonNegativeInteger(value.totalIncorrectThisSession) &&
     typeof value.sessionComplete === 'boolean' &&
     typeof value.sessionStartTimestamp === 'string'
   );

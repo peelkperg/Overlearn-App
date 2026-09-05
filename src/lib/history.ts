@@ -1,4 +1,4 @@
-import { deleteKey, getObject, setObject } from '@/lib/storage';
+import { deleteKey, getObject, getString, setObject, subscribeToKeys } from '@/lib/storage';
 import { isHistoryEntryArray, type HistoryEntry } from '@/lib/types';
 
 // MMKV key per architecture.md's MMKV Key Naming section: one JSON array
@@ -7,8 +7,31 @@ function historyKey(segmentId: string): string {
   return `history.${segmentId}`;
 }
 
+// Per-segment cache, same freshness-by-raw-string-comparison pattern as
+// lib/segments.ts's readSegments() — needed once useSegmentHistory switched
+// to useSyncExternalStore, which requires readHistory() to return the same
+// array by identity until the underlying data actually changes.
+// [Review][Patch] found via code review 2026-09-05: the segment-detail
+// screen showed stale history after a session completed while it stayed
+// mounted underneath the active-session screen — the same multi-mount
+// scenario useSegments/useActiveSession already guard against.
+const cache = new Map<string, { raw: string | undefined; snapshot: HistoryEntry[] }>();
+
 export function readHistory(segmentId: string): HistoryEntry[] {
-  return getObject<HistoryEntry[]>(historyKey(segmentId), isHistoryEntryArray) ?? [];
+  const raw = getString(historyKey(segmentId));
+  const cached = cache.get(segmentId);
+  if (!cached || raw !== cached.raw) {
+    const snapshot = getObject<HistoryEntry[]>(historyKey(segmentId), isHistoryEntryArray) ?? [];
+    cache.set(segmentId, { raw, snapshot });
+    return snapshot;
+  }
+  return cached.snapshot;
+}
+
+export function subscribeToHistory(segmentId: string, onChange: () => void): () => void {
+  return subscribeToKeys((key) => {
+    if (key === historyKey(segmentId)) onChange();
+  });
 }
 
 // FR14: writes one completed-session record. Only ever called for a
