@@ -34,6 +34,12 @@ editHistory:
       FR33's sort and FR38's display (calculateSolidificationPercent,
       returning null rather than 0 for "no data yet"), and a useSegments
       history subscription it didn't previously need.
+  - date: '2026-09-06'
+    changes: >-
+      Noted FR40 (inline press-and-hold rename, added to the PRD during
+      epics-and-stories extraction): a second UI entry point to the
+      existing renameSegment function, not a second implementation of
+      it. No new lib/ function, no schema change.
 ---
 
 # Architecture Decision Document
@@ -625,6 +631,8 @@ function duplicateSegment(id: string): Segment            // FR32
 - **`duplicateSegment`** reuses `generateId` and `disambiguate` (new id, name run through the same collision logic — "Bar 24 arpeggio" → "Bar 24 arpeggio (2)"), sets a fresh `createdAt`, and does not call `deleteHistory`/copy any history key — the duplicate's `history.{newSegmentId}` key simply never gets written, which is the correct "no copied history" behavior by omission rather than an explicit clear.
 
 **No new screen for Duplicate** (confirmed by the UX spec: row-menu action, instant, snackbar-confirmed). **One new screen for Rename** (`app/segment/[id]/rename.tsx`), reusing `SegmentForm` with zero changes to that component — exactly as `app/segment/new.tsx` already does, per the v1.0 architecture note that `SegmentForm.tsx` was "already designed as a shared create/rename form."
+
+**FR40 (inline press-and-hold rename) is a second UI entry point to the same `renameSegment` function, not a second implementation of it.** `SegmentListItem.tsx` and the segment detail heading component each gain local edit-state (a `Pressable`/`TextInput` swap, per the UX spec) that calls `renameSegment(id, name)` directly on submit — no new `lib/` function, no schema change. The one-function-per-formula discipline this document has applied to `calculateTargetStreak` throughout extends here: two UI paths, one write path.
 
 ## Project Structure Additions
 

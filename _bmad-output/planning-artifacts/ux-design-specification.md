@@ -6,7 +6,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Design Additions" heading. Shipped, frozen at git tag v1.0.0.'
-  v1.1: 'The "v1.1 Design Additions" section — Settings screen with in-progress-session notice (FR35-FR37, FR39), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31), history log Solidification % summary (FR38). Designed, not implemented.'
+  v1.1: 'The "v1.1 Design Additions" section — Settings screen with in-progress-session notice (FR35-FR37, FR39), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31), inline press-and-hold rename (FR40), history log Solidification % summary (FR38). Designed, not implemented.'
 editHistory:
   - date: '2026-09-06'
     changes: >-
@@ -36,6 +36,16 @@ editHistory:
       accuracy. The sort menu itself still shows no value, only the
       selected criterion - Solidification % is displayed in exactly one
       place, the history log summary.
+  - date: '2026-09-06'
+    changes: >-
+      Designed FR40, added during epics-and-stories requirements
+      extraction: a second rename entry point, press-and-hold for 1
+      second at the segment list row or detail heading, swapping the
+      static name text for an in-place TextInput. Commits via the
+      keyboard's return action; blur without submitting reverts rather
+      than saving a partial edit. Coexists with the FR30 rename screen -
+      neither replaces the other. No new custom component: a Pressable
+      with onLongPress/delayLongPress swapping Text/TextInput locally.
 ---
 
 # UX Design Specification Overlearn
@@ -578,6 +588,24 @@ Duplicate confirms with a standard design-system snackbar: *"Duplicated as 'Bar 
 
 **Name propagation (FR31).** The renamed segment's name must be current in all five display sites the PRD enumerates: segment list row, segment detail heading, active-session streak readout, completion summary, and the resume/discard prompt. No UI design work follows from this — it is a data-sourcing requirement, noted here so the design record matches the FR.
 
+## Inline Rename (FR40)
+
+A second, faster path to the same result as the screen above — both exist; this does not replace it.
+
+**Trigger:** press and hold the segment's name for **1 second**, at exactly two sites: the segment list row and the segment detail heading. Not available at the three read-only name displays (active-session readout, completion summary, resume/discard prompt) — those stay pure display, per FR31.
+
+**Editing state.** On the hold threshold firing, the static text is replaced in place by a `TextInput` pre-filled with the current name, cursor at end, keyboard opening automatically. The row/heading's layout position and size do not shift — the text becomes editable without the surrounding UI moving, so the interaction reads as "this text became a field," not "a new field appeared."
+
+**Commit:** the keyboard's return/submit key (`onSubmitEditing`, per the platform's default "Done"/"Return" action — there is no hardware Enter key on a phone) saves the new name and returns the element to static text. Same validation and disambiguation as FR30/FR32's rename: a name colliding with another segment's is disambiguated, not rejected; an empty name is rejected, and the field's prior value is not lost while the user corrects it.
+
+**Cancel:** tapping outside the field (blur without submitting) reverts to the original name — a half-typed edit is discarded, not silently saved. This mirrors the app's existing "no ambiguous partial state" posture rather than introducing a new discard confirmation for what is a low-stakes, instantly-reversible action.
+
+**Why 1 second, not instant-on-tap:** a plain tap on the list row already navigates (opens Segment Detail); a plain tap on the detail heading has no existing meaning but a *short* threshold would make an ordinary tap-hesitation misfire into edit mode. One second is long enough to be clearly deliberate without requiring an explicit mode-switch icon.
+
+**No new component.** This is a state of the existing text label (list row's name, detail heading), not a new custom component — a `Pressable` wrapping the text, using `onLongPress`/`delayLongPress={1000}`, swapping its rendered child between `<Text>` and `<TextInput>` based on local edit-state.
+
+**Accessibility:** the pressable name carries `accessibilityHint="Press and hold to rename"` in its static state, so the affordance is discoverable without requiring 1 second of trial-and-error from a screen-reader user (VoiceOver/TalkBack both support triggering a long-press action directly). The editing state announces "Editing segment name" on entry.
+
 ## Segment History Log Addition: Solidification % Summary
 
 **FR38.** The Segment Detail screen's history log gains one summary line, placed between the segment name heading and the list of entries — above the list, not mixed into it, since it describes the whole segment rather than any single session:
@@ -604,6 +632,7 @@ Consistent with the v1.0 hybrid strategy — **no new custom components.** All f
 | Rename/Duplicate menu rows | Existing menu-item pattern |
 | Rename form | Existing `SegmentForm` |
 | Duplicate confirmation | Default snackbar |
+| Inline rename (FR40) | `Pressable` + `onLongPress`, swapping `<Text>`/`<TextInput>` in place |
 
 The custom-component budget remains spent entirely on the Active Session screen, exactly as the v1.0 Design System Foundation decided.
 
