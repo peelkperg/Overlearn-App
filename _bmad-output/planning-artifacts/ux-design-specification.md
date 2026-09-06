@@ -1,8 +1,29 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-03-core-experience, step-04-emotional-response, step-05-inspiration, step-06-design-system, step-07-defining-experience, step-08-visual-foundation, step-09-design-directions, step-10-user-journeys, step-11-component-strategy, step-12-ux-patterns, step-13-responsive-accessibility, step-14-complete]
+stepsCompleted: [step-01-init, step-02-discovery, step-03-core-experience, step-04-emotional-response, step-05-inspiration, step-06-design-system, step-07-defining-experience, step-08-visual-foundation, step-09-design-directions, step-10-user-journeys, step-11-component-strategy, step-12-ux-patterns, step-13-responsive-accessibility, step-14-complete, v1.1-extension]
 lastStep: 14
+lastUpdated: '2026-09-06'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
+versionCoverage:
+  v1.0: 'Everything above the "v1.1 Design Additions" heading. Shipped, frozen at git tag v1.0.0.'
+  v1.1: 'The "v1.1 Design Additions" section — Settings screen (FR35-FR37), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31). Designed, not implemented.'
+editHistory:
+  - date: '2026-09-06'
+    changes: >-
+      Extended rather than regenerated: the 14-step create workflow was
+      already complete for v1.0, and architecture.md plus epics.md both
+      trace to that content. Appended a version-marked "v1.1 Design
+      Additions" section covering FR30-FR37. Decisions taken with the
+      user: Settings reached via a gear icon in the Home header (keeps the
+      flat three-level practice navigation intact); sort exposed as a
+      "Sort: X" pressable above the list that reuses the existing row-menu
+      modal; the overlearning-% stepper paired with a live worked example,
+      since the setting is a percentage of a quantity not visible on
+      screen. No new custom components - the custom-component budget stays
+      spent entirely on the Active Session screen, per the v1.0 Design
+      System Foundation. Two open questions logged rather than silently
+      resolved (mid-session settings change; Solidification % never being
+      displayed despite being sortable).
 ---
 
 # UX Design Specification Overlearn
@@ -433,3 +454,142 @@ Not applicable in the traditional sense — no tablet/desktop breakpoints exist 
 - Implement accessible labels (`accessibilityLabel` / `contentDescription`) on all icon-only custom buttons.
 - Implement the target-raise and completion audio/haptic/visual signals with a parallel screen-reader announcement path, not purely visual/auditory.
 - No landscape-specific layout is required for MVP; simplest approach (lock portrait, or let standard screens reflow naturally) deferred to architecture/implementation decision.
+
+---
+
+# v1.1 Design Additions
+
+**Added 2026-09-06.** Everything above this line specifies **v1.0**, shipped and frozen at git tag `v1.0.0`. This section covers the v1.1 scope defined in `prd.md` FR30–FR37: segment rename, duplicate, list sorting, and a Settings screen with a configurable overlearning-%.
+
+## Principles Carried Forward
+
+The v1.0 principles are not renegotiated here. Three constrain every decision below:
+
+1. **The Active Session screen is untouched.** No v1.1 feature adds anything to the practice loop — the one screen whose design is load-bearing to the product's value. Settings is reachable only from Home, never mid-session.
+2. **Calm rigor, minimal chrome.** New controls are subordinate to the segment list, not competing with it.
+3. **No fifth feedback tier.** Rename, duplicate, and sort are non-gameplay actions and use plain design-system feedback (instant list update, standard snackbar), exactly as segment creation and delete already do.
+
+## Navigation Update
+
+The v1.0 navigation model — *"flat, three-level: Segment List → Segment Detail → Active Session. No tab bar, no drawer"* — gains one screen and one modal route:
+
+```
+Segment List (home) ──┬─→ Segment Detail ──→ Active Session / Completion
+                      ├─→ Segment Rename (modal-style push, from row menu)
+                      └─→ Settings (push, from header gear icon)
+```
+
+Still no tab bar and no drawer. Settings and Rename are both leaf screens with a single back exit. The three-level practice path is unchanged in depth and shape.
+
+## New Screen: Settings
+
+**Entry point:** a gear icon in the Segment List header, right-aligned. Present on Home only — it does not appear on Segment Detail, Active Session, or Completion.
+
+**Content — one setting, nothing else.** FR35–FR37 specify only the overlearning-%; per the No-Invention Rule, no other settings, no account section, no about/version block unless later specified.
+
+**Layout, top to bottom:**
+
+1. **Label** — "Overlearning target" (standard body/label type).
+2. **Stepper row** — `[ − ]  150%  [ + ]`. The value uses the large-numeral type scale borrowed from the streak readout, since it is the screen's single subject. Minus left, plus right, value centered between them.
+3. **Live worked example** — one line, recomputing on every step, in the desaturated neutral text color:
+   > *At 150%, 10 mistakes in a session sets a target of 15 correct in a row.*
+
+   The example uses a fixed illustrative mistake count (10) so only the outcome changes as the user steps, keeping the sentence stable enough to re-read at a glance. This exists because the setting is otherwise abstract: the percentage applies to mistakes made, a quantity that is not on screen at the moment of choosing.
+4. **Floor note** — one line, small, neutral: *"A session never targets fewer than 5 correct in a row."* States the fixed `TARGET_FLOOR` so a user setting 50% understands why low mistake counts still demand 5.
+
+**Stepper behavior:**
+
+| State | Treatment |
+|---|---|
+| Default | Both buttons active; each tap moves the value by 10 percentage points |
+| At 50% (minimum) | `−` **disabled** — visibly recessive, `accessibilityState: { disabled: true }` |
+| At 300% (maximum) | `+` **disabled**, same treatment |
+| On change | Value updates immediately and persists immediately; no Save button, no confirmation |
+
+Disabled-at-bounds is chosen over a silent no-op so the range is discoverable by feel — a button that does nothing when tapped reads as a bug, not a limit.
+
+**No confirmation on change.** Consistent with the app's existing posture: confirmation is reserved for destructive actions (Restart, Delete). Changing a target is reversible by stepping back.
+
+**Mid-session change.** FR37 requires an in-progress session's target to recalculate immediately. No UI is specified for this on the Settings screen — the user changing a setting mid-session is an edge case, and the Active Session screen's existing target-raise signal already covers the case where the visible target changes. **Deliberately not designed:** a warning or confirmation when changing the setting while a session is active. Flagged here as a conscious omission rather than an oversight; revisit if it proves confusing in use.
+
+## Segment List Additions
+
+### Sort Control
+
+**Placement:** a single pressable row directly above the segment list, below the header. Label format: **`Sort: Last practiced ▾`** — the active sort is always visible without opening anything.
+
+**Interaction:** tapping opens the standard Modal-menu component already used for segment row actions (`SegmentListItem`'s menu) — same backdrop, same dismiss behavior, same 44×44 row targets. No new modal pattern is introduced.
+
+**Menu contents:** four options, with the active one marked and carrying its current direction:
+
+| Option | Default direction on first selection |
+|---|---|
+| Name | A→Z |
+| Date created | Newest first |
+| Last practiced | Most recent first |
+| Solidification % | Highest first |
+
+**Direction toggle:** tapping the **already-active** option flips its direction; tapping a different option selects it at that option's default direction. This keeps direction control inside the existing menu rather than adding a second control to the list header.
+
+**Persistence (FR34):** the selected option and direction are restored on next launch. The list therefore never reorders unexpectedly between sessions.
+
+**Empty and single-segment states:** the sort control is hidden when zero segments exist (the v1.0 empty state per FR7/UX-DR11 is unchanged) and when exactly one exists, where sorting is meaningless.
+
+**Supersedes:** the v1.0 statement under *UX Consistency Patterns → Additional Patterns* — *"Search/filtering: not applicable — no PRD requirement calls for it, and inventing one would violate the No-Invention Rule."* That remains true for **search and filtering**, which FR33 does not introduce. FR33 introduces **ordering only** — no query input, no subset of segments is ever hidden.
+
+### Row Action Menu Additions
+
+The existing `SegmentListItem` menu gains two items. Order, top to bottom:
+
+1. **Rename** (FR30)
+2. **Duplicate** (FR32)
+3. **Delete** (FR6, unchanged)
+
+Destructive action stays last, separated from the two non-destructive additions. Delete's existing treatment and confirmation behavior are unchanged.
+
+**Duplicate feedback.** The copy appears in the list immediately, but *where* it appears depends on the active sort — under "Name" a copy called "Bar 24 arpeggio (2)" lands adjacent to its original, while under "Solidification %" a copy with no history sorts to the far end and may be off-screen entirely. A silent insertion would therefore read as "nothing happened."
+
+Duplicate confirms with a standard design-system snackbar: *"Duplicated as 'Bar 24 arpeggio (2)'."* This is plain platform feedback, not a fifth feedback tier — it carries no haptic, no sound, and no gameplay weight, matching how the spec already treats segment creation and delete.
+
+## Segment Rename Screen
+
+**Reuses `SegmentForm` unchanged.** The v1.0 Component Strategy already describes this component as *"Text input / form fields (segment creation/rename)"* — the rename case was anticipated in the original design and needs no new component.
+
+- Pre-filled with the segment's current name, cursor at end.
+- Submit label: **"Rename"** (vs. "Create" on the creation screen).
+- Same inline non-empty validation, same 80-character cap, same disambiguation-on-collision behavior as creation (FR1's collision rule, per FR32).
+- On success: return to the segment list, which reflects the new name immediately.
+
+**Name propagation (FR31).** The renamed segment's name must be current in all five display sites the PRD enumerates: segment list row, segment detail heading, active-session streak readout, completion summary, and the resume/discard prompt. No UI design work follows from this — it is a data-sourcing requirement, noted here so the design record matches the FR.
+
+## Component Strategy Additions
+
+Consistent with the v1.0 hybrid strategy — **no new custom components.** All four v1.1 features are built from design-system defaults and components that already exist:
+
+| Element | Source |
+|---|---|
+| Settings gear icon (header) | Platform default header action |
+| Stepper (− / value / +) | Two default pressables + text; no custom component |
+| Sort control trigger | Default pressable with text label |
+| Sort menu | Existing `SegmentListItem` Modal-menu pattern |
+| Rename/Duplicate menu rows | Existing menu-item pattern |
+| Rename form | Existing `SegmentForm` |
+| Duplicate confirmation | Default snackbar |
+
+The custom-component budget remains spent entirely on the Active Session screen, exactly as the v1.0 Design System Foundation decided.
+
+## Accessibility (v1.1)
+
+Inherits the v1.0 bar — WCAG 2.1 AA, 44×44pt minimum targets, no color-alone signaling — with four additions specific to these features:
+
+- **Stepper buttons** carry `accessibilityLabel` "Decrease overlearning target" / "Increase overlearning target", and `accessibilityState: { disabled: true }` at their respective bounds so the limit is announced, not just shown.
+- **Stepper value** is announced on change, so a screen-reader user hears the new value without re-navigating to it.
+- **Sort control** announces both dimensions: "Sort by last practiced, most recent first" — direction is not conveyed by the `▾` glyph alone.
+- **Duplicate snackbar** uses `accessibilityLiveRegion="polite"`, matching the existing error-message treatment on the segment screens.
+
+The gear icon, being icon-only, carries `accessibilityLabel="Settings"` — the same rule the v1.0 spec applies to the icon-only Correct/Incorrect buttons.
+
+## Open Questions
+
+- **Mid-session settings change** — no warning is designed (see Settings screen above). Deliberate omission, flagged for review after real use.
+- **Solidification % is not displayed anywhere** — FR33 uses it only as a sort key. A user can order by it but never see a segment's actual percentage. This may be the right restraint, or it may make the sort option feel arbitrary; not resolved here because no FR calls for displaying it, and inventing one would violate the No-Invention Rule. Worth a scoping decision before v1.1 implementation.
