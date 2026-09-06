@@ -1,67 +1,94 @@
-<title>Overlearn Icon Concept</title>
+<title>Icon — brain, strumming</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800&display=swap">
 <style>
   :root {
-    --page-bg: #f4f4f5;
-    --page-text: #18181b;
-    --page-secondary: #71717a;
-    --card-bg: #ffffff;
-    --card-border: #e4e4e7;
+    --page-bg: #F5F7F3;
+    --page-text: #1E2A22;
+    --page-secondary: #66766C;
+    --card-bg: #FFFFFF;
+    --card-border: #DCE5DE;
+    --accent: #3E8F5B;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --page-bg: #0b0b0c;
-      --page-text: #f4f4f5;
-      --page-secondary: #9a9aa2;
-      --card-bg: #17171a;
-      --card-border: #2a2a2e;
+      --page-bg: #12160F;
+      --page-text: #EDF3EA;
+      --page-secondary: #9AAB9C;
+      --card-bg: #1B2119;
+      --card-border: #2B3327;
+      --accent: #6FCB90;
     }
   }
   :root[data-theme="dark"] {
-    --page-bg: #0b0b0c;
-    --page-text: #f4f4f5;
-    --page-secondary: #9a9aa2;
-    --card-bg: #17171a;
-    --card-border: #2a2a2e;
+    --page-bg: #12160F;
+    --page-text: #EDF3EA;
+    --page-secondary: #9AAB9C;
+    --card-bg: #1B2119;
+    --card-border: #2B3327;
+    --accent: #6FCB90;
   }
 
   * { box-sizing: border-box; }
   body {
     background: var(--page-bg);
     color: var(--page-text);
-    font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    font-family: "Nunito Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
     margin: 0;
     padding: 48px 24px 96px;
   }
   main { max-width: 760px; margin: 0 auto; }
-  h1 { font-size: 24px; font-weight: 700; margin: 0 0 6px; }
-  .sub { color: var(--page-secondary); font-size: 14px; margin: 0 0 40px; max-width: 60ch; line-height: 1.5; }
+  h1 {
+    font-family: "Fredoka", "Nunito Sans", sans-serif;
+    font-weight: 600;
+    font-size: 26px;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .sub { color: var(--page-secondary); font-size: 14px; margin: 0 0 40px; max-width: 62ch; line-height: 1.6; }
+  .sub strong { color: var(--page-text); }
 
   .hero { display: flex; justify-content: center; margin-bottom: 20px; }
   .icon {
-    background: #000000;
     border-radius: 22%;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 1px var(--card-border), 0 8px 24px -12px rgba(0,0,0,0.35);
   }
+  .icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-  .legend {
-    display: flex;
-    gap: 24px;
-    justify-content: center;
-    flex-wrap: wrap;
+  .files {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
     margin-bottom: 48px;
+  }
+  .files div {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 10px 12px;
     font-size: 12px;
     color: var(--page-secondary);
+    line-height: 1.5;
   }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .files code {
+    display: block;
+    font-size: 12px;
+    color: var(--page-text);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
 
   .row-label {
+    font-family: "Fredoka", sans-serif;
     font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     color: var(--page-secondary);
     font-weight: 600;
     margin: 0 0 16px;
@@ -79,103 +106,106 @@
   }
   .scale-item { text-align: center; }
   .scale-item .icon { margin: 0 auto 8px; }
-  .scale-item span { display: block; font-size: 12px; color: var(--page-secondary); }
+  .scale-item span { display: block; font-size: 12px; color: var(--page-secondary); font-variant-numeric: tabular-nums; }
 
   .context {
-    background: #000000;
-    border-radius: 16px;
-    padding: 32px;
-    display: flex;
-    gap: 24px;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
     margin-bottom: 40px;
   }
-  .context .icon { border-radius: 22%; }
-  .context p { color: #B0B4BA; font-size: 13px; margin: 0; line-height: 1.5; }
-  .context strong { color: #2ECC71; }
+  .context-card {
+    border-radius: 16px;
+    padding: 28px 24px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .context-card.dark { background: #0B0B0C; }
+  .context-card.light { background: #FFFFFF; border: 1px solid var(--card-border); }
+  .context-card .icon { border-radius: 22%; flex-shrink: 0; background: transparent; box-shadow: none; }
+  .context-card p { font-size: 12.5px; margin: 0; line-height: 1.55; }
+  .context-card.dark p { color: #B0B4BA; }
+  .context-card.light p { color: #52605A; }
+  .context-card strong { color: var(--accent); }
 
   .note {
     font-size: 13px;
     color: var(--page-secondary);
-    line-height: 1.6;
-    max-width: 62ch;
+    line-height: 1.65;
+    max-width: 64ch;
   }
+  .note code {
+    background: var(--card-border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+  .note + .note { margin-top: 14px; }
 </style>
 
-<svg width="0" height="0" style="position:absolute">
-  <symbol id="mark" viewBox="0 0 100 100">
-    <!-- Myelin sheaths: segmented capsules, thickening left to right as the
-         pathway gets reinforced through repetition -->
-    <rect x="18" y="71.5" width="14" height="3" rx="1.5" fill="#1B5E3A" opacity="0.85"/>
-    <rect x="39" y="70.75" width="10" height="4.5" rx="2.25" fill="#1B5E3A" opacity="0.85"/>
-    <rect x="55" y="70" width="10" height="6" rx="3" fill="#1B5E3A" opacity="0.85"/>
-    <rect x="71" y="69.25" width="10" height="7.5" rx="3.75" fill="#1B5E3A" opacity="0.85"/>
-
-    <!-- Signal: four pulses rising from the myelin band, intensifying -->
-    <path d="M20,70 L26,54 L32,70 Z" fill="#2ECC71"/>
-    <path d="M38,70 L44,46 L50,70 Z" fill="#2ECC71"/>
-    <path d="M54,70 L60,36 L66,70 Z" fill="#2ECC71"/>
-    <path d="M70,70 L76,22 L82,70 Z" fill="#2ECC71"/>
-
-    <!-- Nodes of Ranvier: where the signal jumps, node to node -->
-    <circle cx="14" cy="70" r="2" fill="#7FE8AC"/>
-    <circle cx="36" cy="70" r="2" fill="#7FE8AC"/>
-    <circle cx="52" cy="70" r="2" fill="#7FE8AC"/>
-    <circle cx="68" cy="70" r="2" fill="#7FE8AC"/>
-    <circle cx="84" cy="70" r="2.4" fill="#7FE8AC"/>
-  </symbol>
-</svg>
-
 <main>
-  <h1>Icon concept — pulse, reinforced</h1>
-  <p class="sub">Four pulses reading as both a firing neural pathway and a sound waveform, growing stronger left to right. New this pass: the base band is segmented into myelin sheaths that thicken with each repetition, meeting at brighter nodes of Ranvier — the actual biological mechanism the app's tagline points to, worked into the mark's structure rather than added as decoration.</p>
+  <h1>Icon — brain, strumming</h1>
+  <p class="sub">Final artwork, shipped: <strong>a caricatured brain, arms and all, sitting and strumming a classical guitar</strong> — eyes closed, mid-practice, with a footstool, sneakers, and a chord book at its feet. Sourced from <code style="background:var(--card-border);padding:1px 5px;border-radius:4px;">assets/images/playing-brain.png</code> and used exactly as delivered — every icon file below is a resize or a background-removal pass over that same artwork, never a redraw.</p>
 
   <div class="hero">
     <div class="icon" style="width:280px;height:280px;">
-      <svg width="280" height="280" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      <img src="../assets/images/icon.png" width="280" height="280" alt="Overlearn app icon: a brain playing a classical guitar">
     </div>
   </div>
-  <div class="legend">
-    <span><i style="background:#2ECC71"></i>signal (the pulse)</span>
-    <span><i style="background:#1B5E3A"></i>myelin (thickens with repetition)</span>
-    <span><i style="background:#7FE8AC"></i>node of Ranvier (signal jumps here)</span>
+
+  <div class="files">
+    <div><code>icon.png</code>General app icon — 1024×1024, opaque</div>
+    <div><code>android-icon-foreground.png</code>Adaptive icon layer — background keyed out to transparent</div>
+    <div><code>android-icon-monochrome.png</code>Android 13+ themed-icon silhouette</div>
+    <div><code>play-store-icon.png</code>Play Console listing — 512×512, opaque</div>
+    <div><code>favicon.png</code>Web tab icon — 48×48</div>
   </div>
 
   <p class="row-label">At real launcher sizes</p>
   <div class="scales">
     <div class="scale-item">
-      <div class="icon" style="width:96px;height:96px;border-radius:22%;">
-        <svg width="96" height="96" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      <div class="icon" style="width:96px;height:96px;">
+        <img src="../assets/images/icon.png" width="96" height="96" alt="">
       </div>
       <span>96px</span>
     </div>
     <div class="scale-item">
-      <div class="icon" style="width:60px;height:60px;border-radius:22%;">
-        <svg width="60" height="60" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      <div class="icon" style="width:60px;height:60px;">
+        <img src="../assets/images/icon.png" width="60" height="60" alt="">
       </div>
       <span>60px</span>
     </div>
     <div class="scale-item">
-      <div class="icon" style="width:40px;height:40px;border-radius:22%;">
-        <svg width="40" height="40" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      <div class="icon" style="width:40px;height:40px;">
+        <img src="../assets/images/icon.png" width="40" height="40" alt="">
       </div>
       <span>40px</span>
     </div>
     <div class="scale-item">
-      <div class="icon" style="width:24px;height:24px;border-radius:22%;">
-        <svg width="24" height="24" viewBox="0 0 100 100"><use href="#mark"/></svg>
+      <div class="icon" style="width:24px;height:24px;">
+        <img src="../assets/images/icon.png" width="24" height="24" alt="">
       </div>
       <span>24px</span>
     </div>
   </div>
 
-  <p class="row-label">Against the app's own screen</p>
+  <p class="row-label">Adaptive-icon foreground, on both grounds</p>
   <div class="context">
-    <div class="icon" style="width:64px;height:64px;">
-      <svg width="64" height="64" viewBox="0 0 100 100"><use href="#mark"/></svg>
+    <div class="context-card dark">
+      <div class="icon" style="width:56px;height:56px;">
+        <img src="../assets/images/android-icon-foreground.png" width="56" height="56" alt="">
+      </div>
+      <p>Over black — confirms the background removal is clean: no white halo around the character on a dark ground.</p>
     </div>
-    <p>Same near-black ground and the exact accent green (<strong>#2ECC71</strong>) as the in-app Active Session screen — the icon and the app read as one system, not a separate marketing layer.</p>
+    <div class="context-card light">
+      <div class="icon" style="width:56px;height:56px;">
+        <img src="../assets/images/android-icon-foreground.png" width="56" height="56" alt="">
+      </div>
+      <p>Over white — matches what Android actually renders, since <code>app.json</code>'s adaptive-icon and splash-screen background is now <strong>#FFFFFF</strong>, same as this artwork's own canvas.</p>
+    </div>
   </div>
 
-  <p class="note">The myelin/node detail is intentionally subtle — it's there to reward a closer look (full app size, feature graphic, About screen) without competing with the pulse shape at launcher scale, where legibility matters most. If this reads right: next step generates the full Android asset set from this shape — adaptive icon foreground/background layers, a single-color monochrome variant for Android 13+ themed icons, and the 512×512 Play Store listing icon — then swaps <code>app.json</code>'s icon references and rebuilds.</p>
+  <p class="note">Every surface — <code>icon.png</code>, the Play Store listing, the favicon, and now the Android adaptive icon and splash screen — shares the same white ground, so the mark reads the same wherever it appears. That's a deliberate change from the previous mark, which matched the app's near-black in-app screens instead.</p>
+  <p class="note">The monochrome silhouette (Android 13+ themed icons) is derived by flood-filling the background to transparent, then filling the remaining shape with white. The brain, arms, and guitar come through cleanly; the stool's thin wire legs and the second sneaker are mostly outline-on-white in the source art, so they don't fully survive as solid silhouette — a minor loss limited to that one themed-icon mode.</p>
 </main>
