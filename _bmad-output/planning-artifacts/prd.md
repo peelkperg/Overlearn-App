@@ -45,6 +45,15 @@ editHistory:
       produced the shipped history-entry defect. Upstream supersession
       notes added to product-brief-Overlearn.md and its distillate so they
       no longer contradict FR35-FR37 on the overlearning-% setting.
+  - date: '2026-09-06'
+    changes: >-
+      Added FR38 and FR39, resolving the two open questions the v1.1 UX
+      design review logged rather than silently deciding. FR38: the
+      segment's Solidification % (as defined in FR33) is now displayed at
+      the top of its history log, so the value it can be sorted by is
+      also visible somewhere. FR39: the Settings screen shows a standing
+      notice - not a per-tap confirmation - when an in-progress session
+      exists, since FR37 makes the change apply to it immediately.
 ---
 
 # Product Requirements Document - Overlearn
@@ -201,7 +210,7 @@ Metronome, tuner, practice time tracking, audio-based automatic correctness dete
 
 ### Journey Requirements Summary
 
-Together these five journeys cover every functional area in the Functional Requirements below: segment management and navigation (FR1–FR7), immediate session start with live target computation (FR8–FR12), the three-control active-session loop with reset-on-miss and Restart's confirm-gated full reset (FR16–FR22), interruption persistence with resume/discard (FR23–FR26), session completion with Done/Repeat (FR13–FR15), and the per-segment history log restricted to completed sessions and carrying mistake counts for legibility (FR27–FR29). FR1–FR29 are v1.0, shipped. Journey 5's v1.1 extension covers segment rename, duplicate, and list sorting (FR30–FR34); the v1.1 Settings screen and configurable overlearning-% (FR35–FR37) is a global preference rather than a step within any single journey — it changes how FR9/FR10's target calculation behaves across all of them. No additional user types (admin, support, API) apply to this single-user offline app.
+Together these five journeys cover every functional area in the Functional Requirements below: segment management and navigation (FR1–FR7), immediate session start with live target computation (FR8–FR12), the three-control active-session loop with reset-on-miss and Restart's confirm-gated full reset (FR16–FR22), interruption persistence with resume/discard (FR23–FR26), session completion with Done/Repeat (FR13–FR15), and the per-segment history log restricted to completed sessions and carrying mistake counts for legibility (FR27–FR29). FR1–FR29 are v1.0, shipped. Journey 5's v1.1 extension covers segment rename, duplicate, and list sorting (FR30–FR34, FR38 — the last displaying what FR33 introduced as a sort-only value); the v1.1 Settings screen and configurable overlearning-% (FR35–FR37, FR39) is a global preference rather than a step within any single journey — it changes how FR9/FR10's target calculation behaves across all of them. No additional user types (admin, support, API) apply to this single-user offline app.
 
 ## Mobile App Specific Requirements
 
@@ -322,12 +331,14 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR27: User can view a chronological list of completed sessions for a segment
 - FR28: Each history entry displays the date, the final target streak achieved, total mistakes for that session, and total attempts
 - FR29: System excludes non-completed sessions (abandoned or reset) from the history log
+- FR38: **(v1.1)** User can view the segment's Solidification % (as defined in FR33) at the top of its history log, so the value it can be sorted by is also visible somewhere. Recomputed from the same completed-session data as FR33's sort; a segment with no completed sessions shows 0%, consistent with FR33's sort treatment. (added 2026-09-06 — resolves the v1.1 design review's open question that Solidification % was sortable but never displayed)
 
 ### Settings (v1.1, added 2026-09-06)
 
 - FR35: **(v1.1)** User can access a Settings screen to configure the overlearning-% target used in the Mechanic Specification's `OVERLEARNING_LEVEL`
 - FR36: **(v1.1)** System accepts any overlearning-% value from 50% to 300% in 10-percentage-point increments; no other value is selectable
 - FR37: **(v1.1)** System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change (supersedes any assumption that `target_streak` is fixed for a session's duration once started)
+- FR39: **(v1.1)** When an in-progress session exists for any segment, the Settings screen warns the user that a change to the overlearning-% will apply to that session immediately (per FR37), before they change the value — not as a confirmation gate on every tap, but as a standing notice visible while the setting is open. (added 2026-09-06 — resolves the v1.1 design review's open question that a mid-session change had no warning designed)
 
 ## Non-Functional Requirements
 
