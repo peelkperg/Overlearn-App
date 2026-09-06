@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
@@ -7,7 +7,7 @@ inputDocuments:
 lastUpdated: '2026-09-06'
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Requirements Inventory" heading, and Epic 1-3 below "## Epic List". Shipped, frozen at git tag v1.0.0.'
-  v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40 minus already-listed v1.0 FRs, UX-DR13-25). Requirements extracted; epic/story design in progress.'
+  v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40, UX-DR13-25), and Epic 4-5 below "## Epic List" (8 stories: 4.1-4.5, 5.1-5.3). Fully specified, not yet implemented.'
 editHistory:
   - date: '2026-09-06'
     changes: >-
@@ -44,6 +44,18 @@ editHistory:
       distinct user value (configuring the mechanic vs. organizing
       segments). No dependency between the two; sequenced Epic 4 before
       Epic 5 as the lower-risk of the two.
+  - date: '2026-09-06'
+    changes: >-
+      Generated all 8 v1.1 stories (4.1-4.5, 5.1-5.3), covering
+      FR30-FR40 and UX-DR13-25 completely. Two corrections made during
+      review: persona line uses "As a user," not "As a musician," for
+      every v1.1 story (v1.0's existing stories keep their original
+      wording - not retroactively changed); Story 4.5 (inline
+      press-and-hold rename, FR40) was missing from the first draft
+      entirely and added. Story 5.2 is explicitly modeled on v1.0's
+      Story 2.9 - a verification story confirming behavior Story 5.1's
+      plumbing already produces, per architecture.md's derive-on-read
+      analysis, rather than new implementation.
 ---
 
 # Overlearn - Epic Breakdown
@@ -571,3 +583,197 @@ So that I can judge for myself whether a passage is actually solidifying over ti
 **Given** a segment has no completed sessions yet
 **When** the user opens its history log
 **Then** an empty list is shown (no error, no placeholder data)
+
+## Epic 4: Segment Organization & Insight (v1.1, added 2026-09-06)
+
+Users can rename, duplicate, and sort their segments, and see at a glance how solidified each one is — all without leaving the segment-management screens.
+
+### Story 4.1: Rename a Segment
+
+As a user,
+I want to rename an existing segment,
+So that its name stays accurate as what I'm practicing changes.
+
+**Acceptance Criteria:**
+
+**Given** a segment's row menu
+**When** the user opens it
+**Then** it lists Rename and Duplicate above Delete, in that order (UX-DR20)
+
+**Given** the user opens a segment's row-menu action "Rename"
+**When** the Rename screen opens
+**Then** it shows `SegmentForm` pre-filled with the segment's current name and submit label "Rename" (FR30, UX-DR22)
+
+**Given** the Rename screen, with the name changed to a value not used by any other segment
+**When** the user submits
+**Then** the segment's name is updated in storage and the user returns to the segment list showing the new name (FR30)
+
+**Given** the Rename screen, with the name changed to a value colliding with another segment's name (case-insensitive)
+**When** the user submits
+**Then** the new name is disambiguated exactly as segment creation already does (e.g. "Bar 24 (2)"), never rejected (FR30, same rule as FR1)
+
+**Given** the Rename screen, with the name changed to a different case of its own current name (e.g. "bar 24" → "Bar 24")
+**When** the user submits
+**Then** the rename succeeds — the segment's own current name is excluded from the collision check (FR30)
+
+**Given** a segment has been renamed
+**When** its name is displayed anywhere in the app — the segment list row, the segment detail heading, the active-session streak readout, the completion summary, and the resume/discard prompt for an interrupted session on that segment
+**Then** every one of those five sites shows the current name, not the name as it was when a history entry or session was first recorded (FR31)
+
+### Story 4.2: Duplicate a Segment
+
+As a user,
+I want to duplicate an existing segment,
+So that I can track a variation of a passage as its own segment without losing the original's history.
+
+**Acceptance Criteria:**
+
+**Given** a segment exists
+**When** the user selects "Duplicate" from its row menu
+**Then** a new segment is created immediately with a disambiguated name (e.g. "Bar 24 (2)"), a fresh id, a fresh creation date, and no copied history entries (FR32)
+
+**Given** a segment was just duplicated
+**When** the segment list re-renders
+**Then** a snackbar confirms "Duplicated as '{name}'", announced via `accessibilityLiveRegion="polite"` (UX-DR21, UX-DR24)
+
+### Story 4.3: Sort the Segment List
+
+As a user,
+I want to sort my segment list by name, creation date, last practiced, or Solidification %,
+So that I can find the segment I'm looking for as my list grows.
+
+**Acceptance Criteria:**
+
+**Given** two or more segments exist
+**When** the user opens the "Sort: {current} ▾" control above the list
+**Then** a menu shows all four sort options, with the currently active one marked (FR33, UX-DR18)
+
+**Given** the sort menu is open
+**When** the user taps an option that is not currently active
+**Then** the list re-sorts by that key at its default direction (name: A→Z; date created / last practiced: newest first; Solidification %: highest first) (FR33, UX-DR19)
+
+**Given** the sort menu is open
+**When** the user taps the option that is already active
+**Then** the sort direction flips (FR33, UX-DR19)
+
+**Given** the list is sorted by last-practiced date or Solidification %, and a segment has no completed sessions
+**When** the list is sorted
+**Then** that segment sorts as the oldest-possible date / 0%, regardless of sort direction (FR33)
+
+**Given** a session is completed for a segment currently visible in the list
+**When** the list is sorted by last-practiced date or Solidification %
+**Then** the list re-orders live to reflect the new history, without requiring the screen to be reopened (FR33, via `useSegments`'s new history subscription)
+
+**Given** the user selects a sort option and direction
+**When** the app is closed and reopened
+**Then** the same sort option and direction are restored (FR34)
+
+**Given** zero or exactly one segment exists
+**When** the segment list renders
+**Then** the sort control is hidden (UX-DR19)
+
+**Given** the sort control shows the active sort
+**When** a screen reader reaches it
+**Then** it announces both the selected key and direction (e.g. "Sort by last practiced, most recent first"), not the `▾` glyph alone (UX-DR24)
+
+### Story 4.4: View a Segment's Solidification %
+
+As a user,
+I want to see a segment's overall Solidification % on its history screen,
+So that I can judge how reliably a passage has held up, not just read individual session entries.
+
+**Acceptance Criteria:**
+
+**Given** a segment has one or more completed sessions
+**When** its history log screen opens
+**Then** a summary line between the heading and the entry list shows "Solidification: {percent}%", computed as aggregate correct repetitions ÷ aggregate total repetitions across every completed session for that segment (FR38, UX-DR23)
+
+**Given** a segment has zero completed sessions
+**When** its history log screen opens
+**Then** the summary line shows "Solidification: —", not "Solidification: 0%" (FR38)
+
+### Story 4.5: Rename a Segment Inline
+
+As a user,
+I want to rename a segment by pressing and holding its name,
+So that I can fix a name quickly without opening a separate screen.
+
+**Acceptance Criteria:**
+
+**Given** a segment's name displayed at the segment list row or the segment detail heading
+**When** the user presses and holds the name for 1 second
+**Then** the name becomes an editable text field in place, pre-filled with the current name, keyboard open, with no shift in the row/heading's layout (FR40, UX-DR25)
+
+**Given** the name is in its editable state
+**When** the user edits the text and presses the keyboard's return/submit key
+**Then** the new name is saved using the same validation and disambiguation rule as Story 4.1, and the field returns to static text showing the new name (FR40)
+
+**Given** the name is in its editable state
+**When** the user taps outside the field without submitting
+**Then** the edit is discarded and the field reverts to the original name (FR40)
+
+**Given** the name is in its editable state
+**When** the user submits an empty name
+**Then** the edit is rejected and the field remains editable with an error, consistent with FR1/FR30's non-empty validation (FR40)
+
+**Given** the segment list row
+**When** the user taps it normally (not a long-press)
+**Then** navigation to the segment detail screen still occurs as before — the long-press threshold does not interfere with the existing tap-to-open behavior (FR40)
+
+## Epic 5: Configurable Overlearning Target (v1.1, added 2026-09-06)
+
+Users can adjust how strict the overlearning target is — from the fixed 50% to anywhere between 50% and 300% — globally, with a change taking effect immediately, including for a session already underway.
+
+### Story 5.1: Configure the Overlearning Target
+
+As a user,
+I want to set the overlearning-% used to calculate my target streak,
+So that I can make the mechanic stricter or more lenient than the default.
+
+**Acceptance Criteria:**
+
+**Given** the segment list screen
+**When** the user taps the gear icon in its header
+**Then** the Settings screen opens, showing the current overlearning-% (default 50%) via a stepper (UX-DR14), a live worked example that recomputes with the value (UX-DR15), and a static floor note explaining `TARGET_FLOOR`=5 (UX-DR16) (FR35, UX-DR13)
+
+**Given** the Settings screen
+**When** the user taps `+` or `−`
+**Then** the value changes by 10 percentage points, is saved immediately with no confirmation step, and the buttons disable at 50% and 300% respectively, with `accessibilityState: { disabled: true }` set so the limit is announced to a screen reader, not just shown visually (FR36, UX-DR14, UX-DR24)
+
+**Given** the overlearning-% has been changed
+**When** a new session is subsequently started
+**Then** its target-streak calculation uses the new value, not the previous one (FR35, FR36 — verified via `calculateTargetStreak`'s new optional parameter, read from `lib/settings.ts` by `useActiveSession`)
+
+### Story 5.2: Apply a Changed Target to an In-Progress Session
+
+As a user,
+I want a target change I make mid-session to take effect immediately,
+So that the app never operates on two different rules at once.
+
+**Acceptance Criteria:**
+
+**Given** a session is in progress
+**When** the user changes the overlearning-% in Settings and returns to that session
+**Then** the displayed target streak reflects the new percentage immediately, with no restart or re-navigation required (FR37)
+
+*(Note: per `architecture.md`, this requires no new mechanism — it verifies the behavior Story 5.1's plumbing already produces, since `target_streak` is derived on every read. Same shape as v1.0's Story 2.9, which verified an already-built guarantee rather than building a new one.)*
+
+### Story 5.3: See a Warning Before Changing Settings Mid-Session
+
+As a user,
+I want to know when changing this setting will affect a session I'm already running,
+So that I'm not surprised by a target that moved without my noticing.
+
+**Acceptance Criteria:**
+
+**Given** an in-progress session exists for any segment
+**When** the user opens the Settings screen
+**Then** a standing notice appears above the stepper: "You have a session in progress for '{segment name}.' Changing this target updates it immediately.", using `accessibilityLiveRegion="polite"` (FR39, UX-DR17, UX-DR24)
+
+**Given** the notice is showing
+**When** the user taps `+`/`−` any number of times
+**Then** the same single notice remains visible throughout — no per-tap confirmation dialog appears (FR39)
+
+**Given** no session is in progress
+**When** the user opens the Settings screen
+**Then** the notice is not rendered at all (FR39)
