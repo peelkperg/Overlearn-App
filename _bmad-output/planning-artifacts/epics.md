@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
@@ -32,6 +32,18 @@ editHistory:
       (a fixed 12-value percentage list) was considered and reverted at
       the user's request; FR36 remains unchanged from its
       architecture.md-committed form (50-300% in 10% steps).
+  - date: '2026-09-06'
+    changes: >-
+      Designed and approved the v1.1 epic structure: Epic 4 (Segment
+      Organization & Insight - FR30-FR34, FR38, FR40) and Epic 5
+      (Configurable Overlearning Target - FR35-FR37, FR39). Consolidated
+      rename/duplicate/sort/Solidification% into one epic per the File
+      Overlap rule, since all four touch the same core files Epic 1
+      already established. Settings kept as a separate epic - a distinct
+      core-file set (new lib/settings.ts, new app/settings.tsx) and a
+      distinct user value (configuring the mechanic vs. organizing
+      segments). No dependency between the two; sequenced Epic 4 before
+      Epic 5 as the lower-risk of the two.
 ---
 
 # Overlearn - Epic Breakdown
@@ -219,7 +231,17 @@ UX-DR25: Inline rename (FR40) — 1-second `onLongPress`/`delayLongPress` thresh
 
 ### v1.1 FR Coverage Map
 
-Epic assignment (Epic 4/Epic 5, or otherwise) is determined in the Epic List step below — not pre-assigned here, consistent with this document's own template convention of leaving the coverage map as a placeholder until epic design happens.
+FR30: Epic 4 - Rename via dedicated screen
+FR31: Epic 4 - Rename propagates to all 5 display sites
+FR32: Epic 4 - Duplicate, no copied history
+FR33: Epic 4 - Sort by name/created/last-practiced/Solidification %
+FR34: Epic 4 - Sort choice persists across relaunches
+FR38: Epic 4 - Solidification % summary on history log
+FR40: Epic 4 - Inline rename via press-and-hold
+FR35: Epic 5 - Settings screen access
+FR36: Epic 5 - 50-300% in 10% steps
+FR37: Epic 5 - Applies live to in-progress session
+FR39: Epic 5 - Standing in-progress-session notice
 
 ## Epic List
 
@@ -237,6 +259,16 @@ Users can run a full practice session end-to-end: start immediately, log Correct
 Users can review a segment's history of completed sessions to judge, in their own terms, whether a passage is actually holding up.
 **FRs covered:** FR27, FR28, FR29
 **Implementation notes:** Standard list screen, depends on Epic 2 producing history entries but is otherwise a self-contained read-only view.
+
+### Epic 4: Segment Organization & Insight (v1.1, added 2026-09-06)
+Users can rename, duplicate, and sort their segments, and see at a glance how solidified each one is — all without leaving the segment-management screens.
+**FRs covered:** FR30, FR31, FR32, FR33, FR34, FR38, FR40
+**Implementation notes:** Consolidated into one epic per the File Overlap rule — rename (both entry points), duplicate, sort, and the Solidification % summary all touch the same core files Epic 1 already established (`SegmentListItem.tsx`, `lib/segments.ts`, `app/index.tsx`, `app/segment/[id].tsx`), plus `lib/history.ts` for FR38's aggregation. New: `app/segment/[id]/rename.tsx` route, inline-edit state in the list row and detail heading. No dependency on Epic 5.
+
+### Epic 5: Configurable Overlearning Target (v1.1, added 2026-09-06)
+Users can adjust how strict the overlearning target is — from the fixed 50% to anywhere between 50% and 300% — globally, with a change taking effect immediately, including for a session already underway.
+**FRs covered:** FR35, FR36, FR37, FR39
+**Implementation notes:** A distinct core-file set from Epic 4 — new `lib/settings.ts` boundary, new `app/settings.tsx` screen, and the optional-parameter threading through `lib/mechanic.ts` → `lib/session-transitions.ts` → `hooks/useActiveSession.ts` that `architecture.md` already resolved as non-breaking. No dependency on Epic 4; sequenced after it as the higher-risk of the two (it touches the core mechanic layer, even though the threading is designed to be non-breaking).
 
 ## Epic 1: Segment Management
 
