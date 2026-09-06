@@ -144,7 +144,15 @@ export default function ActiveSessionScreen() {
   }
 
   if (session.sessionComplete) {
-    return <CompletionScreen session={session} finalTarget={targetStreak} onDone={handleDone} onRepeat={handleRepeat} />;
+    return (
+      <CompletionScreen
+        session={session}
+        segmentName={segment.name}
+        finalTarget={targetStreak}
+        onDone={handleDone}
+        onRepeat={handleRepeat}
+      />
+    );
   }
 
   return (
@@ -155,7 +163,7 @@ export default function ActiveSessionScreen() {
         </Text>
       )}
       <CorrectButton onPress={() => runAction(logCorrect, 'Could not record that. Check that the device has free storage.')} />
-      <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={session.segmentName} />
+      <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={segment.name} />
       <IncorrectButton
         onPress={() => runAction(logIncorrect, 'Could not record that. Check that the device has free storage.')}
         pulsing={incorrectPulse}

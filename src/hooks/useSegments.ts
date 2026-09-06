@@ -16,6 +16,7 @@ export function useSegments() {
   return {
     segments: useSegmentStore(),
     createSegment: segments.createSegment,
+    renameSegment: segments.renameSegment,
     deleteSegment: segments.deleteSegment,
   };
 }

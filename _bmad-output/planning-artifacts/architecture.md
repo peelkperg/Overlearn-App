@@ -623,9 +623,11 @@ Pure — takes pre-computed aggregates rather than reading storage itself, so it
 **Decision:** two new functions in `lib/segments.ts`, reusing existing internals rather than duplicating logic:
 
 ```ts
-function renameSegment(id: string, name: string): void   // FR30
+function renameSegment(id: string, name: string): Segment // FR30
 function duplicateSegment(id: string): Segment            // FR32
 ```
+
+*(`renameSegment`'s return type was corrected from `void` to `Segment` on 2026-09-06, matching the behavior shipped in Story 4.1 — returning the updated record mirrors `createSegment`'s existing contract and lets a caller read back the disambiguated name without a second `getSegment` lookup.)*
 
 - **`renameSegment`** reuses `normalizeSegmentName` and `disambiguate` exactly as `createSegment` does, with one change to `disambiguate`'s collision check: it must exclude the segment's own current name, or renaming "Bar 24" to a different-cased "bar 24" would false-positive-collide with itself.
 - **`duplicateSegment`** reuses `generateId` and `disambiguate` (new id, name run through the same collision logic — "Bar 24 arpeggio" → "Bar 24 arpeggio (2)"), sets a fresh `createdAt`, and does not call `deleteHistory`/copy any history key — the duplicate's `history.{newSegmentId}` key simply never gets written, which is the correct "no copied history" behavior by omission rather than an explicit clear.

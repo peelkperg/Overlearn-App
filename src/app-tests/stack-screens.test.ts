@@ -16,11 +16,12 @@ import { STACK_SCREENS } from '@/app/stack-screens';
 describe('stack-screens STACK_SCREENS [Review][Patch]', () => {
   // One entry per router.push/replace target in the app, as of:
   // src/app/index.tsx, src/app/segment/[id].tsx, src/app/segment/new.tsx,
-  // src/app/session/[id].tsx.
+  // src/app/segment/[id]/rename.tsx, src/app/session/[id].tsx.
   const navigatedRoutes: (typeof STACK_SCREENS)[number][] = [
-    'index', // router.replace('/') — segment/new.tsx, session/[id].tsx
+    'index', // router.replace('/') — segment/new.tsx, segment/[id]/rename.tsx, session/[id].tsx
     'segment/new', // index.tsx's Create action
     'segment/[id]', // index.tsx's SegmentListItem onOpen
+    'segment/[id]/rename', // index.tsx's SegmentListItem onRename (row-menu Rename, Story 4.1)
     'session/[id]', // index.tsx's resume/redirect, segment/[id].tsx's Start
   ];
 

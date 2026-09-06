@@ -8,7 +8,7 @@ import { act, fireEvent, render, renderHook } from '@testing-library/react-nativ
 import { router } from 'expo-router';
 
 import { useActiveSession } from '@/hooks/useActiveSession';
-import { createSegment } from '@/lib/segments';
+import { createSegment, renameSegment } from '@/lib/segments';
 import { getObject } from '@/lib/storage';
 import type { SessionState } from '@/lib/types';
 
@@ -75,6 +75,22 @@ describe('HomeScreen [Story 1.3]', () => {
 
     expect(view.queryByTestId(`segment-row-${created.id}`)).toBeNull();
   });
+
+  // Regression guard only — the list row already read the live name in
+  // v1.0, so FR31 required no change here. The test exists so a future
+  // refactor toward a stored name snapshot fails loudly. [Story 4.1, C23]
+  it('reflects a rename in the list row (FR31)', async () => {
+    const created = createSegment('Bar 24 arpeggio');
+    const view = await render(<HomeScreen />);
+
+    await act(async () => {
+      renameSegment(created.id, 'Bar 24-26 run');
+    });
+
+    expect(view.queryByText('Bar 24 arpeggio')).toBeNull();
+    expect(view.getByText('Bar 24-26 run')).toBeTruthy();
+  });
+
 });
 
 // Story 2.10 (FR24-FR26): an interrupted (session_complete = false) session

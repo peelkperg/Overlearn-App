@@ -1,10 +1,10 @@
 // See index.test.tsx's header comment on why this file is not colocated
 // under src/app/.
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { readHistory } from '@/lib/history';
-import { createSegment } from '@/lib/segments';
+import { createSegment, renameSegment } from '@/lib/segments';
 
 import ActiveSessionScreen from '@/app/session/[id]';
 
@@ -125,6 +125,34 @@ describe('ActiveSessionScreen [Story 2.1-2.8, 2.4]', () => {
 
     expect(readHistory(segment.id)).toHaveLength(1);
     expect(replaced).toHaveBeenCalledWith('/');
+  });
+
+  it('reflects a rename made mid-session in the streak readout (FR31)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    expect(view.getByText('Bar 24 arpeggio')).toBeTruthy();
+
+    await act(async () => {
+      renameSegment(segment.id, 'Bar 24-26 run');
+    });
+
+    expect(view.queryByText('Bar 24 arpeggio')).toBeNull();
+    expect(view.getByText('Bar 24-26 run')).toBeTruthy();
+  });
+
+  it('reflects a rename made mid-session in the completion summary (FR31)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    await pressTimes(view, 'correct-button', 5);
+    await act(async () => {
+      renameSegment(segment.id, 'Bar 24-26 run');
+    });
+
+    expect(view.getByTestId('completion-stats')).toHaveTextContent(/Bar 24-26 run/);
   });
 
   it('Repeat writes the history entry for the just-completed session, then starts a new one (FR14, FR15)', async () => {

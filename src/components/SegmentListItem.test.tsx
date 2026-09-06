@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 
 import { SegmentListItem } from './SegmentListItem';
 
@@ -9,7 +9,7 @@ const segment = {
 };
 
 const renderRow = (overrides: Partial<Parameters<typeof SegmentListItem>[0]> = {}) =>
-  render(<SegmentListItem segment={segment} onOpen={jest.fn()} onDelete={jest.fn()} {...overrides} />);
+  render(<SegmentListItem segment={segment} onOpen={jest.fn()} onRename={jest.fn()} onDelete={jest.fn()} {...overrides} />);
 
 describe('SegmentListItem [Story 1.4, 1.6]', () => {
   it('opens the segment when the row is tapped', async () => {
@@ -24,6 +24,30 @@ describe('SegmentListItem [Story 1.4, 1.6]', () => {
   it('keeps the actions behind a menu rather than on the row', async () => {
     const view = await renderRow();
     expect(view.queryByTestId('segment-row-delete-segment-1')).toBeNull();
+  });
+
+  it('lists Rename above Delete (UX-DR20)', async () => {
+    const view = await renderRow();
+    await fireEvent.press(view.getByTestId('segment-row-menu-segment-1'));
+
+    const menu = view.getByTestId('segment-row-menu-backdrop-segment-1');
+    const buttons = within(menu).getAllByRole('button');
+    const renameIndex = buttons.findIndex((button) => button.props.testID === 'segment-row-rename-segment-1');
+    const deleteIndex = buttons.findIndex((button) => button.props.testID === 'segment-row-delete-segment-1');
+
+    expect(renameIndex).toBeGreaterThanOrEqual(0);
+    expect(deleteIndex).toBeGreaterThan(renameIndex);
+  });
+
+  it('renames from the menu and closes it', async () => {
+    const onRename = jest.fn();
+    const view = await renderRow({ onRename });
+
+    await fireEvent.press(view.getByTestId('segment-row-menu-segment-1'));
+    await fireEvent.press(view.getByTestId('segment-row-rename-segment-1'));
+
+    expect(onRename).toHaveBeenCalled();
+    expect(view.queryByTestId('segment-row-rename-segment-1')).toBeNull();
   });
 
   it('deletes from the menu', async () => {

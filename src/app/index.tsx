@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useActiveSession } from '@/hooks/useActiveSession';
-import { useSegments } from '@/hooks/useSegments';
+import { useSegment, useSegments } from '@/hooks/useSegments';
 import { useTheme } from '@/hooks/use-theme';
 
 // Story 1.3: View the Segment List (FR2, FR4, FR7, UX-DR11).
@@ -19,6 +19,11 @@ import { useTheme } from '@/hooks/use-theme';
 export default function HomeScreen() {
   const { segments, deleteSegment } = useSegments();
   const { session, endSession } = useActiveSession();
+  // Story 4.1 (FR31): live lookup, not session.segmentName's frozen
+  // snapshot — see architecture.md's Rename Propagation table. The `??`
+  // fallback is a defensive path for the (currently unreachable) case
+  // where the live segment lookup fails.
+  const activeSegment = useSegment(session?.segmentId);
   const [resumed, setResumed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Keyed by the session being redirected for, not a bare boolean: a second
@@ -111,6 +116,7 @@ export default function HomeScreen() {
                 <SegmentListItem
                   segment={item}
                   onOpen={() => router.push(`/segment/${item.id}`)}
+                  onRename={() => router.push(`/segment/${item.id}/rename`)}
                   onDelete={() => runAction(() => deleteSegment(item.id), 'Could not delete that segment.')}
                 />
               )}
@@ -122,7 +128,7 @@ export default function HomeScreen() {
       {session && (
         <ResumeDiscardDialog
           visible={showResumeDialog}
-          segmentName={session.segmentName}
+          segmentName={activeSegment?.name ?? session.segmentName}
           onDiscard={handleDiscard}
           onResume={handleResume}
         />

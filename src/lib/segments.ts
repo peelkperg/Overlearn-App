@@ -50,8 +50,12 @@ export function getSegment(id: string): Segment | undefined {
 // Resume/Discard prompt, where a wrong Discard destroys the wrong session's
 // progress. Names are disambiguated rather than rejected so creation never
 // fails on something the user cannot see. Compared case-insensitively.
-function disambiguate(name: string, existing: Segment[]): string {
-  const taken = new Set(existing.map((segment) => segment.name.toLowerCase()));
+// `excludeId` (Story 4.1): a rename must not collide with its own prior
+// name — createSegment never passes this, since the new segment is never
+// in `existing` yet.
+function disambiguate(name: string, existing: Segment[], excludeId?: string): string {
+  const candidates = excludeId ? existing.filter((segment) => segment.id !== excludeId) : existing;
+  const taken = new Set(candidates.map((segment) => segment.name.toLowerCase()));
   if (!taken.has(name.toLowerCase())) return name;
 
   let suffix = 2;
@@ -88,6 +92,33 @@ export function createSegment(name: string): Segment {
 
   setObject(SEGMENTS_KEY, [...existing, segment]);
   return segment;
+}
+
+// Rename (FR30). Throws on an empty name and on an unknown id — both are
+// defensive guards mirroring createSegment's posture, since this is the
+// actual data-writing function (SegmentForm/the Rename screen are expected
+// to validate first, but this function does not trust that). The new name
+// is disambiguated against every *other* segment (FR30 AC5: a rename to the
+// segment's own current name in a different case must succeed, not collide
+// with itself).
+export function renameSegment(id: string, name: string): Segment {
+  const trimmed = normalizeSegmentName(name);
+  if (trimmed.length === 0) {
+    throw new Error('Segment name must not be empty');
+  }
+
+  const existing = readSegments();
+  const target = existing.find((segment) => segment.id === id);
+  if (!target) {
+    throw new Error(`Segment not found: ${id}`);
+  }
+
+  const renamed: Segment = { ...target, name: disambiguate(trimmed, existing, id) };
+  setObject(
+    SEGMENTS_KEY,
+    existing.map((segment) => (segment.id === id ? renamed : segment)),
+  );
+  return renamed;
 }
 
 // Deletion (FR6): the segment *and all its associated data*. The history

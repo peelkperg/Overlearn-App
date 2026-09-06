@@ -1,10 +1,10 @@
 // See index.test.tsx's header comment on why this file is not colocated
 // under src/app/.
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { writeHistoryEntry } from '@/lib/history';
-import { createSegment } from '@/lib/segments';
+import { createSegment, renameSegment } from '@/lib/segments';
 
 import SegmentDetailScreen from '@/app/segment/[id]';
 
@@ -37,6 +37,22 @@ describe('SegmentDetailScreen [Story 1.4, 3.1]', () => {
     await fireEvent.press(view.getByTestId('segment-detail-start'));
 
     expect(pushed).toHaveBeenCalledWith(`/session/${segment.id}`);
+  });
+
+  // Regression guard only — this heading already read the live name in
+  // v1.0, so FR31 required no change here. The test exists so a future
+  // refactor toward a stored name snapshot fails loudly. [Story 4.1, C23]
+  it('reflects a rename in the detail heading (FR31)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<SegmentDetailScreen />);
+
+    await act(async () => {
+      renameSegment(segment.id, 'Bar 24-26 run');
+    });
+
+    expect(view.queryByText('Bar 24 arpeggio')).toBeNull();
+    expect(view.getByText('Bar 24-26 run')).toBeTruthy();
   });
 
   it('shows "no completed sessions" when history is empty (FR27)', async () => {

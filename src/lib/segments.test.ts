@@ -1,5 +1,5 @@
 import { readHistory, writeHistoryEntry } from './history';
-import { createSegment, deleteSegment, getSegment, readSegments } from './segments';
+import { createSegment, deleteSegment, getSegment, readSegments, renameSegment } from './segments';
 import { readSession, writeSession } from './session';
 import { storage } from './storage';
 
@@ -166,6 +166,65 @@ describe('lib/segments getSegment [Story 1.4]', () => {
   it('returns undefined for an id that does not exist', () => {
     createSegment('Bar 24 arpeggio');
     expect(getSegment('missing-id')).toBeUndefined();
+  });
+});
+
+describe('lib/segments renameSegment [Story 4.1]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('updates and persists the new name', () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    const renamed = renameSegment(segment.id, 'Bar 24-26 run');
+
+    expect(renamed.name).toBe('Bar 24-26 run');
+    expect(getSegment(segment.id)?.name).toBe('Bar 24-26 run');
+  });
+
+  it('leaves id and createdAt unchanged', () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    const renamed = renameSegment(segment.id, 'Bar 24-26 run');
+
+    expect(renamed.id).toBe(segment.id);
+    expect(renamed.createdAt).toBe(segment.createdAt);
+  });
+
+  it('throws on an empty or whitespace-only name and leaves storage unchanged', () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    expect(() => renameSegment(segment.id, '   ')).toThrow();
+    expect(getSegment(segment.id)?.name).toBe('Bar 24 arpeggio');
+  });
+
+  it('throws for an id that does not exist', () => {
+    expect(() => renameSegment('missing-id', 'New name')).toThrow();
+  });
+
+  it('disambiguates a rename that collides with another segment (same case)', () => {
+    createSegment('Bar 24');
+    const other = createSegment('Bar 30');
+
+    expect(renameSegment(other.id, 'Bar 24').name).toBe('Bar 24 (2)');
+  });
+
+  it('disambiguates a rename that collides with another segment (different case)', () => {
+    createSegment('Bar 24');
+    const other = createSegment('Bar 30');
+
+    expect(renameSegment(other.id, 'bar 24').name).toBe('bar 24 (2)');
+  });
+
+  it('excludes the segment itself from the collision check (rename to own name, different case)', () => {
+    const segment = createSegment('Bar 24');
+    expect(renameSegment(segment.id, 'bar 24').name).toBe('bar 24');
+  });
+
+  it('does not affect other segments', () => {
+    const a = createSegment('First');
+    const b = createSegment('Second');
+    renameSegment(a.id, 'Renamed');
+
+    expect(getSegment(b.id)?.name).toBe('Second');
   });
 });
 

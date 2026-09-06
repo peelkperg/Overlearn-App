@@ -10,10 +10,10 @@
 // what caught this: a real device UAT run had tapping Start show Home's
 // resume/discard prompt over the just-started session, and Discard from
 // it left the Active Session screen with no session and no way out.
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
-import { createSegment } from '@/lib/segments';
+import { createSegment, renameSegment } from '@/lib/segments';
 import { writeSession } from '@/lib/session';
 
 import HomeScreen from '@/app/index';
@@ -84,5 +84,35 @@ describe('Home mounted underneath Active Session [Review][Patch, CRITICAL]', () 
     // Discarding clears session.active globally. Active Session must not
     // render a dead blank view for it — it should navigate back to the list.
     expect(replaced).toHaveBeenCalledWith('/');
+  });
+
+  it('reflects a rename made after the interruption in the resume/discard prompt (FR31)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    writeSession({
+      segmentId: segment.id,
+      segmentName: segment.name,
+      currentStreak: 1,
+      totalCorrectThisSession: 1,
+      totalIncorrectThisSession: 0,
+      sessionComplete: false,
+      sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+    });
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+
+    const view = await render(
+      <>
+        <HomeScreen />
+        <ActiveSessionScreen />
+      </>,
+    );
+
+    const dialog = within(view.getByTestId('resume-discard-modal'));
+    expect(dialog.getByText(/Bar 24 arpeggio/)).toBeTruthy();
+
+    await act(async () => {
+      renameSegment(segment.id, 'Bar 24-26 run');
+    });
+
+    expect(dialog.getByText(/Bar 24-26 run/)).toBeTruthy();
   });
 });

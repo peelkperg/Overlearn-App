@@ -5,6 +5,10 @@ import type { SessionState } from '@/lib/types';
 
 type CompletionScreenProps = {
   session: SessionState;
+  // Story 4.1 (FR31): sourced live via useSegment(id), not
+  // session.segmentName's frozen snapshot — see architecture.md's Rename
+  // Propagation table.
+  segmentName: string;
   finalTarget: number;
   onDone: () => void;
   onRepeat: () => void;
@@ -15,7 +19,7 @@ type CompletionScreenProps = {
 // per the UX spec — plain stats, single checkmark, no celebratory UI.
 // Done (FR14, Story 2.7) and Repeat (FR15, Story 2.8) wiring is the
 // caller's responsibility via the onDone/onRepeat props.
-export function CompletionScreen({ session, finalTarget, onDone, onRepeat }: CompletionScreenProps) {
+export function CompletionScreen({ session, segmentName, finalTarget, onDone, onRepeat }: CompletionScreenProps) {
   const totalAttempts = session.totalCorrectThisSession + session.totalIncorrectThisSession;
 
   return (
@@ -23,7 +27,7 @@ export function CompletionScreen({ session, finalTarget, onDone, onRepeat }: Com
       <Text style={styles.check}>✓</Text>
       <Text style={styles.title}>Session Complete</Text>
       <Text testID="completion-stats" style={styles.stats}>
-        {session.segmentName}
+        {segmentName}
         {'\n'}Target reached: {finalTarget}
         {'\n'}
         {session.totalCorrectThisSession} correct · {session.totalIncorrectThisSession} incorrect ·{' '}
