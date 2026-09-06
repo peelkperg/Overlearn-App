@@ -1,9 +1,37 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/architecture.md
+lastUpdated: '2026-09-06'
+versionCoverage:
+  v1.0: 'Everything above the "v1.1 Requirements Inventory" heading, and Epic 1-3 below "## Epic List". Shipped, frozen at git tag v1.0.0.'
+  v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40 minus already-listed v1.0 FRs, UX-DR13-25). Requirements extracted; epic/story design in progress.'
+editHistory:
+  - date: '2026-09-06'
+    changes: >-
+      Extended in place rather than overwritten by the template (this
+      workflow's literal step-01 instruction is destructive - "copy the
+      entire template" - which would have discarded Epic 1-3's existing
+      story-level detail; confirmed with the user to extend instead,
+      matching the pattern already used for prd.md,
+      ux-design-specification.md, and architecture.md). Added a "v1.1
+      Requirements Inventory" section: FR30-FR40 (11 new FRs - FR40 was
+      added mid-extraction, see below), no new NFRs, 6 architecture-derived
+      additional requirements, and UX-DR13-25 (13 new UX design
+      requirements). FR Coverage Map left for the Epic List step, per this
+      document's own template convention.
+
+      FR40 (a second rename entry point via 1-second press-and-hold,
+      alongside FR30's dedicated screen) surfaced during this extraction
+      as a genuinely new capability, not a v1.0 requirement being
+      recorded - added to prd.md, ux-design-specification.md, and
+      architecture.md first, in that order, before being included here,
+      preserving the PRD-first spec chain. A candidate change to FR36
+      (a fixed 12-value percentage list) was considered and reverted at
+      the user's request; FR36 remains unchanged from its
+      architecture.md-committed form (50-300% in 10% steps).
 ---
 
 # Overlearn - Epic Breakdown
@@ -136,6 +164,62 @@ FR26: Epic 2 - Discard leaves no history record
 FR27: Epic 3 - Chronological completed-session list
 FR28: Epic 3 - History entry fields (date, target, mistakes, attempts)
 FR29: Epic 3 - Non-completed sessions excluded
+
+## v1.1 Requirements Inventory (added 2026-09-06)
+
+Everything above this heading is v1.0, shipped and frozen at git tag `v1.0.0`. Everything below is v1.1 — designed (`prd.md`, `ux-design-specification.md`, `architecture.md` all extended 2026-09-06), not yet implemented. Epic assignment for these FRs appears in the v1.1 Epic List below, alongside the unchanged v1.0 Epic List.
+
+### v1.1 Functional Requirements
+
+**Segment Management extensions**
+FR30: User can rename an existing segment (dedicated screen)
+FR31: System reflects a segment rename in every place its name is displayed (5 sites: list row, detail heading, active-session readout, completion summary, resume/discard prompt)
+FR32: User can duplicate an existing segment; disambiguated name, no copied history
+FR33: User can sort the segment list by name, creation date, last-practiced date, or Solidification % (aggregate correct ÷ total across all completed sessions for the segment)
+FR34: System persists the selected sort option and direction across app relaunches
+FR38: User can view a segment's Solidification % (FR33's definition) at the top of its history log
+FR40: User can rename a segment via 1-second press-and-hold at the list row or detail heading, editing in place; coexists with FR30's dedicated screen
+
+**Settings (new capability group)**
+FR35: User can access a Settings screen to configure the overlearning-% target
+FR36: System accepts any overlearning-% value from 50% to 300% in 10-percentage-point increments; no other value is selectable
+FR37: System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress
+FR39: When an in-progress session exists, the Settings screen shows a standing notice that a change applies to it immediately
+
+### v1.1 NonFunctional Requirements
+
+None added in v1.1.
+
+### v1.1 Additional Requirements (from architecture.md's v1.1 section)
+
+- New `lib/settings.ts` storage boundary — single MMKV key `settings.general`, same envelope/type-guard pattern as `lib/segments.ts`; default `{ overlearningPercent: 50, sortKey: 'createdAt', sortDirection: 'asc' }` reproduces v1.0 behavior exactly until a user opens Settings.
+- `calculateTargetStreak`, `session-transitions.ts`'s `logCorrect`/`logIncorrect` each gain an **optional** second parameter (`overlearningLevel`) defaulting to the v1.0 constant — non-breaking; every v1.0 call site and test is unmodified.
+- FR37 (live mid-session apply) needs no new mechanism — `target_streak` was already derived-on-read, never stored, in v1.0.
+- FR39 (in-progress-session detection) needs no new mechanism — `session.active` is a single MMKV key app-wide, so `useActiveSession()` already answers the question.
+- New `calculateSolidificationPercent` in `lib/history.ts`, shared by FR33's sort and FR38's display; returns `null` (not `0`) for "no completed sessions yet" so the UI can render an em dash rather than a misleading 0%.
+- `useSegments()` gains a `subscribeToHistory` subscription it didn't need in v1.0, so the list re-renders on session completion when sorted by last-practiced or Solidification %.
+- FR40 calls the existing `renameSegment` from a second UI entry point — no new `lib/` function, no schema change.
+- Two new routes (`app/settings.tsx`, `app/segment/[id]/rename.tsx`) — both must be added to `src/app/stack-screens.ts` and given a `<Stack.Screen>` entry in `_layout.tsx` per the project's standing regression guard (a route missing from either is silently dropped in production with no dev-mode signal).
+
+### v1.1 UX Design Requirements
+
+UX-DR13: Settings reached via a gear icon in the Home header only — never reachable mid-session, keeping the Active Session screen untouched
+UX-DR14: Overlearning-% stepper (− / value / +), 10-point steps, both buttons `disabled` at their bound (50%/300%)
+UX-DR15: Live worked example line beside the stepper, recomputing on every step (e.g. "At 150%, 10 mistakes sets a target of 15")
+UX-DR16: Static floor note explaining `TARGET_FLOOR` = 5, so a low percentage's floor behavior isn't surprising
+UX-DR17: Standing in-progress-session notice (FR39) — visible the whole time Settings is open with a session active, not a per-tap confirmation
+UX-DR18: `Sort: X ▾` pressable above the segment list, reusing the existing row-menu Modal component
+UX-DR19: Sort menu — tapping the active option flips its direction; tapping a different option applies that option's default direction; hidden at 0–1 segments
+UX-DR20: Row action menu gains Rename, Duplicate above Delete (destructive action stays last)
+UX-DR21: Duplicate confirms via a standard snackbar, not a new feedback tier (a copy can sort off-screen, so silent insertion would read as a no-op)
+UX-DR22: Rename screen reuses `SegmentForm` unchanged, submit label "Rename"
+UX-DR23: Solidification % summary line on Segment Detail, between the heading and the history entry list; renders "—" (not "0%") when no history exists yet
+UX-DR24: Accessibility — stepper bounds carry `accessibilityState: { disabled: true }`, sort control announces both the selected key and direction, in-progress notice and duplicate snackbar use `accessibilityLiveRegion="polite"`
+UX-DR25: Inline rename (FR40) — 1-second `onLongPress`/`delayLongPress` threshold; swaps `<Text>` for a pre-filled `<TextInput>` in place with no layout shift; commits via `onSubmitEditing`; blur without submitting reverts rather than saving a partial edit; static state carries `accessibilityHint="Press and hold to rename"`
+
+### v1.1 FR Coverage Map
+
+Epic assignment (Epic 4/Epic 5, or otherwise) is determined in the Epic List step below — not pre-assigned here, consistent with this document's own template convention of leaving the coverage map as a placeholder until epic design happens.
 
 ## Epic List
 
