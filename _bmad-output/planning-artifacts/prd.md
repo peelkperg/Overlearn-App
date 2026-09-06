@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete]
+stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit]
 releaseMode: phased
 inputDocuments:
   - _bmad-output/planning-artifacts/product-brief-Overlearn.md
@@ -11,6 +11,23 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
+lastEdited: '2026-09-06'
+editHistory:
+  - date: '2026-09-06'
+    changes: >-
+      Added FR30-FR34 (segment rename with live-name propagation, duplicate,
+      list sorting incl. Solidification %) and FR35-FR37 (Settings screen,
+      configurable OVERLEARNING_LEVEL 50-300% in 10% steps, applies live to
+      in-progress sessions), all scoped as v1.1 and marked as such per-FR.
+      Pulled the overlearning-% Settings screen forward from Growth Features
+      (Phase 2) into v1.1, with an expanded free-range design replacing the
+      originally-scoped 50%/100% toggle. Added a v1.1 Product Scope section;
+      MVP section left describing shipped v1.0 (FR1-FR29) only. Updated the
+      Mechanic Specification's Constants section to distinguish v1.0's fixed
+      0.5 from v1.1's configurable value, extended Journey 5, and updated the
+      Journey Requirements Summary. Also corrected FR15 (v1.0): Repeat writes
+      the just-completed session's history entry, matching the bug fix
+      shipped 2026-09-06.
 ---
 
 # Product Requirements Document - Overlearn
@@ -66,9 +83,22 @@ Deterministic, 100%-unit-tested target-streak calculation and streak-reset logic
 
 **Must-Have Capabilities:** Segment CRUD; immediate-start session with live target computation (floor 5, 50% recalculation, no per-session confirmation); Correct/Incorrect/Restart three-control active session (Restart confirm-gated); interruption persistence with resume/discard; session completion (Done/Repeat); per-segment history log (completed sessions only, with mistake counts). Full capability contract in Functional Requirements below.
 
+**Status:** shipped and UAT-passed as v1.0.0 (FR1–FR29). Frozen at git tag `v1.0.0`; the v1.0 spec as-shipped is recoverable via `git show v1.0.0:_bmad-output/planning-artifacts/prd.md`.
+
+### v1.1 — Segment Organization & Configurable Target (added 2026-09-06)
+
+Scoped after v1.0 shipped; **not** part of the v1.0 MVP. Four independent capabilities:
+
+- **Segment rename** (FR30, FR31) — with the renamed name reflected everywhere it is displayed, including past history entries and any in-progress session.
+- **Segment duplicate** (FR32) — disambiguated name, no copied history.
+- **Segment list sorting** (FR33, FR34) — by name, creation date, last-practiced date, or Solidification %; selection persisted across launches.
+- **Settings screen with a configurable overlearning-%** (FR35–FR37) — 50–300% in 10% increments, applied live to in-progress sessions.
+
 ### Growth Features (Phase 2, Post-MVP)
 
-Voice-command Correct/Incorrect input (user-selectable words) — the planned fix for hands-occupied interaction friction identified during review. Settings screen to choose the 50%/100% overlearning level globally (fixed at 50% for MVP).
+Voice-command Correct/Incorrect input (user-selectable words) — the planned fix for hands-occupied interaction friction identified during review.
+
+**Scope note (2026-09-06):** the overlearning-% Settings screen, originally scoped here as a fixed 50%/100% toggle, was pulled forward into **v1.1** (not v1.0) with an expanded design — a free 50–300% range in 10% increments, not just two fixed modes. See the v1.1 section above, the Mechanic Specification's Constants section, and FR35–FR37.
 
 ### Vision (Phase 3, Expansion)
 
@@ -146,9 +176,13 @@ Metronome, tuner, practice time tracking, audio-based automatic correctness dete
 
 **Capabilities revealed:** multiple concurrent segments; delete action; per-segment history log (date, final target achieved, total mistakes, total attempts) as a plain list, completed-sessions-only.
 
+**Extension (v1.1, added 2026-09-06 — not part of shipped v1.0):** With 6 segments, Mara also renames one whose focus shifted ("Bar 24 arpeggio" → "Bar 24-26 run"), and its history keeps making sense afterward — every past entry and any session in progress shows the new name, not a frozen snapshot of the old one. She duplicates another to isolate a slower-tempo variant as its own tracked segment, starting with a clean history rather than inheriting the original's. With more segments than fit her attention at once, she sorts the list by Solidification % (all-time correct ÷ total attempts per segment) to see which passages are least reliable right now, instead of scanning by memory.
+
+**Capabilities revealed (extension, v1.1):** rename with live propagation to history and any in-progress session; duplicate with a disambiguated name and no copied history; list sorting by name, creation date, last-practiced date, or Solidification %, remembered across app launches.
+
 ### Journey Requirements Summary
 
-Together these five journeys cover every functional area in the Functional Requirements below: segment management and navigation (FR1–FR7), immediate session start with live target computation (FR8–FR12), the three-control active-session loop with reset-on-miss and Restart's confirm-gated full reset (FR16–FR22), interruption persistence with resume/discard (FR23–FR26), session completion with Done/Repeat (FR13–FR15), and the per-segment history log restricted to completed sessions and carrying mistake counts for legibility (FR27–FR29). No additional user types (admin, support, API) apply to this single-user offline app.
+Together these five journeys cover every functional area in the Functional Requirements below: segment management and navigation (FR1–FR7), immediate session start with live target computation (FR8–FR12), the three-control active-session loop with reset-on-miss and Restart's confirm-gated full reset (FR16–FR22), interruption persistence with resume/discard (FR23–FR26), session completion with Done/Repeat (FR13–FR15), and the per-segment history log restricted to completed sessions and carrying mistake counts for legibility (FR27–FR29). FR1–FR29 are v1.0, shipped. Journey 5's v1.1 extension covers segment rename, duplicate, and list sorting (FR30–FR34); the v1.1 Settings screen and configurable overlearning-% (FR35–FR37) is a global preference rather than a step within any single journey — it changes how FR9/FR10's target calculation behaves across all of them. No additional user types (admin, support, API) apply to this single-user offline app.
 
 ## Mobile App Specific Requirements
 
@@ -188,8 +222,8 @@ This section is the authoritative definition of the target-streak mechanic. Func
 
 ### Constants
 
-- `TARGET_FLOOR` = **5** — the minimum possible target, never undercut.
-- `OVERLEARNING_LEVEL` = **0.5** (50%) — a fixed global constant for MVP. Not user-configurable; a Settings screen to choose 50%/100% is Phase 2 scope.
+- `TARGET_FLOOR` = **5** — the minimum possible target, never undercut. Fixed, not user-configurable, in every version.
+- `OVERLEARNING_LEVEL` — **v1.0:** a fixed global constant of **0.5** (50%), not user-configurable. **v1.1 (FR35–FR37):** user-configurable, default **0.5**, valid range 0.5–3.0 (50%–300%) in 0.1 (10%) increments, set via the Settings screen. A change applies immediately to `target_streak`'s next recalculation, including for a session already in progress — from v1.1 the formula below always reads the current value, never a value captured at session start.
 
 ### Target Calculation
 
@@ -199,7 +233,7 @@ target_streak = max(TARGET_FLOOR, ceil(total_incorrect_this_session * OVERLEARNI
 
 Evaluated at session start and re-evaluated after every increment of `total_incorrect_this_session`.
 
-**Boundary behavior.** At `OVERLEARNING_LEVEL` = 0.5, the floor governs until `total_incorrect_this_session` **exceeds 10**. The first observable increase is at 11:
+**Boundary behavior.** At the default `OVERLEARNING_LEVEL` = 0.5, the floor governs until `total_incorrect_this_session` **exceeds 10**. The first observable increase is at 11 (a higher configured `OVERLEARNING_LEVEL` shifts this boundary earlier — e.g. at 1.0, it shifts to `total_incorrect_this_session` = 6):
 
 | `total_incorrect_this_session` | `target_streak` |
 |---|---|
@@ -228,6 +262,11 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR5: **REMOVED** — was "User can archive a segment." Cut post-implementation (2026-09-02) to optimize data storage: the feature had no way to view or restore an archived segment, making it a one-way hide. ID retained, not reassigned.
 - FR6: User can delete a segment
 - FR7: User is presented with a means to create a first segment when none exist
+- FR30: **(v1.1)** User can rename an existing segment (added 2026-09-06)
+- FR31: **(v1.1)** System reflects a segment rename in every place its name is displayed — past history entries and the name shown on any in-progress session for that segment — rather than freezing the name at the time each was recorded (added 2026-09-06)
+- FR32: **(v1.1)** User can duplicate an existing segment; the copy gets a disambiguated name (same collision rule as FR1's creation), a fresh identity, and no copied history (added 2026-09-06)
+- FR33: **(v1.1)** User can sort the segment list by name, creation date, most recent practice date, or Solidification %, where Solidification % = (sum of correct repetitions across every completed session for that segment) ÷ (sum of total repetitions across those same sessions) — one aggregate ratio per segment, not an average of per-session percentages; a segment with no completed sessions is treated as 0% / oldest-possible-date for sorting purposes regardless of sort direction (added 2026-09-06)
+- FR34: **(v1.1)** System persists the user's selected sort option and direction across app relaunches (added 2026-09-06)
 
 ### Practice Session Lifecycle
 
@@ -238,7 +277,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR12: System completes a session automatically once the current correct-streak target is met
 - FR13: User can view a session-completion summary showing the segment, the final target achieved, total mistakes, and total attempts for that session
 - FR14: User can end a completed session (Done), which writes a history entry
-- FR15: User can immediately begin a new session for the same segment (Repeat)
+- FR15: User can immediately begin a new session for the same segment (Repeat). The just-completed session's history entry is written first, exactly as Done does per FR14 — reaching completion is what earns a history entry, not which of the two buttons is pressed afterward. (Corrected 2026-09-06: shipped v1.0 code discarded that entry on Repeat, recorded as a bug and fixed; FR29's exclusion covers *abandoned or reset* sessions, never a completed one.)
 
 ### Active Session Interaction
 
@@ -262,6 +301,12 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR27: User can view a chronological list of completed sessions for a segment
 - FR28: Each history entry displays the date, the final target streak achieved, total mistakes for that session, and total attempts
 - FR29: System excludes non-completed sessions (abandoned or reset) from the history log
+
+### Settings (v1.1, added 2026-09-06)
+
+- FR35: **(v1.1)** User can access a Settings screen to configure the overlearning-% target used in the Mechanic Specification's `OVERLEARNING_LEVEL`
+- FR36: **(v1.1)** System accepts any overlearning-% value from 50% to 300% in 10-percentage-point increments; no other value is selectable
+- FR37: **(v1.1)** System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change (supersedes any assumption that `target_streak` is fixed for a session's duration once started)
 
 ## Non-Functional Requirements
 

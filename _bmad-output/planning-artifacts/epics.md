@@ -390,7 +390,9 @@ So that I can keep practicing without extra navigation.
 
 **Given** the Completion screen is showing
 **When** the user taps Repeat
-**Then** a new session begins immediately for the same segment, following the same start behavior as Story 2.1 (`0/5`, no history entry written for the just-completed session unless Done was tapped first) (FR15)
+**Then** the just-completed session's history entry is written first (same as Done, FR14), and then a new session begins immediately for the same segment following the same start behavior as Story 2.1 (`0/5`) (FR14, FR15)
+
+**Correction (2026-09-06):** this AC previously read "no history entry written for the just-completed session unless Done was tapped first," citing FR29. That was wrong and shipped as a bug: FR29 excludes *abandoned or reset* sessions from history, not completed ones, and a session showing the Completion screen has already reached its target. Fixed in code (`handleRepeat` now calls `complete()` before `start()`) and in PRD FR15.
 
 ### Story 2.9: Verify Interruption Survival on Background or Kill
 
