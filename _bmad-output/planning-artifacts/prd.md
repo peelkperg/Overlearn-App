@@ -54,6 +54,19 @@ editHistory:
       also visible somewhere. FR39: the Settings screen shows a standing
       notice - not a per-tap confirmation - when an in-progress session
       exists, since FR37 makes the change apply to it immediately.
+  - date: '2026-09-06'
+    changes: >-
+      Added FR40 during epics-and-stories requirements extraction: a
+      second rename entry point, alongside FR30's dedicated screen -
+      press-and-hold a segment's name for 1 second at the list row or
+      detail heading to edit it in place, submit via the keyboard's
+      return action. Confirmed with the user that both rename paths
+      coexist (neither replaces the other), and that inline editing
+      applies only at those two sites, not at the three read-only name
+      displays (active session, completion, resume/discard). FR36 was
+      considered for a change to a fixed 12-value list but reverted to
+      its already-committed form (50-300% in 10% steps) at the user's
+      request - no change made there.
 ---
 
 # Product Requirements Document - Overlearn
@@ -210,7 +223,7 @@ Metronome, tuner, practice time tracking, audio-based automatic correctness dete
 
 ### Journey Requirements Summary
 
-Together these five journeys cover every functional area in the Functional Requirements below: segment management and navigation (FR1–FR7), immediate session start with live target computation (FR8–FR12), the three-control active-session loop with reset-on-miss and Restart's confirm-gated full reset (FR16–FR22), interruption persistence with resume/discard (FR23–FR26), session completion with Done/Repeat (FR13–FR15), and the per-segment history log restricted to completed sessions and carrying mistake counts for legibility (FR27–FR29). FR1–FR29 are v1.0, shipped. Journey 5's v1.1 extension covers segment rename, duplicate, and list sorting (FR30–FR34, FR38 — the last displaying what FR33 introduced as a sort-only value); the v1.1 Settings screen and configurable overlearning-% (FR35–FR37, FR39) is a global preference rather than a step within any single journey — it changes how FR9/FR10's target calculation behaves across all of them. No additional user types (admin, support, API) apply to this single-user offline app.
+Together these five journeys cover every functional area in the Functional Requirements below: segment management and navigation (FR1–FR7), immediate session start with live target computation (FR8–FR12), the three-control active-session loop with reset-on-miss and Restart's confirm-gated full reset (FR16–FR22), interruption persistence with resume/discard (FR23–FR26), session completion with Done/Repeat (FR13–FR15), and the per-segment history log restricted to completed sessions and carrying mistake counts for legibility (FR27–FR29). FR1–FR29 are v1.0, shipped. Journey 5's v1.1 extension covers segment rename, duplicate, and list sorting (FR30–FR34, FR38, FR40 — FR40 is a second rename entry point alongside FR30, and FR38 displays what FR33 introduced as a sort-only value); the v1.1 Settings screen and configurable overlearning-% (FR35–FR37, FR39) is a global preference rather than a step within any single journey — it changes how FR9/FR10's target calculation behaves across all of them. No additional user types (admin, support, API) apply to this single-user offline app.
 
 ## Mobile App Specific Requirements
 
@@ -297,6 +310,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR32: **(v1.1)** User can duplicate an existing segment; the copy gets a disambiguated name (same collision rule as FR1's creation), a fresh identity, and no copied history (added 2026-09-06)
 - FR33: **(v1.1)** User can sort the segment list by name, creation date, most recent practice date, or Solidification %, where Solidification % = (sum of correct repetitions across every completed session for that segment) ÷ (sum of total repetitions across those same sessions) — one aggregate ratio per segment, not an average of per-session percentages; a segment with no completed sessions is treated as 0% / oldest-possible-date for sorting purposes regardless of sort direction (added 2026-09-06)
 - FR34: **(v1.1)** System persists the user's selected sort option and direction across app relaunches (added 2026-09-06)
+- FR40: **(v1.1)** User can rename a segment by pressing and holding its name for 1 second at the segment list row or the segment detail heading, which turns the name into an editable field in place; submitting via the keyboard's return/enter action saves the new name. This is an additional rename entry point alongside FR30's dedicated Rename screen — both exist; neither replaces the other. Applies only at these two sites, not at the active-session readout, completion summary, or resume/discard prompt, which remain read-only displays of the current name (per FR31). Uses the same name validation and disambiguation rule as FR30. (added 2026-09-06)
 
 ### Practice Session Lifecycle
 
