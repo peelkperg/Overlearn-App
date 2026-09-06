@@ -6,7 +6,7 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Design Additions" heading. Shipped, frozen at git tag v1.0.0.'
-  v1.1: 'The "v1.1 Design Additions" section — Settings screen (FR35-FR37), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31). Designed, not implemented.'
+  v1.1: 'The "v1.1 Design Additions" section — Settings screen with in-progress-session notice (FR35-FR37, FR39), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31), history log Solidification % summary (FR38). Designed, not implemented.'
 editHistory:
   - date: '2026-09-06'
     changes: >-
@@ -24,6 +24,18 @@ editHistory:
       System Foundation. Two open questions logged rather than silently
       resolved (mid-session settings change; Solidification % never being
       displayed despite being sortable).
+  - date: '2026-09-06'
+    changes: >-
+      Resolved both open questions, backed by new PRD FR38/FR39. Settings
+      screen gains a standing in-progress-session notice (FR39) - shown
+      whenever a session is active, not a per-tap confirmation, since
+      changing a target is neither destructive nor irreversible. Segment
+      history log gains a Solidification % summary line (FR38) between
+      the heading and the entry list, using an em dash rather than "0%"
+      when no history exists yet to avoid misreading zero history as zero
+      accuracy. The sort menu itself still shows no value, only the
+      selected criterion - Solidification % is displayed in exactly one
+      place, the history log summary.
 ---
 
 # UX Design Specification Overlearn
@@ -496,6 +508,10 @@ Still no tab bar and no drawer. Settings and Rename are both leaf screens with a
 
    The example uses a fixed illustrative mistake count (10) so only the outcome changes as the user steps, keeping the sentence stable enough to re-read at a glance. This exists because the setting is otherwise abstract: the percentage applies to mistakes made, a quantity that is not on screen at the moment of choosing.
 4. **Floor note** — one line, small, neutral: *"A session never targets fewer than 5 correct in a row."* States the fixed `TARGET_FLOOR` so a user setting 50% understands why low mistake counts still demand 5.
+5. **In-progress-session notice (FR39)** — shown above the stepper, only when an in-progress session exists for any segment: a low-contrast neutral banner, same visual register as the floor note rather than an alert color, reading:
+   > *"You have a session in progress for 'Bar 24 arpeggio.' Changing this target updates it immediately."*
+
+   **Standing notice, not a confirmation gate.** It is present the whole time Settings is open with an active session elsewhere — it does not interrupt the stepper, does not require dismissal, and does not repeat per tap. Ten taps in a row show the same one line the whole time, not ten dialogs. This follows the app's existing rule that friction is reserved for destructive, hard-to-reverse actions (Restart, Delete) — changing a target is neither; the user can step back to the previous value just as easily. Absent when no session is in progress: the row simply isn't rendered, rather than showing an empty or negated state.
 
 **Stepper behavior:**
 
@@ -562,6 +578,19 @@ Duplicate confirms with a standard design-system snackbar: *"Duplicated as 'Bar 
 
 **Name propagation (FR31).** The renamed segment's name must be current in all five display sites the PRD enumerates: segment list row, segment detail heading, active-session streak readout, completion summary, and the resume/discard prompt. No UI design work follows from this — it is a data-sourcing requirement, noted here so the design record matches the FR.
 
+## Segment History Log Addition: Solidification % Summary
+
+**FR38.** The Segment Detail screen's history log gains one summary line, placed between the segment name heading and the list of entries — above the list, not mixed into it, since it describes the whole segment rather than any single session:
+
+> *Solidification: 78%*
+
+- **Value:** identical computation to FR33's sort key — aggregate correct ÷ aggregate total across every completed session for this segment, not an average of per-session percentages.
+- **No history yet:** the line reads *"Solidification: —"* rather than "0%" here specifically (contrast with the sort behavior, which does use 0% to place empty segments consistently) — on the list-sort case 0% is a comparison value the user never reads directly, but on this summary line "0%" would misread as "zero percent correct" rather than "no data yet." Displaying an em dash avoids that misreading.
+- **No new interaction.** Static text, not tappable, not the same control as the sort menu — it answers "how is this segment doing," the sort control answers "how do I want the list ordered."
+- **Type treatment:** standard body/label type, not the large-numeral scale reserved for the Active Session readout and the Settings stepper — this is supporting information on a detail screen, not the screen's primary subject.
+
+This is deliberately the only place Solidification % is ever shown as a number; the sort menu (FR33) shows it only as a selected criterion, never its value, keeping that control's row-menu treatment unchanged from the design above.
+
 ## Component Strategy Additions
 
 Consistent with the v1.0 hybrid strategy — **no new custom components.** All four v1.1 features are built from design-system defaults and components that already exist:
@@ -586,10 +615,14 @@ Inherits the v1.0 bar — WCAG 2.1 AA, 44×44pt minimum targets, no color-alone 
 - **Stepper value** is announced on change, so a screen-reader user hears the new value without re-navigating to it.
 - **Sort control** announces both dimensions: "Sort by last practiced, most recent first" — direction is not conveyed by the `▾` glyph alone.
 - **Duplicate snackbar** uses `accessibilityLiveRegion="polite"`, matching the existing error-message treatment on the segment screens.
+- **In-progress-session notice (FR39)** uses `accessibilityLiveRegion="polite"` and is read as part of the screen's normal content when Settings opens with a session active — it is not an alert interruption, consistent with its standing-notice, non-blocking treatment above.
+- **Solidification % summary (FR38)** is read as ordinary text ("Solidification: 78 percent") — no special announcement treatment needed, since it is static content, not a state change.
 
 The gear icon, being icon-only, carries `accessibilityLabel="Settings"` — the same rule the v1.0 spec applies to the icon-only Correct/Incorrect buttons.
 
-## Open Questions
+## Resolved Questions (2026-09-06)
 
-- **Mid-session settings change** — no warning is designed (see Settings screen above). Deliberate omission, flagged for review after real use.
-- **Solidification % is not displayed anywhere** — FR33 uses it only as a sort key. A user can order by it but never see a segment's actual percentage. This may be the right restraint, or it may make the sort option feel arbitrary; not resolved here because no FR calls for displaying it, and inventing one would violate the No-Invention Rule. Worth a scoping decision before v1.1 implementation.
+Both questions logged when this section was first written have been resolved and specified above, backed by PRD FR38/FR39:
+
+- **Mid-session settings change** → FR39, designed as the standing in-progress-session notice on the Settings screen (see Settings screen above).
+- **Solidification % never displayed** → FR38, designed as the history log's summary line (see Segment History Log Addition above).
