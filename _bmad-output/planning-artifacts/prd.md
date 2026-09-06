@@ -1,5 +1,7 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit]
+stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2]
+validationReports:
+  - _bmad-output/planning-artifacts/validation-report-2026-09-06.md
 releaseMode: phased
 inputDocuments:
   - _bmad-output/planning-artifacts/product-brief-Overlearn.md
@@ -28,6 +30,21 @@ editHistory:
       Journey Requirements Summary. Also corrected FR15 (v1.0): Repeat writes
       the just-completed session's history entry, matching the bug fix
       shipped 2026-09-06.
+  - date: '2026-09-06'
+    changes: >-
+      Second edit cycle, driven by validation-report-2026-09-06.md (overall
+      status WARNING, holistic quality 4/5). Addressed all three PRD
+      findings: (1) annotated the two decisions the PRD still presented as
+      open - platform choice (resolved to React Native / Expo SDK 57) and
+      NFR2's async-write premise (resolved to synchronous MMKV writes) -
+      keeping the original text and appending the resolution rather than
+      rewriting the record; (2) closed FR31's open-ended display-site list
+      into an exhaustive five-site enumeration, so its acceptance criteria
+      are derivable from the FR alone; (3) added a Repeat branch to Journey
+      1's resolution, giving FR15 the journey coverage whose absence
+      produced the shipped history-entry defect. Upstream supersession
+      notes added to product-brief-Overlearn.md and its distillate so they
+      no longer contradict FR35-FR37 on the overlearning-% setting.
 ---
 
 # Product Requirements Document - Overlearn
@@ -124,9 +141,11 @@ Metronome, tuner, practice time tracking, audio-based automatic correctness dete
 
 **Climax:** She plays: Incorrect (streak 0, total mistakes 1, target still 5 — the floor holds). Incorrect (total 2, target still 5). Correct (streak 1). Incorrect (streak resets to 0, total 3, target still 5). Correct, Correct (streak 2). Incorrect (streak 0, total 4, target still 5). Correct, Correct, Correct, Correct, Correct (streak 5) — target reached.
 
-**Resolution:** Session complete. Completion screen shows the segment name, final target achieved (5), and total attempts this session: 8 correct + 4 incorrect = 12. She taps Done — this writes a history entry (only completion writes one). Notably, the target never rose above the floor — it takes more than 10 total mistakes in a session before 50% of that pushes the bar past 5.
+**Resolution:** Session complete. Completion screen shows the segment name, final target achieved (5), and total attempts this session: 8 correct + 4 incorrect = 12. She taps Done — this writes a history entry (only a *completed* session writes one). Notably, the target never rose above the floor — it takes more than 10 total mistakes in a session before 50% of that pushes the bar past 5.
 
-**Capabilities revealed:** segment creation; immediate session start (no input/confirmation step); floor-of-5 starting target; two-way tap loop; streak reset + live target recalculation on miss; completion screen showing final target and attempt totals; Done action writes the history entry.
+**Alternate branch — she wants another round:** Had Mara tapped **Repeat** instead of Done, the outcome for the record is identical: the session she just completed is written to history first, then a fresh session starts immediately at 0/5 for the same segment. Reaching the target is what earns a history entry; which button she presses afterward only decides whether she practices again or returns to the list. A completed session is never lost by choosing to keep going.
+
+**Capabilities revealed:** segment creation; immediate session start (no input/confirmation step); floor-of-5 starting target; two-way tap loop; streak reset + live target recalculation on miss; completion screen showing final target and attempt totals; Done writes the history entry and exits; Repeat writes the same history entry and immediately restarts.
 
 ### Journey 2 — Primary User, Edge Case: Interrupted Session
 
@@ -192,7 +211,7 @@ Overlearn is a single-user, fully offline mobile app with no backend, no account
 
 ### Technical Architecture Considerations
 
-- **Platform:** iOS and Android, cross-platform framework (React Native or Flutter) — undecided, left to the architecture stage since both are equally capable here.
+- **Platform:** iOS and Android, cross-platform framework (React Native or Flutter) — undecided, left to the architecture stage since both are equally capable here. **(Resolved 2026-08-31 — see `architecture.md`: React Native via Expo SDK 57, chosen for existing familiarity and managed-workflow maintenance cost. Only Android has been built and verified to date; iOS is on hold — see `backlog.md`.)**
 - **Offline mode:** Required and total — the entire app must function with no network connectivity, at all times, not as a degraded fallback mode.
 - **Device permissions:** None required. No camera, microphone, location, contacts, or notification permissions requested.
 - **Push notifications:** Explicitly excluded — no notification infrastructure needed.
@@ -204,6 +223,8 @@ No in-app purchases, ads, accounts, or data collection — the app should qualif
 ### Implementation Considerations
 
 Local persistence (segment + session state, history log) must survive app kill/background per NFR3, and writes must not block the <100ms tap-to-UI-update budget (NFR1–NFR2) — per the party-mode architecture review, this implies async/queued disk writes rather than synchronous persist-then-render (flagged for the architecture stage, not decided here).
+
+**(Resolved 2026-08-31 — see `architecture.md` → Core Architectural Decisions. The async/queued-write assumption above did not survive contact with the architecture: MMKV writes complete in microseconds via JSI, so session state is written **synchronously** on every tap and the latency budget still holds. The PRD's "riskiest assumption" was retired by removing the async queue entirely rather than by engineering around it. The constraint in NFR1–NFR2 is unchanged and still met; only the anticipated mechanism differs.)**
 
 ## Mechanic Specification
 
@@ -263,7 +284,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR6: User can delete a segment
 - FR7: User is presented with a means to create a first segment when none exist
 - FR30: **(v1.1)** User can rename an existing segment (added 2026-09-06)
-- FR31: **(v1.1)** System reflects a segment rename in every place its name is displayed — past history entries and the name shown on any in-progress session for that segment — rather than freezing the name at the time each was recorded (added 2026-09-06)
+- FR31: **(v1.1)** System reflects a segment rename in every place its name is displayed, rather than freezing the name at the time each record was created. The complete set of display sites: (a) the segment list row, (b) the segment detail screen heading, (c) the active-session streak readout, (d) the session completion summary, and (e) the resume/discard prompt for an interrupted session. History entries display the segment's current name because no history record stores a name of its own. (added 2026-09-06; enumeration closed 2026-09-06 following PRD validation)
 - FR32: **(v1.1)** User can duplicate an existing segment; the copy gets a disambiguated name (same collision rule as FR1's creation), a fresh identity, and no copied history (added 2026-09-06)
 - FR33: **(v1.1)** User can sort the segment list by name, creation date, most recent practice date, or Solidification %, where Solidification % = (sum of correct repetitions across every completed session for that segment) ÷ (sum of total repetitions across those same sessions) — one aggregate ratio per segment, not an average of per-session percentages; a segment with no completed sessions is treated as 0% / oldest-possible-date for sorting purposes regardless of sort direction (added 2026-09-06)
 - FR34: **(v1.1)** System persists the user's selected sort option and direction across app relaunches (added 2026-09-06)
@@ -313,7 +334,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 ### Performance
 
 - NFR1: Correct/Incorrect/Restart tap must register and update the on-screen streak/target display within 100ms.
-- NFR2: The NFR1 latency budget must hold even with an asynchronous persistence write occurring on every tap (see NFR3) — rendering must not block on disk I/O.
+- NFR2: The NFR1 latency budget must hold even with a persistence write occurring on every tap (see NFR3) — rendering must not block on disk I/O. *(Architecturally resolved via synchronous MMKV writes — see `architecture.md`. The requirement was written assuming an asynchronous write would be necessary; sub-millisecond synchronous writes satisfy it without one.)*
 
 ### Reliability
 

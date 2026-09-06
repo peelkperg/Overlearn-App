@@ -12,7 +12,7 @@ purpose: "Token-efficient context for downstream PRD creation"
 
 - **Current (live) target-streak mechanic, replaces the original upfront-input formula:**
   - No upfront input screen. Session starts immediately on segment selection: `current_streak = 0`, `total_incorrect_this_session = 0`, `target_streak = max(5, ceil(total_incorrect_this_session * overlearning_level))` = **5** (the floor).
-  - `overlearning_level` is a **fixed global constant for MVP: 50%** (not user-selectable per session — see Backlog).
+  - `overlearning_level` is a **fixed global constant for MVP: 50%** (not user-selectable per session — see Backlog). **[v1.1 update 2026-09-06: still 50% by default and still global/not per-session, but no longer a constant — user-configurable 50–300% in 10% steps via a Settings screen (`prd.md` FR35–FR37), effective immediately including mid-session. The `0.5` appearing in the formulas below is the default, not a fixed value.]**
   - **Correct tap:** `current_streak += 1`. If `current_streak >= target_streak` → session complete.
   - **Incorrect tap:** `total_incorrect_this_session += 1`, `current_streak = 0`, then recalculate `target_streak = max(5, ceil(total_incorrect_this_session * 0.5))`. Target only rises or holds — never decreases on its own. At 50%, target stays at the floor of 5 until `total_incorrect_this_session` exceeds 10.
   - History log records the *final* `target_streak` value reached at completion time, not a fixed upfront number.
@@ -26,7 +26,7 @@ purpose: "Token-efficient context for downstream PRD creation"
 
 ## Rejected / deferred ideas (don't re-propose in PRD without explicit re-scoping)
 
-- **Removing the 50%/100% selector entirely** — considered, user chose to keep the selector, just changed the default to 50%. (Selector stays.)
+- **Removing the 50%/100% selector entirely** — considered, user chose to keep the selector, just changed the default to 50%. (Selector stays.) **[SUPERSEDED 2026-09-06: the 50%/100% selector concept is obsolete. The setting is now a free 50–300% range in 10% increments — `prd.md` FR35–FR37, v1.1 scope. Do not propose a two-value toggle.]**
 - **Audio-based automatic correctness detection** — explicitly out of scope for v1 and all foreseeable near-term releases per original spec.
 - **In-session motivation/gamification mechanics** — explicitly rejected as a design goal. User's own words: *"this is not an app to motivate musicians to practice... it is for musicians that know what they want out of their practice time."* Do not propose streaks-as-motivation framing, badges, encouragement copy, etc. in the PRD.
 - **Streak-reset "discouragement" as a risk to mitigate** — user explicitly said no mitigation needed; the hard reset is intentional and not up for softening.
@@ -34,7 +34,7 @@ purpose: "Token-efficient context for downstream PRD creation"
 ## Backlog (future releases, out of v1 PRD scope, but useful for future roadmap section)
 
 - Voice-command Correct/Incorrect input, user-selectable command words (e.g. "right"/"wrong", "yes"/"no", "green"/"red") — this is the planned fix for the hands-occupied interaction-friction problem (see Open Questions/Risks below). Not v1.
-- Settings screen letting the user choose `overlearning_level` (50%/100%), applied globally — fixed at 50% for v1, not user-selectable.
+- ~~Settings screen letting the user choose `overlearning_level` (50%/100%), applied globally — fixed at 50% for v1, not user-selectable.~~ **[SUPERSEDED 2026-09-06 — no longer backlog. Pulled forward to v1.1 as `prd.md` FR35–FR37: a Settings screen where `overlearning_level` accepts any value from 50% to 300% in 10% increments, applied globally and effective immediately, including mid-session. `TARGET_FLOOR` stays fixed at 5. v1.0 shipped with 50% fixed, frozen at tag `v1.0.0`.]**
 - Metronome, tuner, practice time tracking, audio-based correctness detection, gamification, AI integration, analytics — all explicitly deferred, none designed yet.
 
 ## Technical context / open questions for architecture stage
