@@ -1,8 +1,9 @@
 ---
-stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisions, step-05-patterns, step-06-structure, step-07-validation, step-08-complete]
+stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisions, step-05-patterns, step-06-structure, step-07-validation, step-08-complete, v1.1-extension]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-08-31'
+lastUpdated: '2026-09-06'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
@@ -10,6 +11,29 @@ workflowType: 'architecture'
 project_name: 'Overlearn'
 user_name: 'Gerardo'
 date: '2026-08-31'
+versionCoverage:
+  v1.0: 'Everything above the "v1.1 Architectural Decisions" heading. Shipped, frozen at git tag v1.0.0.'
+  v1.1: 'The "v1.1 Architectural Decisions" section - lib/settings.ts storage boundary, optional-parameter threading through calculateTargetStreak/session-transitions, FR38-FR39 read paths, rename propagation, sort, rename/duplicate. Designed, not implemented.'
+editHistory:
+  - date: '2026-09-06'
+    changes: >-
+      Extended rather than regenerated, matching the pattern used for
+      prd.md and ux-design-specification.md: the 8-step create workflow
+      was already complete for v1.0 and epics.md traces to it. Appended a
+      version-marked "v1.1 Architectural Decisions" section covering
+      FR30-FR39. Key decision: calculateTargetStreak and
+      session-transitions' logCorrect/logIncorrect gain an OPTIONAL
+      second parameter defaulting to the v1.0 constant, rather than a
+      required one - every existing call site and test keeps working
+      unmodified. FR37 (live mid-session apply) needs no new mechanism:
+      it is the direct payoff of v1.0's derive-on-read decision for
+      target_streak. FR39 (in-progress-session detection) also needs no
+      new mechanism: session.active is a single MMKV key app-wide, so
+      useActiveSession() already answers the question. New: a fourth
+      lib/ boundary (lib/settings.ts), one aggregation function shared by
+      FR33's sort and FR38's display (calculateSolidificationPercent,
+      returning null rather than 0 for "no data yet"), and a useSegments
+      history subscription it didn't previously need.
 ---
 
 # Architecture Decision Document
@@ -461,3 +485,186 @@ overlearn/
 npx create-expo-app@latest Overlearn --template default@sdk-57
 ```
 Followed immediately by `expo-dev-client` and `react-native-mmkv` setup, per the Implementation Sequence in Core Architectural Decisions.
+
+---
+
+# v1.1 Architectural Decisions
+
+**Added 2026-09-06.** Everything above this line describes **v1.0**, shipped and frozen at git tag `v1.0.0`. This section covers the architecture for v1.1 (`prd.md` FR30–FR39, `ux-design-specification.md`'s "v1.1 Design Additions"): segment rename, duplicate, list sorting with a Solidification % display, and a configurable overlearning-%.
+
+No v1.0 decision is reopened. In particular: MMKV stays the sole persistence library, `lib/storage.ts` stays the sole point of contact with it, `target_streak` stays derived-on-read rather than stored, and the one-directional `UI → hooks → lib → storage` data flow is unchanged. v1.1 adds one new storage boundary and threads one new parameter through the mechanic layer — it does not restructure anything that already works.
+
+## New Storage Boundary: `lib/settings.ts`
+
+**Decision:** a fourth `lib/` data-layer file, `lib/settings.ts`, following the exact pattern `lib/segments.ts` already establishes — a single MMKV-backed key, a typed read function, a typed write function, and a `useSyncExternalStore`-compatible subscribe function.
+
+**Shape:**
+```ts
+interface Settings {
+  overlearningPercent: number;   // FR35-FR37: 50-300, step 10. Default 50.
+  sortKey: 'name' | 'createdAt' | 'lastPracticed' | 'solidification';  // FR33
+  sortDirection: 'asc' | 'desc';  // FR33-FR34
+}
+```
+
+**MMKV key:** `settings.general` — one JSON object, not one key per field. Matches the existing key-naming convention (namespaced, lowercase, dot-separated) and keeps a single read/write pair rather than three.
+
+**Defaults on first read:** `{ overlearningPercent: 50, sortKey: 'createdAt', sortDirection: 'asc' }`. `overlearningPercent: 50` is not a coincidence — it reproduces v1.0's hardcoded behavior exactly, so an app that has never opened Settings behaves identically to v1.0. `sortKey: 'createdAt' / asc` reproduces v1.0's implicit list order (array insertion order), for the same reason.
+
+**Envelope:** goes through `lib/storage.ts`'s existing `getObject`/`setObject`, which already wrap every write in the `{ __v, data }` schema-version envelope (added 2026-09-05, NFR-assessment fix). No new migration code is needed for `settings.general` specifically — it inherits the boundary's existing corrupt-data quarantine and versioning for free, the same way `segments.list` and `history.{segmentId}` already do.
+
+**Validation:** a new `isSettings(value): value is Settings` type guard in `lib/types.ts`, following the existing `isSegmentArray`/`isHistoryEntryArray`/`isSessionState` pattern — untrusted-storage reads are validated at the boundary, never cast bare. Rejects an out-of-range `overlearningPercent` (must be a multiple of 10 between 50 and 300 inclusive) or an unrecognized `sortKey`/`sortDirection`, quarantining a corrupted read the same way `getObject` already does for every other persisted shape.
+
+**Setter validates before writing.** `setOverlearningPercent(value: number)` clamps/rejects out-of-range input at the call site — the Settings screen's stepper can only ever produce a valid value by construction (it steps by 10 and disables at the bounds, per the UX spec), but the function itself does not trust its caller.
+
+## Mechanic Layer: Threading the Configurable Level
+
+**Decision:** `calculateTargetStreak` gains an **optional** second parameter defaulting to the current constant, rather than becoming a required parameter or reading storage internally.
+
+```ts
+// lib/mechanic.ts
+export function calculateTargetStreak(
+  totalIncorrectThisSession: number,
+  overlearningLevel: number = OVERLEARNING_LEVEL,   // unchanged default = 0.5
+): number {
+  const safeTotal = Number.isFinite(totalIncorrectThisSession) ? totalIncorrectThisSession : 0;
+  return Math.max(TARGET_FLOOR, Math.ceil(safeTotal * overlearningLevel));
+}
+```
+
+**Why optional, not required:** `calculateTargetStreak` is documented as "the one formula implementation" and is directly unit-tested at the boundary values (the 10/11 table in the Mechanic Specification). A required second parameter would force every existing call site and every existing test to change for a v1.1 feature, for no functional gain — the default preserves 100% of v1.0's call sites and tests unmodified. This keeps `lib/mechanic.ts` itself free of any storage dependency: it stays a pure function, unaware that a Settings screen exists. Reading the live setting is the caller's job, consistent with the existing rule that `lib/` modules don't reach into each other's boundaries.
+
+**Call sites that pass the live value explicitly** (three, all inside `useActiveSession.ts`, which is where storage-reading already happens):
+1. `logCorrect()` — before calling `transitions.logCorrect(current, overlearningLevel)`
+2. `logIncorrect()` — before calling `transitions.logIncorrect(current, overlearningLevel)`
+3. The hook's returned `targetStreak` value — `calculateTargetStreak(session?.totalIncorrectThisSession ?? 0, overlearningLevel)`
+
+**`lib/session-transitions.ts` gets the same optional-parameter treatment** on `logCorrect(session, overlearningLevel?)` and `logIncorrect(session, overlearningLevel?)` — both already call `calculateTargetStreak` internally and need to pass the level through. Same rationale: existing tests calling with one argument keep working unchanged.
+
+**Where the live value comes from:** `useActiveSession()` calls `useSettings().overlearningPercent / 100` once per render and passes it to all three sites above. `useSettings()` is a new hook, same `useSyncExternalStore(settingsStore.subscribeToSettings, settingsStore.readSettings)` pattern as `useSegments()`.
+
+**FR37 (applies immediately to an in-progress session) requires no additional mechanism.** This is the payoff of the v1.0 decision to derive `target_streak` on every read rather than store it: `useActiveSession`'s returned `targetStreak` is already recomputed on every render from whatever `totalIncorrectThisSession` and `overlearningLevel` currently are. Changing the setting in Settings triggers a re-render (via `useSettings`'s subscription) wherever `useActiveSession` is also mounted, and the next read of `targetStreak` reflects the new value automatically. No session-state field changes, no explicit propagation code, no risk of a stale cached target — the same state-drift class the v1.0 derive-on-read decision was chosen to eliminate by construction.
+
+## FR39: Detecting an In-Progress Session from the Settings Screen
+
+**Decision:** no new mechanism. The Settings screen calls `useActiveSession()` — the same hook every other screen uses — and checks `session && !session.sessionComplete`, exactly as `app/index.tsx` already does to decide whether to show the resume/discard prompt.
+
+This works because of a fact already true in v1.0's architecture, not a new one: `session.active` is a single MMKV key, not one per segment (see v1.0 MMKV Key Naming) — the app has exactly one active session at a time, app-wide, by construction. "Does any segment have an in-progress session" and "is there a current session that isn't complete" are therefore the same question, and the second one is already answered by a hook every screen already imports.
+
+**Segment name for the notice's copy** ("...session in progress for 'Bar 24 arpeggio.'"): sourced live via `useSegment(session.segmentId)`, not `session.segmentName` — consistent with the Rename Propagation decision below.
+
+## FR38: Solidification % Aggregation
+
+**Decision:** one new pure function, colocated with the data it reads:
+
+```ts
+// lib/history.ts
+export function calculateSolidificationPercent(entries: HistoryEntry[]): number | null {
+  if (entries.length === 0) return null;   // no data yet — UI renders "—", not "0%"
+  const totals = entries.reduce(
+    (acc, e) => ({
+      correct: acc.correct + (e.totalAttempts - e.totalMistakes),
+      attempts: acc.attempts + e.totalAttempts,
+    }),
+    { correct: 0, attempts: 0 },
+  );
+  return totals.attempts === 0 ? null : (totals.correct / totals.attempts) * 100;
+}
+```
+
+**`null`, not `0`, for "no data yet."** Directly implements the UX spec's FR38 decision that an em dash (not "0%") is shown when a segment has no completed sessions — a magnitude the display layer can distinguish from a real 0% without a separate boolean flag. The sort function (below) is the one place that *does* want a numeric floor for empty segments, and re-maps `null → 0` locally there rather than baking that choice into the shared calculation.
+
+**One function serves both FR33 (sort) and FR38 (display).** `calculateSolidificationPercent` is called both by the segment list's sort (via `readHistory(segment.id)` per segment) and by the Segment Detail screen's history-log summary line (via the same `readHistory(id)` the screen already reads for the entry list). No duplicate formula, consistent with the project's existing "one function, every consumer calls it" pattern already established for `calculateTargetStreak`.
+
+**Performance note, stated rather than assumed:** computing this requires reading every history entry for every segment on every list render (for sorting) — O(segments × entries-per-segment). Given the app's realistic scale (single user, dozens to low hundreds of segments/sessions, stated in the v1.0 Data Architecture section), this is not a caching concern; a caching layer would be premature optimization for data volumes this small. Revisit only if real usage proves otherwise.
+
+## Rename Propagation (FR31)
+
+**Decision:** no schema change to `SessionState` or `HistoryEntry`. Display sites switch from a stored name snapshot to a live lookup, screen by screen:
+
+| Display site | v1.0 source | v1.1 source |
+|---|---|---|
+| Segment list row | `segment.name` (already live) | Unchanged |
+| Segment detail heading | `segment.name` (already live) | Unchanged |
+| History log entries | No stored name — `HistoryEntry` never had one | Unchanged (already correct by construction) |
+| Active session streak readout | `session.segmentName` (frozen snapshot) | `segment.name`, via `useSegment(id)` — already fetched at the top of `app/session/[id].tsx` |
+| Completion summary | `session.segmentName` | Same live `segment.name` |
+| Resume/discard prompt | `session.segmentName` | `useSegment(session.segmentId)?.name`, in `app/index.tsx` |
+
+**`SessionState.segmentName` is not removed from the type.** It stays exactly as the v1.0 Mechanic Specification defines it — removing it would be a schema change with no v1.1 requirement behind it, and the field remains a defensive fallback for the (currently unreachable, per `deleteSegment`'s existing session-clearing behavior) case where a live segment lookup fails. Only the *display* code stops preferring it.
+
+## Segment List Sort (FR33/FR34)
+
+**Decision:** one new pure function in `lib/segments.ts` (or a new colocated `lib/segment-sort.ts` if `segments.ts` grows unwieldy — a call to make at implementation time, not architecturally significant):
+
+```ts
+function sortSegments(
+  segments: Segment[],
+  aggregates: Map<string, { lastPracticed: string | null; solidification: number | null }>,
+  sortKey: SortKey,
+  direction: 'asc' | 'desc',
+): Segment[]
+```
+
+Pure — takes pre-computed aggregates rather than reading storage itself, so it stays unit-testable without mocking MMKV, consistent with `session-transitions.ts`'s existing pure-function pattern.
+
+**`useSegments()` gains a history subscription it didn't need in v1.0.** The v1.0 hook only subscribed to `subscribeToSegments` — sufficient when the list's only job was displaying segments in creation order. Sorting by last-practiced or Solidification % requires the list to also re-render when a *history* entry is written (i.e., every session completion), so `useSegments()` additionally subscribes to `subscribeToHistory` for whichever segments are visible. This is the one genuinely new cross-cutting wire-up in v1.1 — every other decision above reuses an existing subscription.
+
+**No-history sort treatment:** `null` solidification and `null`/absent last-practiced are mapped to `0` and the epoch (`new Date(0).toISOString()`) respectively, purely inside the sort comparator — matching the PRD's FR33 rule ("treated as 0% / oldest-possible-date for sorting purposes") without leaking that convention into `calculateSolidificationPercent`'s own return type.
+
+## Rename and Duplicate (FR30, FR32)
+
+**Decision:** two new functions in `lib/segments.ts`, reusing existing internals rather than duplicating logic:
+
+```ts
+function renameSegment(id: string, name: string): void   // FR30
+function duplicateSegment(id: string): Segment            // FR32
+```
+
+- **`renameSegment`** reuses `normalizeSegmentName` and `disambiguate` exactly as `createSegment` does, with one change to `disambiguate`'s collision check: it must exclude the segment's own current name, or renaming "Bar 24" to a different-cased "bar 24" would false-positive-collide with itself.
+- **`duplicateSegment`** reuses `generateId` and `disambiguate` (new id, name run through the same collision logic — "Bar 24 arpeggio" → "Bar 24 arpeggio (2)"), sets a fresh `createdAt`, and does not call `deleteHistory`/copy any history key — the duplicate's `history.{newSegmentId}` key simply never gets written, which is the correct "no copied history" behavior by omission rather than an explicit clear.
+
+**No new screen for Duplicate** (confirmed by the UX spec: row-menu action, instant, snackbar-confirmed). **One new screen for Rename** (`app/segment/[id]/rename.tsx`), reusing `SegmentForm` with zero changes to that component — exactly as `app/segment/new.tsx` already does, per the v1.0 architecture note that `SegmentForm.tsx` was "already designed as a shared create/rename form."
+
+## Project Structure Additions
+
+```
+src/
+├── app/
+│   ├── settings.tsx                       # NEW — FR35-FR37, FR39
+│   └── segment/
+│       └── [id]/
+│           └── rename.tsx                 # NEW — FR30, reuses SegmentForm
+├── hooks/
+│   └── useSettings.ts                     # NEW — mirrors useSegments' useSyncExternalStore pattern
+├── lib/
+│   ├── settings.ts                        # NEW — the fourth data-layer boundary
+│   ├── segments.ts                        # + renameSegment, duplicateSegment, sortSegments
+│   ├── history.ts                         # + calculateSolidificationPercent
+│   ├── mechanic.ts                        # calculateTargetStreak gains optional 2nd param
+│   ├── session-transitions.ts             # logCorrect/logIncorrect gain optional 2nd param
+│   └── types.ts                           # + Settings interface, isSettings guard
+```
+
+Every new route must be added to `src/app/stack-screens.ts` and given a `<Stack.Screen>` entry in `_layout.tsx` — per `project-context.md`'s standing regression guard (commit `b2dc4e6`): a route missing from either is silently dropped in production with no dev-mode signal.
+
+## Requirements to Structure Mapping (v1.1 additions)
+
+**Segment Management extensions (FR30–FR34, FR38):** `src/app/segment/[id]/rename.tsx`, `src/lib/segments.ts` (rename/duplicate/sort), `src/lib/history.ts` (Solidification %), `src/components/SegmentListItem.tsx` (menu additions), `src/hooks/useSegments.ts` (history subscription).
+
+**Settings (FR35–FR39):** `src/app/settings.tsx`, `src/lib/settings.ts`, `src/hooks/useSettings.ts`, `src/lib/mechanic.ts` and `src/lib/session-transitions.ts` (parameter threading), `src/hooks/useActiveSession.ts` (reads the live setting and passes it through).
+
+## Enforcement Guidelines (v1.1 additions)
+
+**All AI Agents MUST additionally:**
+- Route every settings read/write through `lib/settings.ts` — never a direct `storage.ts` call from a hook or component, same rule as `segments.ts`/`session.ts`.
+- Call `calculateTargetStreak`/`calculateSolidificationPercent` for any target or Solidification % display or check — never reimplement either formula, extending the v1.0 single-formula rule to the new metric.
+- Never add a required parameter to `calculateTargetStreak`, `logCorrect`, or `logIncorrect` — the optional-parameter-with-v1.0-default pattern is what keeps this a non-breaking extension; a required parameter would be a breaking change to a "pure function, one implementation" contract this document has twice now relied on staying stable.
+
+## v1.1 Gap Analysis
+
+**Critical Gaps:** None identified — all six FR30–FR39 architectural concerns (settings storage, mechanic threading, in-progress-session detection, Solidification % aggregation, rename propagation, sort) have a decision above with no open question carried forward from the UX spec.
+
+**Minor Gaps:**
+- The `lib/segments.ts` vs. new `lib/segment-sort.ts` file-split decision is explicitly left to implementation time (noted above) — the module is small enough today that either is fine, and splitting preemptively would be speculative structure.
+- `disambiguate`'s self-exclusion fix for `renameSegment` is a small, testable change to existing logic, not a new decision, but is called out here so it isn't missed during implementation (a rename to the same name in different case must succeed, not collide with itself).
