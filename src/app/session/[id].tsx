@@ -65,13 +65,20 @@ export default function ActiveSessionScreen() {
     }, 'Could not save that session. Check that the device has free storage.');
   };
 
-  // Story 2.8 (FR15): begins a new session immediately, same start
-  // behavior as Story 2.1 (0/5). No history entry for the just-completed
-  // session — start() overwrites session.active without ever calling
-  // writeHistoryEntry, so nothing is recorded unless Done was tapped first.
+  // Story 2.8 (FR15): writes the just-completed session's history entry —
+  // same as Done (FR14) — then begins a new session immediately, same start
+  // behavior as Story 2.1 (0/5). [Review][Patch] found via bug report
+  // 2026-09-05: this used to call start() directly without complete()
+  // first, so the session shown on the Completion screen was silently
+  // dropped instead of recorded — FR29 excludes abandoned/reset sessions
+  // from history, not completed ones, so this was a bug, not FR29 in
+  // action.
   const handleRepeat = () => {
-    if (!segment) return;
-    runAction(() => start(segment.id, segment.name), 'Could not start a new session. Check that the device has free storage.');
+    if (!session || !segment) return;
+    runAction(() => {
+      complete();
+      start(segment.id, segment.name);
+    }, 'Could not save that session. Check that the device has free storage.');
   };
 
   useEffect(() => {

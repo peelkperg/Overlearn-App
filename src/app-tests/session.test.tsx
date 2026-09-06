@@ -127,7 +127,7 @@ describe('ActiveSessionScreen [Story 2.1-2.8, 2.4]', () => {
     expect(replaced).toHaveBeenCalledWith('/');
   });
 
-  it('Repeat starts a new session immediately with no history entry for the just-completed one (FR15, FR29)', async () => {
+  it('Repeat writes the history entry for the just-completed session, then starts a new one (FR14, FR15)', async () => {
     const segment = createSegment('Bar 24 arpeggio');
     useLocalSearchParams.mockReturnValue({ id: segment.id });
     const view = await render(<ActiveSessionScreen />);
@@ -135,8 +135,8 @@ describe('ActiveSessionScreen [Story 2.1-2.8, 2.4]', () => {
     await pressTimes(view, 'correct-button', 5);
     await fireEvent.press(view.getByTestId('completion-repeat'));
 
+    expect(readHistory(segment.id)).toHaveLength(1);
     expect(view.getByTestId('correct-button')).toBeTruthy();
     expect(view.getByTestId('streak-readout').props.children[0]).toBe(0);
-    expect(readHistory(segment.id)).toEqual([]);
   });
 });
