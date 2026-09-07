@@ -1,5 +1,5 @@
 import { readHistory, writeHistoryEntry } from './history';
-import { createSegment, deleteSegment, getSegment, readSegments, renameSegment } from './segments';
+import { createSegment, deleteSegment, duplicateSegment, getSegment, readSegments, renameSegment } from './segments';
 import { readSession, writeSession } from './session';
 import { storage } from './storage';
 
@@ -225,6 +225,88 @@ describe('lib/segments renameSegment [Story 4.1]', () => {
     renameSegment(a.id, 'Renamed');
 
     expect(getSegment(b.id)?.name).toBe('Second');
+  });
+});
+
+describe('lib/segments duplicateSegment [Story 4.2]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('creates a copy with a disambiguated name, a fresh id, and a valid createdAt', () => {
+    const source = createSegment('Bar 24 arpeggio');
+    const copy = duplicateSegment(source.id);
+
+    expect(copy.name).toBe('Bar 24 arpeggio (2)');
+    expect(copy.id).not.toBe(source.id);
+    expect(() => new Date(copy.createdAt).toISOString()).not.toThrow();
+  });
+
+  it('appends the copy to storage alongside the source', () => {
+    const source = createSegment('Bar 24 arpeggio');
+    const copy = duplicateSegment(source.id);
+
+    const all = readSegments();
+    expect(all).toHaveLength(2);
+    expect(all.map((s) => s.id)).toEqual([source.id, copy.id]);
+  });
+
+  it('copies no history entries', () => {
+    const source = createSegment('Bar 24 arpeggio');
+    writeHistoryEntry(source.id, {
+      date: '2026-08-31T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-08-31T11:00:00.000Z',
+    });
+
+    const copy = duplicateSegment(source.id);
+
+    expect(readHistory(copy.id)).toEqual([]);
+    expect(storage.getAllKeys()).not.toContain(`history.${copy.id}`);
+  });
+
+  it('leaves the source segment and its history unchanged', () => {
+    const source = createSegment('Bar 24 arpeggio');
+    writeHistoryEntry(source.id, {
+      date: '2026-08-31T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-08-31T11:00:00.000Z',
+    });
+
+    duplicateSegment(source.id);
+
+    expect(getSegment(source.id)?.name).toBe('Bar 24 arpeggio');
+    expect(readHistory(source.id)).toHaveLength(1);
+  });
+
+  it('disambiguates against the source itself, not just other segments', () => {
+    const source = createSegment('Bar 24 arpeggio');
+    expect(duplicateSegment(source.id).name).toBe('Bar 24 arpeggio (2)');
+  });
+
+  it('increments the suffix across further duplicates', () => {
+    const source = createSegment('Bar 24 arpeggio');
+    duplicateSegment(source.id);
+    expect(duplicateSegment(source.id).name).toBe('Bar 24 arpeggio (3)');
+  });
+
+  // [Review][Patch] found 2026-09-06: duplicating a copy nests suffixes
+  // rather than incrementing the source's — this is documented in the
+  // story's Dev Notes as expected and not to be "fixed", so it needs a
+  // test lock or a future disambiguate change could silently break it.
+  it('nests suffixes when duplicating a duplicate, rather than incrementing the source suffix', () => {
+    const source = createSegment('Bar 24');
+    const copy = duplicateSegment(source.id);
+    expect(copy.name).toBe('Bar 24 (2)');
+    expect(duplicateSegment(copy.id).name).toBe('Bar 24 (2) (2)');
+  });
+
+  it('throws for an id that does not exist', () => {
+    expect(() => duplicateSegment('missing-id')).toThrow();
   });
 });
 

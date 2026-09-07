@@ -9,7 +9,16 @@ const segment = {
 };
 
 const renderRow = (overrides: Partial<Parameters<typeof SegmentListItem>[0]> = {}) =>
-  render(<SegmentListItem segment={segment} onOpen={jest.fn()} onRename={jest.fn()} onDelete={jest.fn()} {...overrides} />);
+  render(
+    <SegmentListItem
+      segment={segment}
+      onOpen={jest.fn()}
+      onRename={jest.fn()}
+      onDuplicate={jest.fn()}
+      onDelete={jest.fn()}
+      {...overrides}
+    />,
+  );
 
 describe('SegmentListItem [Story 1.4, 1.6]', () => {
   it('opens the segment when the row is tapped', async () => {
@@ -26,17 +35,19 @@ describe('SegmentListItem [Story 1.4, 1.6]', () => {
     expect(view.queryByTestId('segment-row-delete-segment-1')).toBeNull();
   });
 
-  it('lists Rename above Delete (UX-DR20)', async () => {
+  it('lists Rename, Duplicate, Delete in that order (UX-DR20)', async () => {
     const view = await renderRow();
     await fireEvent.press(view.getByTestId('segment-row-menu-segment-1'));
 
     const menu = view.getByTestId('segment-row-menu-backdrop-segment-1');
     const buttons = within(menu).getAllByRole('button');
     const renameIndex = buttons.findIndex((button) => button.props.testID === 'segment-row-rename-segment-1');
+    const duplicateIndex = buttons.findIndex((button) => button.props.testID === 'segment-row-duplicate-segment-1');
     const deleteIndex = buttons.findIndex((button) => button.props.testID === 'segment-row-delete-segment-1');
 
     expect(renameIndex).toBeGreaterThanOrEqual(0);
-    expect(deleteIndex).toBeGreaterThan(renameIndex);
+    expect(duplicateIndex).toBeGreaterThan(renameIndex);
+    expect(deleteIndex).toBeGreaterThan(duplicateIndex);
   });
 
   it('renames from the menu and closes it', async () => {
@@ -48,6 +59,17 @@ describe('SegmentListItem [Story 1.4, 1.6]', () => {
 
     expect(onRename).toHaveBeenCalled();
     expect(view.queryByTestId('segment-row-rename-segment-1')).toBeNull();
+  });
+
+  it('duplicates from the menu and closes it', async () => {
+    const onDuplicate = jest.fn();
+    const view = await renderRow({ onDuplicate });
+
+    await fireEvent.press(view.getByTestId('segment-row-menu-segment-1'));
+    await fireEvent.press(view.getByTestId('segment-row-duplicate-segment-1'));
+
+    expect(onDuplicate).toHaveBeenCalled();
+    expect(view.queryByTestId('segment-row-duplicate-segment-1')).toBeNull();
   });
 
   it('deletes from the menu', async () => {

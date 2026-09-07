@@ -17,6 +17,7 @@ export function useSegments() {
     segments: useSegmentStore(),
     createSegment: segments.createSegment,
     renameSegment: segments.renameSegment,
+    duplicateSegment: segments.duplicateSegment,
     deleteSegment: segments.deleteSegment,
   };
 }

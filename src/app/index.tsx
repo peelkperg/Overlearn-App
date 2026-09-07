@@ -12,12 +12,18 @@ import { useActiveSession } from '@/hooks/useActiveSession';
 import { useSegment, useSegments } from '@/hooks/useSegments';
 import { useTheme } from '@/hooks/use-theme';
 
+// Story 4.2 (UX-DR21): how long the duplicate-confirmation notice stays
+// visible before auto-dismissing.
+const DuplicateNoticeMs = 4000;
+
 // Story 1.3: View the Segment List (FR2, FR4, FR7, UX-DR11).
 // Story 2.10: interruption resume/discard gate (FR24-FR26, NFR4). This is
 // the app's landing screen, so it's the one place that can catch an
 // interrupted session before the user navigates anywhere else.
+// Story 4.2: Duplicate a Segment (FR32) — row-menu action plus the
+// auto-dismissing confirmation notice.
 export default function HomeScreen() {
-  const { segments, deleteSegment } = useSegments();
+  const { segments, deleteSegment, duplicateSegment } = useSegments();
   const { session, endSession } = useActiveSession();
   // Story 4.1 (FR31): live lookup, not session.segmentName's frozen
   // snapshot — see architecture.md's Rename Propagation table. The `??`
@@ -26,6 +32,11 @@ export default function HomeScreen() {
   const activeSegment = useSegment(session?.segmentId);
   const [resumed, setResumed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Story 4.2 (UX-DR21, UX-DR24): a copy can sort off-screen, so a silent
+  // insertion would read as a no-op - this confirms it happened, and
+  // clears itself so it never lingers as stale state.
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Keyed by the session being redirected for, not a bare boolean: a second
   // session completed in the same app lifetime must redirect too, or it is
   // stranded with no route to its Completion screen.
@@ -77,16 +88,49 @@ export default function HomeScreen() {
     router.push(`/session/${session.segmentId}`);
   };
 
+  // Resets the auto-dismiss timer rather than stacking timers - a second
+  // duplicate before the first notice clears must not cut the new one
+  // short via a stale timeout from the first.
+  const showNotice = (text: string) => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    setNotice(text);
+    noticeTimer.current = setTimeout(() => setNotice(null), DuplicateNoticeMs);
+  };
+
+  // [Review][Patch] found 2026-09-06: a stale "Duplicated as ..." notice
+  // must not survive a later action on the list (e.g. deleting the segment
+  // it just confirmed) — every other action clears it up front, same as
+  // `error`, rather than waiting out its own timer.
+  const clearNotice = () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = null;
+    setNotice(null);
+  };
+
   // A write can still fail underneath these (a full disk, a record removed
   // in between), and an exception thrown from a press handler is not caught
   // by any boundary — it takes the app down instead of the row.
   const runAction = (action: () => void, failureMessage: string) => {
     try {
       setError(null);
+      clearNotice();
       action();
     } catch {
       setError(failureMessage);
     }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    };
+  }, []);
+
+  const handleDuplicate = (id: string) => {
+    runAction(() => {
+      const copy = duplicateSegment(id);
+      showNotice(`Duplicated as "${copy.name}"`);
+    }, 'Could not duplicate that segment.');
   };
 
   return (
@@ -103,6 +147,11 @@ export default function HomeScreen() {
             {error}
           </ThemedText>
         )}
+        {notice && (
+          <ThemedText testID="segment-list-notice" type="small" style={styles.notice} accessibilityLiveRegion="polite">
+            {notice}
+          </ThemedText>
+        )}
         {segments.length === 0 ? (
           <EmptyState />
         ) : (
@@ -117,6 +166,7 @@ export default function HomeScreen() {
                   segment={item}
                   onOpen={() => router.push(`/segment/${item.id}`)}
                   onRename={() => router.push(`/segment/${item.id}/rename`)}
+                  onDuplicate={() => handleDuplicate(item.id)}
                   onDelete={() => runAction(() => deleteSegment(item.id), 'Could not delete that segment.')}
                 />
               )}
@@ -198,6 +248,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   error: {
+    paddingVertical: Spacing.two,
+    textAlign: 'center',
+  },
+  notice: {
     paddingVertical: Spacing.two,
     textAlign: 'center',
   },

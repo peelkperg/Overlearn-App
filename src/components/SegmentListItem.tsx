@@ -11,13 +11,14 @@ type SegmentListItemProps = {
   segment: Segment;
   onOpen: () => void;
   onRename: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 };
 
 // Row in the segment list (FR6). The UX spec allows swipe-actions or a menu
 // for delete; a menu is used because it is reachable by screen readers and
 // keyboard/switch control, which a swipe gesture is not (NFR6).
-export function SegmentListItem({ segment, onOpen, onRename, onDelete }: SegmentListItemProps) {
+export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDelete }: SegmentListItemProps) {
   const [menuVisible, setMenuVisible] = useState(false);
   const theme = useTheme();
 
@@ -71,6 +72,14 @@ export function SegmentListItem({ segment, onOpen, onRename, onDelete }: Segment
               accessibilityRole="button"
             >
               <ThemedText>Rename</ThemedText>
+            </Pressable>
+            <Pressable
+              testID={`segment-row-duplicate-${segment.id}`}
+              style={styles.menuItem}
+              onPress={() => runAction(onDuplicate)}
+              accessibilityRole="button"
+            >
+              <ThemedText>Duplicate</ThemedText>
             </Pressable>
             <Pressable
               testID={`segment-row-delete-${segment.id}`}

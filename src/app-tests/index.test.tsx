@@ -91,6 +91,100 @@ describe('HomeScreen [Story 1.3]', () => {
     expect(view.getByText('Bar 24-26 run')).toBeTruthy();
   });
 
+  it('duplicates a segment from the menu and shows a confirmation notice (FR32, UX-DR21)', async () => {
+    const created = createSegment('Bar 24 arpeggio');
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId(`segment-row-menu-${created.id}`));
+    await fireEvent.press(view.getByTestId(`segment-row-duplicate-${created.id}`));
+
+    expect(view.getByTestId('segment-list').props.data).toHaveLength(2);
+    const notice = view.getByTestId('segment-list-notice');
+    expect(notice).toHaveTextContent('Duplicated as "Bar 24 arpeggio (2)"');
+    expect(notice.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  it('shows no notice before any duplicate action', async () => {
+    createSegment('Bar 24 arpeggio');
+    const view = await render(<HomeScreen />);
+
+    expect(view.queryByTestId('segment-list-notice')).toBeNull();
+  });
+
+  it('auto-dismisses the duplicate notice after a few seconds', async () => {
+    jest.useFakeTimers();
+    try {
+      const created = createSegment('Bar 24 arpeggio');
+      const view = await render(<HomeScreen />);
+
+      await fireEvent.press(view.getByTestId(`segment-row-menu-${created.id}`));
+      await fireEvent.press(view.getByTestId(`segment-row-duplicate-${created.id}`));
+      expect(view.getByTestId('segment-list-notice')).toBeTruthy();
+
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      expect(view.queryByTestId('segment-list-notice')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // [Review][Patch] found 2026-09-06: showNotice's reset-not-stack behavior
+  // (a second duplicate within the notice window restarts the timer rather
+  // than leaving the first's stale timeout to cut the new notice short) was
+  // only asserted in a comment, not exercised — removing the `clearTimeout`
+  // would have gone undetected.
+  it('resets rather than stacks the auto-dismiss timer on a second duplicate within the window', async () => {
+    jest.useFakeTimers();
+    try {
+      const first = createSegment('Bar 24');
+      const view = await render(<HomeScreen />);
+
+      await fireEvent.press(view.getByTestId(`segment-row-menu-${first.id}`));
+      await fireEvent.press(view.getByTestId(`segment-row-duplicate-${first.id}`));
+      expect(view.getByTestId('segment-list-notice')).toHaveTextContent('Duplicated as "Bar 24 (2)"');
+
+      // 3s into the first notice's 4s window: a stale, un-reset first timer
+      // would fire 1s from now and clear the second notice early.
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      await fireEvent.press(view.getByTestId(`segment-row-menu-${first.id}`));
+      await fireEvent.press(view.getByTestId(`segment-row-duplicate-${first.id}`));
+      expect(view.getByTestId('segment-list-notice')).toHaveTextContent('Duplicated as "Bar 24 (3)"');
+
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      expect(view.getByTestId('segment-list-notice')).toHaveTextContent('Duplicated as "Bar 24 (3)"');
+
+      await act(async () => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(view.queryByTestId('segment-list-notice')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  // [Review][Patch] found 2026-09-06: runAction cleared only `error`, never
+  // `notice` — deleting the just-duplicated segment (or any later action)
+  // left a stale "Duplicated as ..." notice on screen for up to 4s.
+  it('clears the duplicate notice when a later action runs before it auto-dismisses', async () => {
+    const created = createSegment('Bar 24 arpeggio');
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId(`segment-row-menu-${created.id}`));
+    await fireEvent.press(view.getByTestId(`segment-row-duplicate-${created.id}`));
+    expect(view.getByTestId('segment-list-notice')).toBeTruthy();
+
+    await fireEvent.press(view.getByTestId(`segment-row-menu-${created.id}`));
+    await fireEvent.press(view.getByTestId(`segment-row-delete-${created.id}`));
+
+    expect(view.queryByTestId('segment-list-notice')).toBeNull();
+  });
 });
 
 // Story 2.10 (FR24-FR26): an interrupted (session_complete = false) session

@@ -121,6 +121,29 @@ export function renameSegment(id: string, name: string): Segment {
   return renamed;
 }
 
+// Duplicate (FR32). Throws on an unknown id, mirroring renameSegment's
+// posture. No `excludeId` is passed to disambiguate - the copy is a
+// genuinely new record and must collide with its own source, exactly as
+// createSegment collides with any existing segment of the same name.
+// History is never copied: the new segment's history.{id} key is simply
+// never written, which is "no history" by omission, not by explicit clear.
+export function duplicateSegment(id: string): Segment {
+  const existing = readSegments();
+  const source = existing.find((segment) => segment.id === id);
+  if (!source) {
+    throw new Error(`Segment not found: ${id}`);
+  }
+
+  const copy: Segment = {
+    id: generateId(existing),
+    name: disambiguate(source.name, existing),
+    createdAt: new Date().toISOString(),
+  };
+
+  setObject(SEGMENTS_KEY, [...existing, copy]);
+  return copy;
+}
+
 // Deletion (FR6): the segment *and all its associated data*. The history
 // key and any active session pointing at this segment go too — a session
 // left behind would strand the app on a "Segment not found" screen it has
