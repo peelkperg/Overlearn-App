@@ -1,7 +1,7 @@
-import { deleteHistory } from '@/lib/history';
+import { calculateSolidificationPercent, deleteHistory, readHistory } from '@/lib/history';
 import { clearSessionForSegment } from '@/lib/session';
 import { getObject, getString, setObject, subscribeToKeys } from '@/lib/storage';
-import { isSegmentArray, type Segment } from '@/lib/types';
+import { isSegmentArray, type Segment, type SortDirection, type SortKey } from '@/lib/types';
 
 const SEGMENTS_KEY = 'segments.list';
 
@@ -142,6 +142,88 @@ export function duplicateSegment(id: string): Segment {
 
   setObject(SEGMENTS_KEY, [...existing, copy]);
   return copy;
+}
+
+// Story 4.3 (FR33): per-segment values the sort comparator needs but
+// sortSegments itself must not compute — keeping sortSegments a pure
+// function of pre-fetched data (rather than one that reads storage itself)
+// is what keeps it unit-testable without mocking MMKV, matching
+// session-transitions.ts's existing pure-function discipline.
+export type SortAggregate = { lastPracticed: string | null; solidification: number | null };
+
+export function buildSortAggregates(segments: Segment[]): Map<string, SortAggregate> {
+  const aggregates = new Map<string, SortAggregate>();
+  for (const segment of segments) {
+    const entries = readHistory(segment.id);
+    // Max rather than assuming array order: writeHistoryEntry always
+    // appends, but this stays correct even if that ever changes, and the
+    // comparison is trivial at this data scale.
+    const lastPracticed = entries.reduce<string | null>(
+      (latest, entry) => (latest === null || entry.date > latest ? entry.date : latest),
+      null,
+    );
+    aggregates.set(segment.id, { lastPracticed, solidification: calculateSolidificationPercent(entries) });
+  }
+  return aggregates;
+}
+
+// AC #4: a segment with no history sorts as the oldest-possible date / 0%,
+// regardless of direction — these floors are applied here, in the
+// comparator, rather than baked into calculateSolidificationPercent's own
+// return type (which stays null for "no data yet" so the display layer can
+// distinguish it from a real 0%).
+const NoHistoryDate = '1970-01-01T00:00:00.000Z';
+
+function sortValue(segment: Segment, aggregates: Map<string, SortAggregate>, sortKey: SortKey): string | number {
+  const aggregate = aggregates.get(segment.id);
+  switch (sortKey) {
+    case 'name':
+      // Not lowercased here — localeCompare below (with sensitivity:
+      // 'base') does its own case-insensitive, accent-aware comparison.
+      return segment.name;
+    case 'createdAt':
+      return segment.createdAt;
+    case 'lastPracticed':
+      return aggregate?.lastPracticed ?? NoHistoryDate;
+    case 'solidification':
+      return aggregate?.solidification ?? 0;
+  }
+}
+
+// [Review][Decision] found via code review 2026-09-08: Task 4 originally
+// specified plain `<`/`>` on lowercased strings for name sort, but that
+// compares by raw UTF-16 code unit — 'Étude' sorts after 'Zebra', and
+// 'Bar 10' sorts before 'Bar 2'. Ordinary musician-facing segment names hit
+// both cases. localeCompare's 'base' sensitivity keeps the case-insensitive
+// behavior the spec asked for; `numeric: true` also orders embedded numbers
+// the way a person reads them, not lexicographically.
+function compareValues(sortKey: SortKey, va: string | number, vb: string | number): number {
+  if (sortKey === 'name') {
+    return (va as string).localeCompare(vb as string, undefined, { sensitivity: 'base', numeric: true });
+  }
+  if (va < vb) return -1;
+  if (va > vb) return 1;
+  return 0;
+}
+
+// Pure — never mutates `segments` (readSegments()'s returned array is the
+// useSyncExternalStore snapshot and must stay stable until data actually
+// changes). One comparator for all four keys: extract both sides' values,
+// compare, negate on 'desc' — not four branches with duplicated flip logic.
+// Array.prototype.sort is stable (spec-guaranteed since ES2019), so equal
+// values keep their relative order with no secondary tiebreaker needed.
+export function sortSegments(
+  segments: Segment[],
+  aggregates: Map<string, SortAggregate>,
+  sortKey: SortKey,
+  direction: SortDirection,
+): Segment[] {
+  const sign = direction === 'desc' ? -1 : 1;
+  return [...segments].sort((a, b) => {
+    const va = sortValue(a, aggregates, sortKey);
+    const vb = sortValue(b, aggregates, sortKey);
+    return compareValues(sortKey, va, vb) * sign;
+  });
 }
 
 // Deletion (FR6): the segment *and all its associated data*. The history

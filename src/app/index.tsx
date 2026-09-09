@@ -5,12 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResumeDiscardDialog } from '@/components/ResumeDiscardDialog';
 import { SegmentListItem } from '@/components/SegmentListItem';
+import { SortControl } from '@/components/SortControl';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useActiveSession } from '@/hooks/useActiveSession';
 import { useSegment, useSegments } from '@/hooks/useSegments';
 import { useTheme } from '@/hooks/use-theme';
+import type { SortDirection, SortKey } from '@/lib/types';
 
 // Story 4.2 (UX-DR21): how long the duplicate-confirmation notice stays
 // visible before auto-dismissing.
@@ -22,8 +24,10 @@ const DuplicateNoticeMs = 4000;
 // interrupted session before the user navigates anywhere else.
 // Story 4.2: Duplicate a Segment (FR32) — row-menu action plus the
 // auto-dismissing confirmation notice.
+// Story 4.3: Sort the Segment List (FR33/FR34) — sort control above the
+// list, hidden below two segments (AC #7).
 export default function HomeScreen() {
-  const { segments, deleteSegment, duplicateSegment } = useSegments();
+  const { segments, deleteSegment, duplicateSegment, sortKey, sortDirection, setSortOption } = useSegments();
   const { session, endSession } = useActiveSession();
   // Story 4.1 (FR31): live lookup, not session.segmentName's frozen
   // snapshot — see architecture.md's Rename Propagation table. The `??`
@@ -133,6 +137,17 @@ export default function HomeScreen() {
     }, 'Could not duplicate that segment.');
   };
 
+  // [Review][Patch] found via code review 2026-09-08: Task 8 waived
+  // runAction here on the assumption setSortOption "has no realistic
+  // failure mode," but the underlying storage.set call is unguarded (unlike
+  // getString) and this file's own runAction comment states an uncaught
+  // press-handler exception "takes the app down instead of the row" — the
+  // same exposure every other write on this screen is already wrapped
+  // against.
+  const handleSortChange = (key: SortKey, direction: SortDirection) => {
+    runAction(() => setSortOption(key, direction), 'Could not save sort option.');
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -156,6 +171,9 @@ export default function HomeScreen() {
           <EmptyState />
         ) : (
           <>
+            {segments.length > 1 && (
+              <SortControl sortKey={sortKey} sortDirection={sortDirection} onChange={handleSortChange} />
+            )}
             <FlatList
               testID="segment-list"
               style={styles.list}

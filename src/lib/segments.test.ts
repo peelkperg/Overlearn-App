@@ -1,5 +1,14 @@
 import { readHistory, writeHistoryEntry } from './history';
-import { createSegment, deleteSegment, duplicateSegment, getSegment, readSegments, renameSegment } from './segments';
+import {
+  buildSortAggregates,
+  createSegment,
+  deleteSegment,
+  duplicateSegment,
+  getSegment,
+  readSegments,
+  renameSegment,
+  sortSegments,
+} from './segments';
 import { readSession, writeSession } from './session';
 import { storage } from './storage';
 
@@ -336,5 +345,129 @@ describe('lib/segments deleteSegment [Story 1.6]', () => {
     createSegment('First');
     expect(() => deleteSegment('missing-id')).not.toThrow();
     expect(readSegments()).toHaveLength(1);
+  });
+});
+
+describe('lib/segments sortSegments [Story 4.3]', () => {
+  const a = { id: 'a', name: 'Bravo', createdAt: '2026-01-02T00:00:00.000Z' };
+  const b = { id: 'b', name: 'alpha', createdAt: '2026-01-01T00:00:00.000Z' };
+  const c = { id: 'c', name: 'charlie', createdAt: '2026-01-03T00:00:00.000Z' };
+  const segments = [a, b, c];
+
+  const aggregates = new Map([
+    ['a', { lastPracticed: '2026-02-01T00:00:00.000Z', solidification: 40 }],
+    ['b', { lastPracticed: null, solidification: null }], // no history
+    ['c', { lastPracticed: '2026-02-02T00:00:00.000Z', solidification: 90 }],
+  ]);
+
+  it('sorts by name ascending (case-insensitive)', () => {
+    expect(sortSegments(segments, aggregates, 'name', 'asc').map((s) => s.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('sorts by name descending', () => {
+    expect(sortSegments(segments, aggregates, 'name', 'desc').map((s) => s.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('sorts by createdAt ascending', () => {
+    expect(sortSegments(segments, aggregates, 'createdAt', 'asc').map((s) => s.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('sorts by createdAt descending', () => {
+    expect(sortSegments(segments, aggregates, 'createdAt', 'desc').map((s) => s.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  // [Review][Patch] found via code review 2026-09-08: this test's own name
+  // claimed the no-history segment sorts "last, regardless of direction,"
+  // but the assertions below prove the opposite — AC #4 floors its *value*
+  // (oldest-possible date), not its position, so it sorts last under desc
+  // and first under asc, same as any other segment's value would.
+  it('floors the no-history segment to the oldest-possible date, so its position follows normal sort order (AC #4)', () => {
+    expect(sortSegments(segments, aggregates, 'lastPracticed', 'desc').map((s) => s.id)).toEqual(['c', 'a', 'b']);
+    expect(sortSegments(segments, aggregates, 'lastPracticed', 'asc').map((s) => s.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('floors the no-history segment to 0%, so its position follows normal sort order (AC #4)', () => {
+    expect(sortSegments(segments, aggregates, 'solidification', 'desc').map((s) => s.id)).toEqual(['c', 'a', 'b']);
+    expect(sortSegments(segments, aggregates, 'solidification', 'asc').map((s) => s.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  // [Review][Decision] found via code review 2026-09-08: plain `<`/`>` on
+  // lowercased strings (Task 4's original spec) compares by raw UTF-16 code
+  // unit, not human alphabetical order — resolved to switch to
+  // locale-aware comparison; these lock the two concrete failure cases the
+  // review verified.
+  it('sorts accented names using locale-aware comparison, not raw code-unit order', () => {
+    const accented = [
+      { id: 'z', name: 'Zebra', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'e', name: 'Étude', createdAt: '2026-01-02T00:00:00.000Z' },
+    ];
+    // Raw code-unit order would put 'Étude' (U+00C9) after 'Zebra' (U+005A);
+    // locale-aware order places accented letters near their base letter.
+    expect(sortSegments(accented, new Map(), 'name', 'asc').map((s) => s.id)).toEqual(['e', 'z']);
+  });
+
+  it('sorts embedded numbers numerically, not lexicographically', () => {
+    const numbered = [
+      { id: 'ten', name: 'Bar 10', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'two', name: 'Bar 2', createdAt: '2026-01-02T00:00:00.000Z' },
+    ];
+    // Lexicographic order would put 'Bar 10' before 'Bar 2' ('1' < '2').
+    expect(sortSegments(numbered, new Map(), 'name', 'asc').map((s) => s.id)).toEqual(['two', 'ten']);
+  });
+
+  it('does not mutate the input array', () => {
+    const original = [...segments];
+    sortSegments(segments, aggregates, 'name', 'asc');
+    expect(segments).toEqual(original);
+  });
+
+  it('keeps a stable order for two segments with equal sort values', () => {
+    const tied = [
+      { id: 'x', name: 'Same', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'y', name: 'Same', createdAt: '2026-01-02T00:00:00.000Z' },
+    ];
+    expect(sortSegments(tied, new Map(), 'name', 'asc').map((s) => s.id)).toEqual(['x', 'y']);
+  });
+});
+
+describe('lib/segments buildSortAggregates [Story 4.3]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('finds the entry with the latest date, not just the last-pushed one', () => {
+    const segment = createSegment('Bar 24');
+    // Pushed out of chronological order to prove max-by-date, not by array
+    // position.
+    writeHistoryEntry(segment.id, {
+      date: '2026-01-01T00:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: 's1',
+    });
+    writeHistoryEntry(segment.id, {
+      date: '2026-03-01T00:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: 's2',
+    });
+    writeHistoryEntry(segment.id, {
+      date: '2026-02-01T00:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: 's3',
+    });
+
+    const aggregates = buildSortAggregates([segment]);
+    expect(aggregates.get(segment.id)?.lastPracticed).toBe('2026-03-01T00:00:00.000Z');
+  });
+
+  it('returns null for both fields for a segment with zero history entries', () => {
+    const segment = createSegment('Bar 24');
+    const aggregates = buildSortAggregates([segment]);
+    expect(aggregates.get(segment.id)).toEqual({ lastPracticed: null, solidification: null });
   });
 });

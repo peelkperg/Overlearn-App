@@ -345,7 +345,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR27: User can view a chronological list of completed sessions for a segment
 - FR28: Each history entry displays the date, the final target streak achieved, total mistakes for that session, and total attempts
 - FR29: System excludes non-completed sessions (abandoned or reset) from the history log
-- FR38: **(v1.1)** User can view the segment's Solidification % (as defined in FR33) at the top of its history log, so the value it can be sorted by is also visible somewhere. Recomputed from the same completed-session data as FR33's sort; a segment with no completed sessions shows 0%, consistent with FR33's sort treatment. (added 2026-09-06 — resolves the v1.1 design review's open question that Solidification % was sortable but never displayed)
+- FR38: **(v1.1)** User can view the segment's Solidification % (as defined in FR33) at the top of its history log, so the value it can be sorted by is also visible somewhere. Recomputed from the same completed-session data as FR33's sort; a segment with no completed sessions shows an em dash ("—"), not "0%" — the sort control's internal 0%-as-comparison-value is never read by the user directly, but on this summary line "0%" would misread as "scored zero" rather than "no data yet." (added 2026-09-06; em-dash wording corrected 2026-09-08 — [Review][Decision] found via Story 4.3's code review, this FR previously said "0%," contradicting architecture.md and ux-design-specification.md's reasoned em-dash decision — resolved in their favor.)
 
 ### Settings (v1.1, added 2026-09-06)
 

@@ -37,6 +37,20 @@ export interface HistoryEntry {
   sessionStartTimestamp: string; // ISO 8601
 }
 
+// Story 4.3/Epic 5 (FR33-FR39): one Settings object per architecture.md's
+// "one key per object, not one key per field" decision. This story only
+// reads/writes sortKey/sortDirection; overlearningPercent's setter/UI is
+// Epic 5's scope, but the full shape lives here now so both features share
+// one MMKV key without a later migration.
+export type SortKey = 'name' | 'createdAt' | 'lastPracticed' | 'solidification';
+export type SortDirection = 'asc' | 'desc';
+
+export interface Settings {
+  overlearningPercent: number; // FR35-FR37: 50-300, step 10. Default 50.
+  sortKey: SortKey; // FR33
+  sortDirection: SortDirection; // FR33-FR34
+}
+
 // Runtime shape guards for everything read back out of MMKV. On-device data
 // is untrusted input: a `getObject<T>` cast alone is an unchecked assertion,
 // and a parseable-but-wrong payload would reach the UI and throw there.
@@ -67,16 +81,32 @@ export function isSegmentArray(value: unknown): value is Segment[] {
   );
 }
 
+// [Review][Patch] found via code review 2026-09-08: typeof === 'number'
+// alone accepts Infinity/NaN/negative/fractional history counters, which
+// then flow straight into calculateSolidificationPercent's arithmetic.
+// Because that percent feeds sortSegments' comparator, one corrupted entry
+// doesn't just misreport its own segment — a NaN result makes the
+// comparator non-transitive and randomizes the *entire* list's order.
+// Mirrors isSessionState's isNonNegativeInteger treatment, plus a
+// totalMistakes <= totalAttempts invariant (a violation would otherwise
+// yield a negative percent that sorts below the 0%/no-history floor) and a
+// parseable-date check on `date` (a corrupt/empty date would otherwise
+// bypass sortSegments' epoch-floor fallback, since '' < '1970-...' is true).
+function isValidIsoDate(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && !Number.isNaN(Date.parse(value));
+}
+
 export function isHistoryEntryArray(value: unknown): value is HistoryEntry[] {
   return (
     Array.isArray(value) &&
     value.every(
       (item) =>
         isRecord(item) &&
-        typeof item.date === 'string' &&
-        typeof item.finalTarget === 'number' &&
-        typeof item.totalMistakes === 'number' &&
-        typeof item.totalAttempts === 'number' &&
+        isValidIsoDate(item.date) &&
+        isNonNegativeInteger(item.finalTarget) &&
+        isNonNegativeInteger(item.totalMistakes) &&
+        isNonNegativeInteger(item.totalAttempts) &&
+        item.totalMistakes <= item.totalAttempts &&
         typeof item.sessionStartTimestamp === 'string',
     )
   );
@@ -98,5 +128,38 @@ export function isSessionState(value: unknown): value is SessionState {
     isNonNegativeInteger(value.totalIncorrectThisSession) &&
     typeof value.sessionComplete === 'boolean' &&
     typeof value.sessionStartTimestamp === 'string'
+  );
+}
+
+// Exported so SortControl.tsx can build its menu from this same list rather
+// than keeping a second, independently-maintained array — [Review][Patch]
+// found via code review 2026-09-08: two separately-declared enumerations of
+// SortKey (this one and SortControl's own) can drift apart with no compile
+// error, silently validating/sorting by a key the menu offers no way to
+// select or escape.
+export const SortKeys: readonly SortKey[] = ['name', 'createdAt', 'lastPracticed', 'solidification'];
+export const SortDirections: readonly SortDirection[] = ['asc', 'desc'];
+
+// [Review][Patch] found via code review 2026-09-08: `as SortKey`/`as
+// SortDirection` casts inside the guard whose whole purpose is eliminating
+// unchecked assertions contradicted this file's own header. Proper
+// user-defined type guards narrow without a cast.
+function isSortKey(value: unknown): value is SortKey {
+  return typeof value === 'string' && (SortKeys as readonly string[]).includes(value);
+}
+
+function isSortDirection(value: unknown): value is SortDirection {
+  return typeof value === 'string' && (SortDirections as readonly string[]).includes(value);
+}
+
+export function isSettings(value: unknown): value is Settings {
+  return (
+    isRecord(value) &&
+    typeof value.overlearningPercent === 'number' &&
+    value.overlearningPercent >= 50 &&
+    value.overlearningPercent <= 300 &&
+    value.overlearningPercent % 10 === 0 &&
+    isSortKey(value.sortKey) &&
+    isSortDirection(value.sortDirection)
   );
 }

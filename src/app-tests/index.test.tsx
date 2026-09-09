@@ -8,6 +8,8 @@ import { act, fireEvent, render, renderHook } from '@testing-library/react-nativ
 import { router } from 'expo-router';
 
 import { useActiveSession } from '@/hooks/useActiveSession';
+import { writeHistoryEntry } from '@/lib/history';
+import * as segmentsLib from '@/lib/segments';
 import { createSegment, renameSegment } from '@/lib/segments';
 import { getObject } from '@/lib/storage';
 import type { SessionState } from '@/lib/types';
@@ -239,5 +241,212 @@ describe('HomeScreen resume/discard prompt [Story 2.10]', () => {
     expect(getObject<SessionState>('session.active')).toBeUndefined();
     expect(getObject('history.segment-1')).toBeUndefined();
     expect(pushed).not.toHaveBeenCalled();
+  });
+});
+
+describe('HomeScreen sort control [Story 4.3]', () => {
+  it('is absent with 0 or 1 segment, present with 2+ (AC #7)', async () => {
+    // [Review][Patch] found via code review 2026-09-08: each render below
+    // must be unmounted before the next, or earlier trees stay subscribed
+    // and keep re-rendering underneath the current one.
+    const empty = await render(<HomeScreen />);
+    expect(empty.queryByTestId('segment-sort-control')).toBeNull();
+    await empty.unmount();
+
+    createSegment('First');
+    const one = await render(<HomeScreen />);
+    expect(one.queryByTestId('segment-sort-control')).toBeNull();
+    await one.unmount();
+
+    createSegment('Second');
+    const two = await render(<HomeScreen />);
+    expect(two.getByTestId('segment-sort-control')).toBeTruthy();
+    await two.unmount();
+  });
+
+  it('re-orders the rendered rows when a different sort option is selected (AC #2)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    // Default sort is createdAt/asc: Zebra (created first) leads.
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Zebra',
+      'Alpha',
+    ]);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name'));
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Alpha',
+      'Zebra',
+    ]);
+  });
+
+  it('flips the order when the already-active option is tapped again (AC #3)', async () => {
+    // [Review][Patch] found via code review 2026-09-08: the original version
+    // of this test only asserted the post-flip order, which happened to be
+    // identical to the screen's untouched default order — it could not tell
+    // a genuine flip apart from an entirely inert sort control. Asserting
+    // the intermediate (pre-flip) order too closes that gap: an inert
+    // control would fail here already, before the flip is even attempted.
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name')); // now name/asc
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Alpha',
+      'Zebra',
+    ]);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name')); // flips to name/desc
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Zebra',
+      'Alpha',
+    ]);
+  });
+
+  it('re-sorts live when a history entry is written for the sort key currently in use (AC #5)', async () => {
+    const lowerRanked = createSegment('First');
+    const higherRanked = createSegment('Second');
+    // Gives 'Second' a known initial rank ahead of 'First' (which has none
+    // yet) so the "before" order is well-defined rather than an arbitrary
+    // tie between two no-history segments.
+    writeHistoryEntry(higherRanked.id, {
+      date: '2026-09-01T00:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-09-01T00:00:00.000Z',
+    });
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-lastPracticed')); // lastPracticed/desc
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Second',
+      'First',
+    ]);
+
+    // A fresher practice for 'First' should move it above 'Second' without
+    // the screen needing to be reopened.
+    await act(async () => {
+      writeHistoryEntry(lowerRanked.id, {
+        date: '2026-09-08T12:00:00.000Z',
+        finalTarget: 5,
+        totalMistakes: 0,
+        totalAttempts: 5,
+        sessionStartTimestamp: '2026-09-08T11:00:00.000Z',
+      });
+    });
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'First',
+      'Second',
+    ]);
+  });
+
+  // [Review][Patch] found via code review 2026-09-08: the previous version
+  // of this test asserted "order is unchanged," but order cannot change
+  // under createdAt sort on a history write regardless of whether the
+  // conditional-subscription gate (Task 6) works — it would pass even with
+  // the gate deleted entirely (mutation-verified). A spy on
+  // buildSortAggregates is a real regression guard: that function is only
+  // ever called when the active sort key needs history data (Task 6's
+  // gate), so a history write must not trigger a second call while sorted
+  // by name/createdAt.
+  it('does not recompute sort aggregates when sorted by name/createdAt and a history entry is written (R9 regression guard)', async () => {
+    const buildSpy = jest.spyOn(segmentsLib, 'buildSortAggregates');
+    const first = createSegment('Alpha');
+    createSegment('Beta');
+    await render(<HomeScreen />);
+    buildSpy.mockClear();
+
+    await act(async () => {
+      writeHistoryEntry(first.id, {
+        date: '2026-09-08T12:00:00.000Z',
+        finalTarget: 5,
+        totalMistakes: 0,
+        totalAttempts: 5,
+        sessionStartTimestamp: '2026-09-08T11:00:00.000Z',
+      });
+    });
+
+    expect(buildSpy).not.toHaveBeenCalled();
+    buildSpy.mockRestore();
+  });
+
+  it('persists the selected sort option and direction across a relaunch (AC #6)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name')); // name/asc
+
+    await view.unmount();
+    const relaunched = await render(<HomeScreen />);
+
+    expect(relaunched.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Name, A to Z');
+    expect(relaunched.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Alpha',
+      'Zebra',
+    ]);
+  });
+
+  it('announces both the sort key and direction, and updates when they change (AC #8)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe(
+      'Sort by Date created, oldest first',
+    );
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-lastPracticed'));
+
+    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe(
+      'Sort by Last practiced, most recent first',
+    );
+  });
+
+  // [Review][Patch] found via code review 2026-09-08: this test's own name
+  // claimed a positional rule ("to the oldest-possible end") its own
+  // assertions below contradict — AC #4 floors the segment's *value*, not
+  // its position, so it correctly ends up first once direction flips.
+  it('floors the no-history segment to the oldest-possible date, so its position flips with direction (AC #4)', async () => {
+    const withHistory = createSegment('Practiced');
+    createSegment('Never practiced');
+    writeHistoryEntry(withHistory.id, {
+      date: '2026-09-08T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 0,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-09-08T11:00:00.000Z',
+    });
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-lastPracticed')); // desc: most recent first
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Practiced',
+      'Never practiced',
+    ]);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-lastPracticed')); // flips to asc
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Never practiced',
+      'Practiced',
+    ]);
   });
 });
