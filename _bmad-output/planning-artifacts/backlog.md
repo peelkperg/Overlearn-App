@@ -44,6 +44,23 @@ Named explicitly as out-of-scope-for-v1 in the brief (2026-08-xx planning phase)
 - **Gamification**
 - **AI integration / AI-assisted correctness judging**
 
+### Practice session video recording
+
+**Requested:** 2026-09-06, by Gerardo.
+
+When a camera is available on the device running the app, let the user record video of their practice session.
+
+**Context:** not named in the original product brief's out-of-scope list — a new request, not a promoted brief item. No FR currently covers any camera/media-capture capability; nothing in the app touches device media today.
+
+**Why this isn't a simple add — real architectural implications, not just a UI feature:**
+- **New native dependency required.** Nothing in the current dependency tree touches the camera (no `expo-camera`/`expo-av`/`expo-media-library`). This is a new capability class for the app, not an extension of an existing one.
+- **New permission surface.** Camera (and likely microphone, if audio is expected) permission prompts are a first for this app — everything shipped so far needs zero OS permissions beyond storage, which was itself a deliberate simplicity/privacy property worth preserving consciously, not losing by default.
+- **Storage model conflict.** The entire persistence layer (`lib/storage.ts`) is `react-native-mmkv` key-value storage sized for small JSON records (segments, sessions, history entries) — video files are orders of magnitude larger and need filesystem storage (`expo-file-system` or similar), not MMKV. This is a second persistence mechanism alongside the existing one, not a natural extension of it.
+- **NFR8/NFR9 interaction, not necessarily a violation.** "Zero data leaves the device" can still hold if video is written and stays local — but storage growth, retention/deletion policy (does old video get cleaned up automatically? does deleting a segment delete its videos, mirroring FR6's existing history cascade?), and whether recordings need their own opt-in (separate from the app's otherwise-permission-free posture) all need explicit decisions before this is designed, not assumed.
+- **Conditional availability, as the request itself specifies** — "when there is a videocamera available" implies a capability check and a graceful no-camera path, not a hard requirement; device-capability detection is new territory for this app.
+
+**Open questions for scoping (not yet answered):** where recordings are surfaced (tied to a specific history entry? a segment-level gallery?), retention/storage-limit policy, whether audio is included, and whether this is a v2-scope conversation-worthy feature given its NFR8/NFR9 and permission-model implications, similar in weight to the Analytics conflict noted below.
+
 ### Analytics — flagged conflict, not a simple add
 
 Named in the brief's out-of-scope list, but this one needs a real decision before any scoping pass, not just design work: this app's NFR8/NFR9 (zero telemetry, zero data leaves the device, verifiable by code inspection) were treated as load-bearing all the way through implementation — this session's Android Auto Backup fix (`app.json`'s `allowBackup: false`) exists specifically because that guarantee was taken seriously even at the OS-configuration level. Any future analytics work is a scope change to NFR8/NFR9 themselves, not an additive feature — it would need to be re-litigated at the PRD level, not just added as a story.

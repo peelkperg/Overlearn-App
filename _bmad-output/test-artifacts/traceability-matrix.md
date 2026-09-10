@@ -8,6 +8,16 @@ oracleConfidence: 'high'
 oracleResolutionMode: 'formal_requirements'
 oracleSources: ['_bmad-output/planning-artifacts/epics.md', '_bmad-output/planning-artifacts/prd.md']
 externalPointerStatus: 'not_used'
+v1.1:
+  stepsCompleted: ['v1.1-step-01-load-context', 'v1.1-step-02-discover-tests', 'v1.1-step-03-map-criteria', 'v1.1-step-04-analyze-gaps', 'v1.1-step-05-gate-decision']
+  lastStep: 'v1.1-step-05-gate-decision'
+  lastSaved: '2026-09-06'
+  gateStatus: 'NOT_APPLICABLE'
+  coverageBasis: 'acceptance_criteria'
+  oracleConfidence: 'high'
+  oracleResolutionMode: 'formal_requirements'
+  oracleSources: ['_bmad-output/planning-artifacts/epics.md', '_bmad-output/test-artifacts/test-design-epic-4-5.md']
+  externalPointerStatus: 'not_used'
 ---
 
 # Traceability Matrix: Overlearn (Re-run)
@@ -176,3 +186,86 @@ Rationale for CONCERNS → WAIVED rather than a silent downgrade to PASS: the un
 **This was not the same kind of gap as the prior FAIL.** The prior FAIL was about *missing tests for things that could be silently broken* — the highest-stakes example being FR24, a whole interaction flow with zero coverage. This waived item was always *one specific unmeasured number* on a mechanism deliberately architected to guarantee it and that held up under extensive subjective on-device use — a narrower, lower-probability gap than what FAIL described three days earlier, and one a reasonable owner can knowingly accept rather than build a new test to close.
 
 **Full report:** `_bmad-output/test-artifacts/traceability-matrix.md` (this file)
+
+---
+
+# v1.1 Traceability: Epic 4 & Epic 5 (added 2026-09-06)
+
+**Author:** Claude (Master Test Architect), for Gerardo
+**Date:** 2026-09-06
+**Scope:** FR30–FR40 (Epic 4: Segment Organization & Insight; Epic 5: Configurable Overlearning Target). Everything above this heading is v1.0, unchanged and frozen at git tag `v1.0.0`.
+
+## v1.1 Step 1: Coverage Oracle Resolution
+
+**Resolved oracle:** Formal requirements — `epics.md`'s v1.1 Requirements Inventory (FR30–FR40) plus each of the 8 v1.1 stories' Acceptance Criteria, cross-referenced against `test-design-epic-4-5.md`'s coverage matrix (C20–C42).
+
+**Confidence:** High — same oracle type and same source documents' standard as the v1.0 trace above.
+
+**Supporting artifacts loaded:** `epics.md`, `architecture.md`, `test-design-epic-4-5.md`, `project-context.md`.
+
+## v1.1 Step 2: Test Discovery & Cataloging
+
+**Jest suite:** unchanged from v1.0 — 166 passing tests, 0 for Epic 4/5. No `renameSegment`, `duplicateSegment`, sort, `calculateSolidificationPercent`, or `lib/settings.ts` exists in `src/` yet (confirmed via source scan during test design). This is expected: Epic 4 and Epic 5 are fully specified but not yet implemented — no v1.1 story has been picked up by `bmad-create-story`/`bmad-dev-story`.
+
+**Levels present for v1.1:** None yet. `test-design-epic-4-5.md` records the *planned* levels (Unit, Component, Hook, one Manual/on-device item) per scenario.
+
+## v1.1 Step 3: Requirements-to-Test Traceability Matrix
+
+**Legend:** PLANNED = a scenario exists in `test-design-epic-4-5.md` mapped to this FR, but no test file implements it yet · NONE = would indicate a genuine gap even at the planning stage (none found).
+
+### Segment Organization & Insight (Epic 4)
+
+| FR | Requirement | Planned Test(s) | Status |
+|---|---|---|---|
+| FR30 | Rename via dedicated screen | C20, C21 (Unit) | **PLANNED** |
+| FR31 | Rename propagates to all 5 display sites | C22 (Component, R8-mitigating), C23 (Component, regression guard) | **PLANNED** |
+| FR32 | Duplicate segment, no copied history | C24 (Unit), C25 (Component) | **PLANNED** |
+| FR33 | Sort by name/created/last-practiced/Solidification % | C26, C27 (Unit/Component), C28 (Hook), C30 (Component) | **PLANNED** |
+| FR34 | Sort choice persists across relaunch | C29 (Unit) | **PLANNED** |
+| FR38 | Solidification % summary on history log | C31 (Unit), C32 (Component) | **done** |
+| FR40 | Inline rename via press-and-hold | C33, C34 (Component), C35 (Unit) | **PLANNED** |
+
+### Configurable Overlearning Target (Epic 5)
+
+| FR | Requirement | Planned Test(s) | Status |
+|---|---|---|---|
+| FR35 | Settings screen access | C36, C37 | **PLANNED** |
+| FR36 | 50–300% in 10% steps | C36, C37, C38 | **PLANNED** |
+| FR37 | Applies live to in-progress session | C38, C39 | **PLANNED** |
+| FR39 | Standing in-progress-session notice | C40 | **PLANNED** |
+
+### Cross-Cutting
+
+| Item | Planned Test(s) | Status |
+|---|---|---|
+| Route registration (`app/settings.tsx`, `app/segment/[id]/rename.tsx`) | C41 | **PLANNED** |
+| Real-device gesture timing / accessibility announcement delivery | C42 (Manual) | **PLANNED** |
+
+### v1.1 Summary
+
+All 11 v1.1 FRs (FR30–FR40) map to at least one planned scenario in `test-design-epic-4-5.md` — **0 requirements at NONE**. No implementation exists yet, so no scenario can be marked FULL or PARTIAL; this trace exists to confirm planning completeness before Epic 4/5 development starts, not to gate a release.
+
+## v1.1 Step 4: Gap Analysis & Coverage Statistics
+
+**Coverage statistics (planning completeness, not test-pass coverage):**
+
+| Metric | Value |
+|---|---|
+| FRs with ≥1 planned scenario | 11 / 11 (100%) |
+| FRs with 0 planned scenario | 0 |
+| P0 planned scenarios | 14 |
+| P1 planned scenarios | 5 |
+| P2 planned scenarios | 4 |
+| Implemented (passing) scenarios | 0 |
+
+**Gap analysis:** No planning gap. The only gap is the expected one — zero implementation. R8 (FR31 propagation drift, HIGH, score 6) is the one risk from `test-design-epic-4-5.md` that must convert from PLANNED to FULL before Story 4.1 is marked complete; it is the single highest-priority item to verify first once implementation begins.
+
+## v1.1 Step 5: Gate Decision
+
+### Gate Decision: **NOT APPLICABLE**
+
+A PASS/CONCERNS/FAIL/WAIVED gate evaluates whether *implemented* work is safe to ship. Epic 4 and Epic 5 have no implementation yet — there is nothing to gate. This trace instead confirms the pre-implementation planning artifact (`test-design-epic-4-5.md`) has no coverage gap against the requirements oracle, so Story 4.1 can begin with a known, complete test target.
+
+**Re-run this trace in gate mode (PASS/CONCERNS/FAIL/WAIVED) after each Epic 4/5 story lands**, the same way v1.0's trace was re-run mid-epic (see the 2026-09-02 → 2026-09-03 re-run above) once real test files and UAT scripts exist to evaluate against the planned scenarios in this section.
+
+**Full report:** `_bmad-output/test-artifacts/traceability-matrix.md` (this file, v1.1 section)

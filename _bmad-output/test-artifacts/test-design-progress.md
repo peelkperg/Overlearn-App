@@ -1,10 +1,19 @@
 ---
 workflowStatus: 'completed'
 totalSteps: 5
-stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output']
-lastStep: 'step-05-generate-output'
+stepsCompleted: ['step-01-detect-mode', 'step-02-load-context', 'step-03-risk-and-testability', 'step-04-coverage-plan', 'step-05-generate-output', 'v1.1-step-01-detect-mode', 'v1.1-step-02-load-context', 'v1.1-step-03-risk-and-testability', 'v1.1-step-04-coverage-plan', 'v1.1-step-05-generate-output']
+lastStep: 'v1.1-step-05-generate-output'
 nextStep: ''
-lastSaved: '2026-08-31'
+lastSaved: '2026-09-06'
+v1.1Scope: 'Epic-Level Mode — Epic 4 (Segment Organization & Insight) and Epic 5 (Configurable Overlearning Target), FR30-FR40. v1.0 run above is complete and frozen; this run extends the document, matching the extend-not-regenerate pattern used for prd.md/architecture.md/epics.md.'
+v1.1InputDocuments:
+  - _bmad-output/planning-artifacts/epics.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/project-context.md
+  - resources/knowledge/risk-governance.md
+  - resources/knowledge/probability-impact.md
+  - resources/knowledge/test-levels-framework.md
+  - resources/knowledge/test-priorities-matrix.md
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -55,6 +64,22 @@ All prerequisites satisfied — no halt condition triggered.
 **Note on the ADR checklist's fit:** the 8-category/29-criteria framework is written for backend/microservice architectures. Several categories (Disaster Recovery's RTO/RPO/failover, Deployability's Blue/Green/Canary, Scalability's horizontal scaling) don't map onto a local-only, no-backend mobile app and will be marked N/A with rationale in Step 3, rather than force-fit.
 
 **Confirmed with user:** all required inputs present; proceeding.
+
+## v1.1 Step 2: Load Context & Knowledge Base
+
+**Mode:** Epic-Level (Epic 4 + Epic 5, explicit user intent — both PRD/ADR and epics/stories exist, but the user's request named epics specifically).
+
+**Configuration (`_bmad/tea/config.yaml`, hand-created for this project):** `test_framework: jest`, `risk_threshold: p2`, `tea_use_playwright_utils: false`, `tea_use_pactjs_utils: false`, `tea_pact_mcp: none`, `tea_browser_automation: none`, `test_stack_type: auto`. All Playwright/Pact/browser loading skipped as not applicable (same as v1.0 — offline mobile app, no browser/backend surface).
+
+**Project artifacts loaded (Epic-Level Mode):**
+- `epics.md` — v1.1 Requirements Inventory (FR30–FR40, UX-DR13–25), Epic 4 (5 stories), Epic 5 (3 stories), all with Given/When/Then ACs
+- `architecture.md` — v1.1 Architectural Decisions section (`lib/settings.ts`, optional-parameter threading, Rename Propagation table, Solidification % formula, new routes)
+- `project-context.md` — critical implementation rules (untrusted-storage type guards, `useSyncExternalStore` snapshot-identity rule, MMKV key naming, testing rules: co-located tests, `jest.setup.js`'s shared mock, async RNTL v14 APIs)
+- Prior system-level test-design outputs (`test-design-architecture.md`, `test-design-qa.md`) — v1.0 only, reviewed for pattern continuity, not requirement content
+
+**Existing test coverage scan:** `src/lib/segments.ts` has no `renameSegment`/`duplicateSegment`/sort logic yet — confirms v1.1 is unimplemented, as expected. Existing test patterns to extend: `src/lib/segments.test.ts` (unit, pure-function assertions on `disambiguate`/`normalizeSegmentName` equivalents), `src/components/SegmentListItem.test.tsx` (component, row menu), `src/app-tests/*.test.tsx` (screen-level, co-located in the special non-route test directory).
+
+**Note — investigated and resolved without a finding:** FR31 requires rename to reach 5 display sites; grepping the current (v1.0) codebase shows `StreakReadout`, `CompletionScreen`, and `ResumeDiscardDialog` all currently consume the frozen `session.segmentName` snapshot, which looked like a gap. `architecture.md`'s "Rename Propagation (FR31)" section (already extended for v1.1) resolves this explicitly: those 3 sites switch to a live lookup (`useSegment(id)` / `useSegment(session.segmentId)`), while `SessionState.segmentName` stays in the schema unused as a defensive fallback. No architecture change needed — recorded here as a **testability item**: Story 4.1's dev agent must implement the live-lookup switch, not just call `renameSegment` and assume existing display code already reflects it.
 
 ## Step 3: Testability & Risk Assessment
 
@@ -172,6 +197,34 @@ No RN-specific `test-priorities-matrix.md` variance needed — using the priorit
 - **Nightly/Manual (pre-story-completion, not every commit):** C8, C9, C10 (E2E, on-device) — these require an emulator/device and are the ones this session's own manual verification of Story 1.1 already demonstrated take real wall-clock time (first native build alone: ~37 minutes). Not practical to run on every commit for a solo dev; run before marking an Epic 2 story complete, and again before any release.
 - **Weekly/Pre-release:** C19 (dependency audit) and a full re-run of the E2E suite.
 
+## v1.1 Step 3: Risk Assessment (Epic-Level — no testability review, per mode rules)
+
+### Risk Assessment
+
+| ID | Category | Risk | Probability | Impact | Score | Level |
+|---|---|---|---|---|---|---|
+| R7 | DATA | `disambiguate`'s self-exclusion fix (rename to the same name in different case, e.g. "bar 24" → "Bar 24") is called out in `architecture.md:678` as a "small, testable change to existing logic" — easy to regress since the naive fix (excluding by id) must still catch a *different* case-insensitive collision with a *third* segment. | 2 | 2 | 4 | MEDIUM |
+| R8 | BUS | FR31's rename-propagation (5 sites) requires 3 of them to switch from a stored `session.segmentName` snapshot to a live lookup (architecture.md's Rename Propagation table). If Story 4.1 implements `renameSegment` but misses the live-lookup switch in `StreakReadout`/`CompletionScreen`/`ResumeDiscardDialog`, a rename silently fails to propagate to an in-progress or interrupted session's UI — high probability of partial implementation since it's a cross-file change with no compiler enforcement tying it to the rename action itself. | 3 | 2 | 6 | HIGH |
+| R9 | TECH | `useSegments()` gains a `subscribeToHistory` subscription for FR33's live re-sort on session completion (architecture.md:617) — a genuinely new cross-cutting wire-up, the one place v1.1 isn't just reusing an existing pattern. Risk of over-subscribing (re-rendering the whole list on every segment's history write, not just visible/sorted-by ones) or under-subscribing (missing the re-sort FR33's AC explicitly requires). | 2 | 2 | 4 | MEDIUM |
+| R10 | DATA | FR33/FR38's Solidification % aggregation (`calculateSolidificationPercent`) must return `null` for zero completed sessions, not `0` — UI renders "—" vs a misleading "0%". A boundary slip here silently misrepresents a brand-new segment as having a 0% success rate, which reads as a real (bad) measurement rather than "no data yet." | 2 | 2 | 4 | MEDIUM |
+| R11 | TECH | FR40's inline rename (1s press-and-hold) swaps `<Text>` for `<TextInput>` in place at 2 of the app's display sites (list row, detail heading) while FR30's dedicated screen also targets the same underlying `renameSegment`. Two independent UI entry points converging on one validation/disambiguation path is a natural place for one path to drift out of sync with the other (e.g. FR30's screen validates on submit; FR40's inline field must replicate the exact same non-empty + disambiguation behavior without `SegmentForm`'s shared component). | 2 | 2 | 4 | MEDIUM |
+| R12 | OPS | No E2E/on-device tool was ever selected in v1.0 (R3's mitigation deferred it to Epic 2, then Epic 2 shipped without one per the actual repository scan — only Jest + RNTL exist). FR40's long-press/`delayLongPress` timing and FR39's `accessibilityLiveRegion="polite"` announcement are both real-device behaviors that Jest/RNTL cannot meaningfully assert (fake timers can simulate the delay, but not actual touch-and-hold gesture recognition or screen-reader announcement delivery). | 2 | 2 | 4 | MEDIUM |
+| R13 | BUS | FR36 restricts overlearning-% to 50–300% in 10-point steps with UI-disabled bounds — but `lib/settings.ts`'s stored value has no runtime type-guard range check called out in architecture.md (unlike `Segment`/`HistoryEntry`'s guards). Corrupted on-device storage (or a future bug bypassing the stepper) could write an out-of-range value that `calculateTargetStreak` then accepts silently, producing a target outside the specified 50–300% envelope. | 1 | 2 | 2 | LOW |
+
+**No HIGH-or-above risk carries an unmitigated score of 9** — R8 (score 6) is the only HIGH, and its mitigation is a direct testing action, not a design change (architecture.md's Rename Propagation table already specifies the correct target state; the risk is implementation drift from that spec, which a targeted test catches).
+
+### Mitigation Plan
+
+| Risk | Mitigation | Owner | Timeline |
+|---|---|---|---|
+| R8 | Story 4.1's test suite must include an explicit assertion for each of the 3 live-lookup sites (not just `renameSegment`'s own unit test) — a component test per site (`StreakReadout`, `CompletionScreen`, `ResumeDiscardDialog`) rendered with a segment renamed after the session/prompt was constructed, asserting the new name displays. | Solo dev (Gerardo) | Before Story 4.1 marked complete |
+| R7 | Unit test matrix for `disambiguate`'s self-exclusion: (a) rename to own name, different case → succeeds; (b) rename to a *different* existing segment's name, matching case → disambiguated; (c) rename to a different segment's name in a *different* case → still disambiguated (this is the one the naive id-exclusion fix could miss). | Solo dev (Gerardo) | Before Story 4.1 marked complete |
+| R9 | Unit test on `useSegments()`'s new subscription: completing a session for a segment not currently sorted to the top must still trigger a re-render when sort key is last-practiced/Solidification %, and a completion for an unrelated segment must not cause unnecessary re-renders of unaffected rows (assert via render-count spy, not just final output). | Solo dev (Gerardo) | Before Story 4.3 marked complete |
+| R10 | Boundary unit test on `calculateSolidificationPercent`: zero completed sessions → `null`; one completed session with 0 correct → `0` (a real, displayable 0%, distinct from `null`). | Solo dev (Gerardo) | Before Story 4.4 marked complete |
+| R11 | Shared-path test: both FR30's screen submit and FR40's inline submit call through to the same `renameSegment` assertions (empty-name rejection, disambiguation) — implemented as one parametrized test exercised from both UI entry points, not two independently-written tests that could silently diverge. | Solo dev (Gerardo) | Before Story 4.5 marked complete |
+| R12 | Accept as a documented gap, consistent with v1.0's R3 resolution (Jest/RNTL only, no E2E tool ever added). FR40's long-press timing gets a fake-timer unit test on the `onLongPress`/`delayLongPress` wiring (verifies the threshold value, not real touch delivery); FR39's live-region gets a static-props assertion (`accessibilityLiveRegion="polite"` is set), not a runtime announcement test. Both are noted as manual on-device verification items before release, same tier as v1.0's Story 2.9/2.10. | Solo dev (Gerardo) | Manual pass before v1.1 release, per Story 4.5 / 5.3 |
+| R13 | Add a runtime range guard to `lib/settings.ts`'s read path (reject/clamp an out-of-range `overlearningPercent` on read, same pattern as `isNonNegativeInteger` in `types.ts`), rather than trusting the stepper as the only enforcement point. | Solo dev (Gerardo) | Before Story 5.1 marked complete |
+
 ### Resource Estimates
 
 - **P0 (9 scenarios: C1, C2, C3, C5, C7, C8, C9):** ~16–24 hours — includes standing up Jest + RNTL + an E2E tool (Maestro recommended for its lower setup overhead vs. Detox) from zero, since none exists yet.
@@ -180,7 +233,77 @@ No RN-specific `test-priorities-matrix.md` variance needed — using the priorit
 - **P3:** none identified at this stage — the app's scope is small enough that no scenario is purely exploratory/benchmark-only.
 - **Total:** ~30–48 hours across all priorities — this is additive to Epic 2's implementation stories, not separate from them; realistically most P0/P1 unit and component tests should be written alongside each story (test-alongside, not a separate testing epic), with the E2E suite built out specifically before Story 2.9/2.10 (interruption & recovery) since those are what C8/C9 exist to cover.
 
-### Quality Gates
+## v1.1 Step 4: Coverage Plan & Execution Strategy
+
+### Coverage Matrix
+
+| # | Scenario | FR/Risk | Test Level | Priority |
+|---|---|---|---|---|
+| C20 | `renameSegment`: valid new name updates storage; empty/whitespace-only name rejected (mirrors FR1's existing validation) | FR30 | Unit | P0 |
+| C21 | `disambiguate` self-exclusion matrix: own name different case → succeeds; another segment's name same case → disambiguated; another segment's name different case → still disambiguated | FR30, R7 | Unit | P0 |
+| C22 | Rename propagates live to `StreakReadout`, `CompletionScreen`, `ResumeDiscardDialog` via `useSegment(id)`/`useSegment(session.segmentId)` — segment renamed after session/prompt construction, name updates without remount | FR31, R8 | Component | P0 |
+| C23 | Rename propagates to list row and detail heading (already-live `segment.name` — regression guard, not new logic) | FR31 | Component | P2 |
+| C24 | `duplicateSegment`: new id, new `createdAt`, disambiguated name, zero copied history entries; original segment and its history untouched | FR32 | Unit | P0 |
+| C25 | Duplicate confirmation snackbar renders with the new name and `accessibilityLiveRegion="polite"` | FR32, UX-DR21, UX-DR24 | Component | P2 |
+| C26 | Sort menu: 4 options listed, active option marked; tapping a different option applies its documented default direction; tapping the active option flips direction | FR33, UX-DR18, UX-DR19 | Component | P0 |
+| C27 | Sort with a segment having zero completed sessions: sorts as oldest-possible-date/0% under last-practiced or Solidification % sort, in either direction | FR33 | Unit | P1 |
+| C28 | `useSegments()`'s new `subscribeToHistory` wiring: a session completion re-sorts a visible list under last-practiced/Solidification % sort without remount; an unrelated write does not force a full-list re-render | FR33, R9 | Component/Hook | P1 |
+| C29 | Sort choice (option + direction) persists in `lib/settings.ts` and is restored after simulated relaunch | FR34 | Unit | P0 |
+| C30 | Sort control hidden at 0 or 1 segments; screen-reader announcement names both key and direction | UX-DR19, UX-DR24 | Component | P2 |
+| C31 | `calculateSolidificationPercent`: `null` for zero completed sessions; correct aggregate correct÷total across multiple sessions; `0` (not `null`) distinguished from a genuine 0%-correct session | FR38, R10 | Unit | P0 |
+| C32 | History screen summary line renders "Solidification: {percent}%" or "Solidification: —" per the above, positioned between heading and entry list | FR38, UX-DR23 | Component | P1 |
+| C33 | Inline rename (long-press): 1s `delayLongPress` triggers edit mode with no layout shift; normal tap still navigates (threshold does not intercept short taps) | FR40, UX-DR25, R11 | Component (fake-timer) | P0 |
+| C34 | Inline rename commit/revert: `onSubmitEditing` saves via the same validation/disambiguation path as C20/C21; blur-without-submit reverts to original name; empty submit rejected with field remaining editable | FR40, R11 | Component | P0 |
+| C35 | Inline rename shares one validation code path with the dedicated Rename screen (parametrized test run from both entry points) | FR40, R11 | Unit | P1 |
+| C36 | Settings stepper: `+`/`−` change value by 10, save immediately, disable at 50%/300% bounds with `accessibilityState: { disabled: true }` | FR35, FR36, UX-DR14, UX-DR24 | Component | P0 |
+| C37 | `lib/settings.ts` default envelope (`{ overlearningPercent: 50, sortKey: 'createdAt', sortDirection: 'asc' }`) reproduces v1.0 behavior exactly on first read (no settings ever saved) | FR35, FR36 | Unit | P0 |
+| C38 | `calculateTargetStreak`/`logCorrect`/`logIncorrect`'s optional second parameter: omitted → v1.0 default (50%) exact prior behavior, unchanged existing test assertions; explicit value → target scales accordingly | FR36, FR37 | Unit | P0 |
+| C39 | A changed overlearning-% is read live by an in-progress session's target-streak display with no restart (derive-on-read verification, same shape as v1.0's Story 2.9) | FR37 | Component/Hook | P0 |
+| C40 | Standing in-progress-session notice: renders with segment name when `session.active` exists, absent when it doesn't, persists unchanged across repeated stepper taps (no per-tap dialog) | FR39, UX-DR17, UX-DR24 | Component | P1 |
+| C41 | Two new routes (`app/settings.tsx`, `app/segment/[id]/rename.tsx`) present in both `STACK_SCREENS` and `_layout.tsx`'s `<Stack.Screen>` list — regression guard for the project's known silent-drop failure mode | Architecture note (route registration) | Unit (static check, mirrors `stack-screens.test.ts`) | P0 |
+| C42 | Long-press gesture recognition (real touch-and-hold) and live-region announcement delivery (real screen reader) — cannot be asserted by Jest/RNTL; manual on-device pass only | FR40, FR39, R12 | Manual (on-device) | P2 |
+
+**No duplicate coverage:** C22/C23 split live-lookup (new logic) from already-live sites (regression guard) rather than re-asserting the same thing at two levels. C33–C35 keep gesture-timing (component/fake-timer) separate from validation-path (unit) rather than re-deriving disambiguation rules inside a component test.
+
+### Execution Strategy
+
+- **PR (every commit):** C20–C41 (Unit + Component/Hook) — all fast, no device/emulator required, consistent with v1.0's C1–C7/C11–C19 tier.
+- **Nightly/Manual (pre-story-completion):** C42 — on-device long-press and accessibility-announcement verification, same tier as v1.0's C8–C10.
+
+### Resource Estimates (v1.1)
+
+- **P0 (14 scenarios: C20, C21, C22, C24, C26, C29, C31, C33, C34, C36, C37, C38, C39, C41):** ~18–26 hours, building directly on v1.0's already-standing Jest+RNTL suite (no new framework setup, unlike v1.0's P0 estimate).
+- **P1 (5 scenarios: C27, C28, C32, C35, C40):** ~8–12 hours.
+- **P2 (5 scenarios: C23, C25, C30, C42):** ~3–6 hours, C42 being the one on-device manual pass.
+- **Total:** ~29–44 hours across Epic 4 + Epic 5, additive to implementation (test-alongside per story, matching v1.0's own resourcing note).
+
+### Quality Gates (v1.1)
+
+- **P0 pass rate: 100%** — no P0 scenario may be skipped; C38 in particular is the direct regression guard for v1.0's entire existing test suite staying green under the new optional parameter.
+- **P1 pass rate ≥ 95%.**
+- **R8 (HIGH) mitigated before Story 4.1 is marked complete** — per the Mitigation Plan in Step 3; this is the only HIGH risk in v1.1's assessment.
+- **Coverage target:** maintain the existing `collectCoverageFrom` scope (`src/app/**/*.tsx`, `src/components/**/*.tsx` included, not just `lib`/`hooks`) — do not narrow it for v1.1 additions.
+
+## v1.1 Step 5: Generate Outputs & Validate
+
+**Execution mode:** Sequential (no subagent/agent-team capability probe available in this session; epic-level mode defaults to single-worker regardless).
+
+**Output document generated:** `_bmad-output/test-artifacts/test-design-epic-4-5.md`, using `test-design-template.md` — one combined document for Epic 4 + Epic 5, since both were scoped together in this pass and `epics.md`'s own Dependency Validation confirms Epic 5 has no dependency on Epic 4.
+
+**Populated sections confirmed present:** Risk assessment matrix (R7-R13), coverage matrix (C20-C42, 23 scenarios), execution strategy, resource estimates (ranges only), quality gate criteria, Not in Scope, Entry/Exit Criteria, Mitigation Plan (R8), Assumptions/Dependencies, Interworking & Regression.
+
+**Validation:** No CLI/browser sessions were opened (not applicable — offline mobile app, `tea_browser_automation: none`). No temp artifacts outside `_bmad-output/test-artifacts/`. Cross-checked scenario counts against stated totals during generation — caught and corrected one arithmetic error (P1 mislabeled "6 scenarios" for 5 listed IDs) before finalizing.
+
+**Not generated:** BMad Handoff Document — that step is System-Level-Mode-only per the workflow, and this run is Epic-Level.
+
+**Completion summary:**
+- Mode: Epic-Level (Epic 4 + Epic 5)
+- Output: `_bmad-output/test-artifacts/test-design-epic-4-5.md`
+- Key risk: R8 (HIGH, score 6) — FR31 rename-propagation drift risk, mitigated via C22
+- Gate: P0 100%, P1 ≥95%, R8 resolved before Story 4.1 complete
+- Open assumption: architecture.md's v1.1 decisions are implemented exactly as specified, not re-derived
+
+### Quality Gates (v1.0, unchanged)
 
 - **P0 pass rate: 100%** — no P0 scenario may be skipped or waived; these map directly to the PRD's explicit "100%-tested mechanic logic" Technical Success criterion and the two HIGH-risk ASRs (R1, R2/R3-adjacent).
 - **P1 pass rate: ≥ 95%.**
