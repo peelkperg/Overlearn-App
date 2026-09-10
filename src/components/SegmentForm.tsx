@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { normalizeSegmentName } from '@/lib/segments';
+import { MaxNameLength, normalizeSegmentName } from '@/lib/segments';
 
 type SegmentFormProps = {
   submitLabel: string;
@@ -15,11 +15,6 @@ type SegmentFormProps = {
   // prop on remount preserves it.
   initialName?: string;
 };
-
-// A name is capped rather than truncated silently: without a limit, a very
-// long one pushes the detail screen's actions off-screen and leaves the
-// segment unusable.
-const MaxNameLength = 80;
 
 // Create form (FR1). Non-empty-name validation happens here, inline — no
 // segment is created for a name that is empty, whitespace-only, or made up

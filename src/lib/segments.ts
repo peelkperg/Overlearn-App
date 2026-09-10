@@ -65,6 +65,14 @@ function disambiguate(name: string, existing: Segment[], excludeId?: string): st
   return `${name} (${suffix})`;
 }
 
+// A name is capped rather than truncated silently: without a limit, a very
+// long one pushes the detail screen's actions off-screen and leaves the
+// segment unusable. Lives here rather than in SegmentForm (its original
+// home) because Story 4.5's inline rename is a second write entry point that
+// never touches that form \u2014 a UI-layer-only constant let the cap be bypassed
+// (code review 2026-09-10).
+export const MaxNameLength = 80;
+
 // `trim()` strips whitespace but not zero-width characters, so a name made
 // only of U+200B/U+FEFF/bidi marks would pass validation and then render as
 // a blank, unidentifiable row.
