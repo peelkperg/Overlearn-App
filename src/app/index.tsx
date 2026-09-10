@@ -27,7 +27,7 @@ const DuplicateNoticeMs = 4000;
 // Story 4.3: Sort the Segment List (FR33/FR34) — sort control above the
 // list, hidden below two segments (AC #7).
 export default function HomeScreen() {
-  const { segments, deleteSegment, duplicateSegment, sortKey, sortDirection, setSortOption } = useSegments();
+  const { segments, deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption } = useSegments();
   const { session, endSession } = useActiveSession();
   // Story 4.1 (FR31): live lookup, not session.segmentName's frozen
   // snapshot — see architecture.md's Rename Propagation table. The `??`
@@ -184,6 +184,7 @@ export default function HomeScreen() {
                   segment={item}
                   onOpen={() => router.push(`/segment/${item.id}`)}
                   onRename={() => router.push(`/segment/${item.id}/rename`)}
+                  onInlineRename={(name) => runAction(() => renameSegment(item.id, name), 'Could not rename that segment.')}
                   onDuplicate={() => handleDuplicate(item.id)}
                   onDelete={() => runAction(() => deleteSegment(item.id), 'Could not delete that segment.')}
                 />

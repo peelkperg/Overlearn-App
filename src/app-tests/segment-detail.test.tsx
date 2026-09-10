@@ -4,7 +4,7 @@ import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { writeHistoryEntry } from '@/lib/history';
-import { createSegment, renameSegment } from '@/lib/segments';
+import { createSegment, readSegments, renameSegment } from '@/lib/segments';
 
 import SegmentDetailScreen from '@/app/segment/[id]';
 
@@ -272,5 +272,69 @@ describe('SegmentDetailScreen Solidification % summary [Story 4.4]', () => {
     });
 
     expect(view.getByTestId('segment-detail-solidification')).toHaveTextContent(/^Solidification: 50%$/);
+  });
+});
+
+describe('SegmentDetailScreen inline rename on heading [Story 4.5, FR40, UX-DR25]', () => {
+  let segment: ReturnType<typeof createSegment>;
+
+  beforeEach(() => {
+    pushed.mockClear();
+    segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+  });
+
+  it('long-press on heading enters edit mode: TextInput appears pre-filled (AC #1)', async () => {
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+
+    const input = view.getByTestId('segment-detail-inline-input');
+    expect(input.props.value).toBe('Bar 24 arpeggio');
+  });
+
+  it('submit renames the segment; heading shows new name reactively (AC #2)', async () => {
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+    const input = view.getByTestId('segment-detail-inline-input');
+    await fireEvent.changeText(input, 'New name');
+    await act(async () => {
+      await fireEvent(input, 'submitEditing');
+    });
+
+    // Heading returns to static text showing the new name
+    expect(view.queryByTestId('segment-detail-inline-input')).toBeNull();
+    expect(view.getByTestId('segment-detail-heading')).toBeTruthy();
+    // Storage updated — renameSegment is idempotent-verifiable
+    const stored = readSegments().find((s) => s.id === segment.id);
+    expect(stored?.name).toBe('New name');
+  });
+
+  it('blur without submit reverts to original name and does not write (AC #3)', async () => {
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+    const input = view.getByTestId('segment-detail-inline-input');
+    await fireEvent.changeText(input, 'Partially typed');
+    await fireEvent(input, 'blur');
+
+    expect(view.queryByTestId('segment-detail-inline-input')).toBeNull();
+    const stored = readSegments().find((s) => s.id === segment.id);
+    expect(stored?.name).toBe('Bar 24 arpeggio');
+  });
+
+  it('empty submit shows error, keeps field editable, does not rename (AC #4)', async () => {
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+    const input = view.getByTestId('segment-detail-inline-input');
+    await fireEvent.changeText(input, '');
+    await fireEvent(input, 'submitEditing');
+
+    expect(view.getByTestId('segment-detail-inline-input')).toBeTruthy();
+    expect(view.getByTestId('segment-detail-inline-error')).toBeTruthy();
+    const stored = readSegments().find((s) => s.id === segment.id);
+    expect(stored?.name).toBe('Bar 24 arpeggio');
   });
 });
