@@ -38,3 +38,19 @@ describe('lib/mechanic calculateTargetStreak [Story 2.1, R1]', () => {
     expect(calculateTargetStreak(-Infinity)).toBe(TARGET_FLOOR);
   });
 });
+
+describe('lib/mechanic calculateTargetStreak optional overlearningLevel [Story 5.1]', () => {
+  it('scales the result with an explicit second argument', () => {
+    expect(calculateTargetStreak(10, 1.5)).toBe(15);
+  });
+
+  it('the floor still governs at a non-default level', () => {
+    expect(calculateTargetStreak(1, 3.0)).toBe(TARGET_FLOOR);
+  });
+
+  it('avoids floating-point drift when the level is not exactly representable (e.g. 110%)', () => {
+    // 50 * 1.1 -> 55.00000000000001 unguarded, which Math.ceil rounds up to
+    // 56 instead of the correct 55.
+    expect(calculateTargetStreak(50, 1.1)).toBe(55);
+  });
+});

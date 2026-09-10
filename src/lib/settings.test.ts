@@ -1,4 +1,4 @@
-import { readSettings, setSortOption } from './settings';
+import { readSettings, setOverlearningPercent, setSortOption } from './settings';
 import { storage } from './storage';
 
 describe('lib/settings [Story 4.3]', () => {
@@ -28,5 +28,37 @@ describe('lib/settings [Story 4.3]', () => {
 
     const backup = storage.getAllKeys().find((key) => key.startsWith('settings.general.corrupt.'));
     expect(backup).toBeDefined();
+  });
+});
+
+describe('lib/settings setOverlearningPercent [Story 5.1]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('writes the exact value when already a valid multiple of 10 in range', () => {
+    setOverlearningPercent(150);
+    expect(readSettings().overlearningPercent).toBe(150);
+  });
+
+  it('clamps a value below 50 to 50', () => {
+    setOverlearningPercent(10);
+    expect(readSettings().overlearningPercent).toBe(50);
+  });
+
+  it('clamps a value above 300 to 300', () => {
+    setOverlearningPercent(400);
+    expect(readSettings().overlearningPercent).toBe(300);
+  });
+
+  it('rounds a non-multiple-of-10 input to the nearest 10 (defensive — the UI never produces one)', () => {
+    setOverlearningPercent(123);
+    expect(readSettings().overlearningPercent).toBe(120);
+  });
+
+  it('preserves the existing sortKey/sortDirection fields', () => {
+    setSortOption('lastPracticed', 'desc');
+    setOverlearningPercent(200);
+    expect(readSettings()).toEqual({ overlearningPercent: 200, sortKey: 'lastPracticed', sortDirection: 'desc' });
   });
 });

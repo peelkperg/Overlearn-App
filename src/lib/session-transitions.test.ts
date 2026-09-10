@@ -97,6 +97,28 @@ describe('lib/session-transitions logCorrect completion [Story 2.5]', () => {
   });
 });
 
+describe('lib/session-transitions logCorrect with an explicit overlearningLevel [Story 5.1]', () => {
+  // At the default level (0.5), a session with totalIncorrectThisSession=10
+  // sits at the floor (target 5). At level 3.0, calculateTargetStreak(10, 3)
+  // = 30 — the two levels disagree on whether currentStreak=5 completes the
+  // session, which is exactly the case this test needs to distinguish a
+  // level-aware logCorrect from one that silently ignores its argument.
+  it('produces a sessionComplete determination consistent with calculateTargetStreak at the given level', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 10; i++) session = logIncorrect(session);
+
+    let atHighLevel = session;
+    for (let i = 0; i < 5; i++) atHighLevel = logCorrect(atHighLevel, 3.0);
+    expect(atHighLevel.currentStreak).toBe(5);
+    expect(atHighLevel.sessionComplete).toBe(false); // 5 < calculateTargetStreak(10, 3.0) = 30
+
+    let atDefaultLevel = session;
+    for (let i = 0; i < 5; i++) atDefaultLevel = logCorrect(atDefaultLevel);
+    expect(atDefaultLevel.currentStreak).toBe(5);
+    expect(atDefaultLevel.sessionComplete).toBe(true); // 5 >= calculateTargetStreak(10) = 5
+  });
+});
+
 describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
   it('resets current_streak to 0', () => {
     const session = logCorrect(logCorrect(startSession('segment-1', 'Bar 24 arpeggio'))); // currentStreak = 2

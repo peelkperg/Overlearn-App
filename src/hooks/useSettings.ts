@@ -9,5 +9,6 @@ export function useSettings() {
   return {
     settings: useSyncExternalStore(settings.subscribeToSettings, settings.readSettings),
     setSortOption: settings.setSortOption,
+    setOverlearningPercent: settings.setOverlearningPercent,
   };
 }

@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native';
 
 import { readHistory } from '@/lib/history';
+import { setOverlearningPercent } from '@/lib/settings';
 import { storage } from '@/lib/storage';
 
 import { useActiveSession } from './useActiveSession';
@@ -412,5 +413,84 @@ describe('useActiveSession feedback reset on Repeat [Review][Patch]', () => {
     });
 
     expect(result.current.settled).toBe(false);
+  });
+});
+
+describe('useActiveSession overlearningLevel threading [Story 5.1]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it("reflects the configured level in the hook's returned targetStreak", async () => {
+    setOverlearningPercent(300); // level 3.0
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 10; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+
+    // Default level would hold at the floor (5) through the 10th incorrect
+    // tap; at level 3.0, calculateTargetStreak(10, 3.0) = 30.
+    expect(result.current.targetStreak).toBe(30);
+  });
+
+  it('raises the target on logIncorrect consistent with the configured level, not the 50% default', async () => {
+    setOverlearningPercent(150); // level 1.5
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+
+    await act(() => {
+      result.current.logIncorrect();
+      result.current.logIncorrect();
+    });
+
+    // calculateTargetStreak(2, 1.5) = ceil(3) = 5 (still the floor);
+    // calculateTargetStreak(4, 1.5) = ceil(6) = 6 — verify via a case that
+    // actually diverges from the default-level (0.5) target.
+    for (let i = 0; i < 2; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    expect(result.current.session?.totalIncorrectThisSession).toBe(4);
+    expect(result.current.targetStreak).toBe(6);
+  });
+
+  it("writes a history entry whose finalTarget matches the configured level, at the site Task 4 flags as most likely to be missed", async () => {
+    setOverlearningPercent(300); // level 3.0
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    // 2 mistakes: calculateTargetStreak(2, 3.0) = ceil(6) = 6, which diverges
+    // from calculateTargetStreak(2, 0.5) = floor 5 — so a finalTarget of 5
+    // here would mean complete() used the default level, not the configured
+    // one.
+    await act(() => {
+      result.current.logIncorrect();
+      result.current.logIncorrect();
+    });
+    expect(result.current.targetStreak).toBe(6);
+
+    for (let i = 0; i < 6; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.sessionComplete).toBe(true);
+
+    await act(() => {
+      result.current.complete();
+    });
+
+    const entries = readHistory('segment-1');
+    expect(entries).toHaveLength(1);
+    expect(entries[0].finalTarget).toBe(6);
   });
 });

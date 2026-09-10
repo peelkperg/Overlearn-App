@@ -9,4 +9,11 @@
 // with no Stack.Screen ancestor is silently dropped in production, with no
 // error and no dev-mode signal. Every route the app navigates to must
 // appear here — see src/app/stack-screens.test.ts.
-export const STACK_SCREENS = ['index', 'segment/new', 'segment/[id]', 'segment/[id]/rename', 'session/[id]'] as const;
+export const STACK_SCREENS = [
+  'index',
+  'segment/new',
+  'segment/[id]',
+  'segment/[id]/rename',
+  'session/[id]',
+  'settings',
+] as const;

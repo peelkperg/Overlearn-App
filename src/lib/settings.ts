@@ -41,3 +41,17 @@ export function subscribeToSettings(onChange: () => void): () => void {
 export function setSortOption(sortKey: SortKey, sortDirection: SortDirection): void {
   setObject(SETTINGS_KEY, { ...readSettings(), sortKey, sortDirection });
 }
+
+// Story 5.1 (FR35, FR36): the stepper UI can only ever produce a valid
+// clamped value (steps of 10, disabled at 50/300), but this is the second,
+// defensive layer against a bypassing caller — same posture as
+// renameSegment's stance toward SegmentForm. A bare clamp on NaN/Infinity
+// still yields NaN (Math.max/min/round all propagate it), which would fail
+// isSettings on the next read and quarantine the *entire* settings.general
+// key, including the unrelated sortKey/sortDirection fields — so the
+// non-finite guard runs first, before the clamp.
+export function setOverlearningPercent(value: number): void {
+  const safe = Number.isFinite(value) ? value : DEFAULT_SETTINGS.overlearningPercent;
+  const clamped = Math.min(300, Math.max(50, Math.round(safe / 10) * 10));
+  setObject(SETTINGS_KEY, { ...readSettings(), overlearningPercent: clamped });
+}

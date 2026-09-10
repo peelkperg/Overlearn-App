@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import { useFeedbackSignal } from '@/components/session/useFeedbackSignal';
+import { useSettings } from '@/hooks/useSettings';
 import { writeHistoryEntry } from '@/lib/history';
 import { calculateTargetStreak } from '@/lib/mechanic';
 import * as sessionStore from '@/lib/session';
@@ -25,6 +26,11 @@ import type { SessionState } from '@/lib/types';
 export function useActiveSession() {
   const session = useSyncExternalStore(sessionStore.subscribeToSession, sessionStore.readSession) ?? null;
   const feedback = useFeedbackSignal();
+  // Story 5.1 (FR35, FR36): the one and only place in the app that converts
+  // the stored percent (50-300) to the level the mechanic layer expects
+  // (0.5-3.0) — lib/mechanic.ts and lib/session-transitions.ts never read
+  // storage or perform this conversion themselves.
+  const overlearningLevel = useSettings().settings.overlearningPercent / 100;
 
   // Story 2.1 (FR8, FR9): begins a session immediately, no input/confirmation.
   const start = (segmentId: string, segmentName: string): SessionState => {
@@ -41,7 +47,7 @@ export function useActiveSession() {
   const logCorrect = (): SessionState | null => {
     const current = sessionStore.readSession();
     if (!current || current.sessionComplete) return null;
-    const next = transitions.logCorrect(current);
+    const next = transitions.logCorrect(current, overlearningLevel);
     sessionStore.writeSession(next);
 
     if (next.sessionComplete) {
@@ -63,9 +69,9 @@ export function useActiveSession() {
   const logIncorrect = (): SessionState | null => {
     const current = sessionStore.readSession();
     if (!current || current.sessionComplete) return null;
-    const previousTarget = calculateTargetStreak(current.totalIncorrectThisSession);
+    const previousTarget = calculateTargetStreak(current.totalIncorrectThisSession, overlearningLevel);
     const next = transitions.logIncorrect(current);
-    const nextTarget = calculateTargetStreak(next.totalIncorrectThisSession);
+    const nextTarget = calculateTargetStreak(next.totalIncorrectThisSession, overlearningLevel);
     sessionStore.writeSession(next);
 
     if (nextTarget > previousTarget) {
@@ -114,7 +120,7 @@ export function useActiveSession() {
     if (!current || !current.sessionComplete) return;
     writeHistoryEntry(current.segmentId, {
       date: new Date().toISOString(),
-      finalTarget: calculateTargetStreak(current.totalIncorrectThisSession),
+      finalTarget: calculateTargetStreak(current.totalIncorrectThisSession, overlearningLevel),
       totalMistakes: current.totalIncorrectThisSession,
       totalAttempts: current.totalCorrectThisSession + current.totalIncorrectThisSession,
       sessionStartTimestamp: current.sessionStartTimestamp,
@@ -122,7 +128,7 @@ export function useActiveSession() {
     sessionStore.clearSession();
   };
 
-  const targetStreak = calculateTargetStreak(session?.totalIncorrectThisSession ?? 0);
+  const targetStreak = calculateTargetStreak(session?.totalIncorrectThisSession ?? 0, overlearningLevel);
 
   return {
     session,

@@ -540,12 +540,13 @@ export function calculateTargetStreak(
 
 **Why optional, not required:** `calculateTargetStreak` is documented as "the one formula implementation" and is directly unit-tested at the boundary values (the 10/11 table in the Mechanic Specification). A required second parameter would force every existing call site and every existing test to change for a v1.1 feature, for no functional gain — the default preserves 100% of v1.0's call sites and tests unmodified. This keeps `lib/mechanic.ts` itself free of any storage dependency: it stays a pure function, unaware that a Settings screen exists. Reading the live setting is the caller's job, consistent with the existing rule that `lib/` modules don't reach into each other's boundaries.
 
-**Call sites that pass the live value explicitly** (three, all inside `useActiveSession.ts`, which is where storage-reading already happens):
-1. `logCorrect()` — before calling `transitions.logCorrect(current, overlearningLevel)`
-2. `logIncorrect()` — before calling `transitions.logIncorrect(current, overlearningLevel)`
-3. The hook's returned `targetStreak` value — `calculateTargetStreak(session?.totalIncorrectThisSession ?? 0, overlearningLevel)`
+**Call sites that pass the live value explicitly** (four, all inside `useActiveSession.ts`, which is where storage-reading already happens) — corrected 2026-09-10 during Story 5.1's implementation, per CLAUDE.md §13.4; confirmed by direct inspection of the shipped file:
+1. `logIncorrect()`'s `previousTarget` computation
+2. `logIncorrect()`'s `nextTarget` computation
+3. `complete()`'s `finalTarget` field written into the history entry — easy to miss, since it is visually distant from the other three and easy to assume is Epic 3/4's territory; missing it means a completed session's history record is permanently computed at whatever level was in effect after the fact, with no way to detect or correct it later
+4. The hook's returned `targetStreak` value — `calculateTargetStreak(session?.totalIncorrectThisSession ?? 0, overlearningLevel)`
 
-**`lib/session-transitions.ts` gets the same optional-parameter treatment** on `logCorrect(session, overlearningLevel?)` and `logIncorrect(session, overlearningLevel?)` — both already call `calculateTargetStreak` internally and need to pass the level through. Same rationale: existing tests calling with one argument keep working unchanged.
+**`lib/session-transitions.ts` gets the same optional-parameter treatment on `logCorrect(session, overlearningLevel?)` only** — corrected 2026-09-10: `logIncorrect` does not call `calculateTargetStreak` at all (it only zeroes `currentStreak` and increments `totalIncorrectThisSession`; the target is re-derived by the caller afterward), so it does not take this parameter. Same rationale for `logCorrect`: existing tests calling with one argument keep working unchanged.
 
 **Where the live value comes from:** `useActiveSession()` calls `useSettings().settings.overlearningPercent / 100` once per render and passes it to all three sites above. `useSettings()` is a new hook, same `useSyncExternalStore(settingsStore.subscribeToSettings, settingsStore.readSettings)` pattern as `useSegments()`, returning `{ settings, setSortOption }` — [Review][Patch] found via Story 4.3's code review 2026-09-08: this section previously illustrated a flat `useSettings().overlearningPercent`, which the shipped hook shape does not resolve; corrected here ahead of Epic 5 implementing this call site, per CLAUDE.md §13.4.
 
@@ -669,7 +670,7 @@ Every new route must be added to `src/app/stack-screens.ts` and given a `<Stack.
 **All AI Agents MUST additionally:**
 - Route every settings read/write through `lib/settings.ts` — never a direct `storage.ts` call from a hook or component, same rule as `segments.ts`/`session.ts`.
 - Call `calculateTargetStreak`/`calculateSolidificationPercent` for any target or Solidification % display or check — never reimplement either formula, extending the v1.0 single-formula rule to the new metric.
-- Never add a required parameter to `calculateTargetStreak`, `logCorrect`, or `logIncorrect` — the optional-parameter-with-v1.0-default pattern is what keeps this a non-breaking extension; a required parameter would be a breaking change to a "pure function, one implementation" contract this document has twice now relied on staying stable.
+- Never add a required parameter to `calculateTargetStreak` or `logCorrect` — the optional-parameter-with-v1.0-default pattern is what keeps this a non-breaking extension; a required parameter would be a breaking change to a "pure function, one implementation" contract this document has twice now relied on staying stable. (`logIncorrect` does not carry this parameter at all, required or optional — corrected 2026-09-10, see above.)
 
 ## v1.1 Gap Analysis
 

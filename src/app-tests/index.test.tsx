@@ -36,6 +36,26 @@ describe('HomeScreen [Story 1.3]', () => {
     expect(pushed).toHaveBeenCalledWith('/segment/new');
   });
 
+  // Story 5.1 (AC #1): tapping the gear icon navigates to Settings — same
+  // assertion shape as the other navigation tests in this file.
+  it('tapping the gear icon navigates to Settings', async () => {
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-list-settings'));
+
+    expect(pushed).toHaveBeenCalledWith('/settings');
+  });
+
+  // Regression guard for Task 7's placement fix: the gear must not live
+  // inside the segments.length === 0 ? <EmptyState /> : ... branch, or
+  // Settings would be unreachable for a brand-new user with zero segments.
+  it('shows the gear icon even with zero segments', async () => {
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByTestId('segment-list-empty')).toBeTruthy();
+    expect(view.getByTestId('segment-list-settings')).toBeTruthy();
+  });
+
   it('keeps creation reachable once segments exist (FR1, FR4)', async () => {
     createSegment('Bar 24 arpeggio');
     const view = await render(<HomeScreen />);

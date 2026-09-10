@@ -26,9 +26,14 @@ export function startSession(segmentId: string, segmentName: string): SessionSta
 // (FR22) — the Mechanic Specification's completion check is part of this
 // transition, not a separate step, so there's no window where
 // current_streak >= target with session_complete still false.
-export function logCorrect(session: SessionState): SessionState {
+// Story 5.1 (FR35, FR36): overlearningLevel is an optional second parameter
+// threaded straight through to calculateTargetStreak — same optional-param
+// posture as that function itself. logIncorrect does NOT take this
+// parameter: it never calls calculateTargetStreak at all (see below), so
+// there is nothing to thread.
+export function logCorrect(session: SessionState, overlearningLevel?: number): SessionState {
   const currentStreak = session.currentStreak + 1;
-  const targetStreak = calculateTargetStreak(session.totalIncorrectThisSession);
+  const targetStreak = calculateTargetStreak(session.totalIncorrectThisSession, overlearningLevel);
   return {
     ...session,
     currentStreak,

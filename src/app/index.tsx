@@ -26,6 +26,8 @@ const DuplicateNoticeMs = 4000;
 // auto-dismissing confirmation notice.
 // Story 4.3: Sort the Segment List (FR33/FR34) — sort control above the
 // list, hidden below two segments (AC #7).
+// Story 5.1: gear icon to Settings (FR35) — unconditional, above the
+// segments.length === 0 ternary, since Settings has no other entry point.
 export default function HomeScreen() {
   const { segments, deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption } = useSegments();
   const { session, endSession } = useActiveSession();
@@ -168,6 +170,15 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <Pressable
+          testID="segment-list-settings"
+          style={styles.settingsButton}
+          onPress={() => router.push('/settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+        >
+          <ThemedText themeColor="textSecondary">⚙</ThemedText>
+        </Pressable>
         {error && (
           <ThemedText
             testID="segment-list-error"
@@ -269,6 +280,18 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+  },
+  // No platform header (headerShown: false app-wide) — same in-screen-control
+  // pattern SortControl already establishes for its own conceptual header
+  // position. Right-aligned, unconditional (a direct child of SafeAreaView,
+  // not inside the empty-state/non-empty branches): Settings has no other
+  // entry point, so it must stay reachable with zero segments too.
+  settingsButton: {
+    alignSelf: 'flex-end',
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyState: {
     flex: 1,

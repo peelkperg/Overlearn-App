@@ -23,6 +23,7 @@ describe('stack-screens STACK_SCREENS [Review][Patch]', () => {
     'segment/[id]', // index.tsx's SegmentListItem onOpen
     'segment/[id]/rename', // index.tsx's SegmentListItem onRename (row-menu Rename, Story 4.1)
     'session/[id]', // index.tsx's resume/redirect, segment/[id].tsx's Start
+    'settings', // index.tsx's gear icon (Story 5.1)
   ];
 
   it.each(navigatedRoutes)('%s has a Stack.Screen entry', (route) => {
