@@ -2,8 +2,10 @@
 // under src/app/.
 import { act, fireEvent, render, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
+import { AccessibilityInfo } from 'react-native';
 
 import { writeHistoryEntry } from '@/lib/history';
+import * as segments from '@/lib/segments';
 import { createSegment, readSegments, renameSegment } from '@/lib/segments';
 
 import SegmentDetailScreen from '@/app/segment/[id]';
@@ -277,11 +279,17 @@ describe('SegmentDetailScreen Solidification % summary [Story 4.4]', () => {
 
 describe('SegmentDetailScreen inline rename on heading [Story 4.5, FR40, UX-DR25]', () => {
   let segment: ReturnType<typeof createSegment>;
+  let announce: jest.SpyInstance;
 
   beforeEach(() => {
     pushed.mockClear();
+    announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
     segment = createSegment('Bar 24 arpeggio');
     useLocalSearchParams.mockReturnValue({ id: segment.id });
+  });
+
+  afterEach(() => {
+    announce.mockRestore();
   });
 
   it('long-press on heading enters edit mode: TextInput appears pre-filled (AC #1)', async () => {
@@ -303,10 +311,11 @@ describe('SegmentDetailScreen inline rename on heading [Story 4.5, FR40, UX-DR25
       await fireEvent(input, 'submitEditing');
     });
 
-    // Heading returns to static text showing the new name
     expect(view.queryByTestId('segment-detail-inline-input')).toBeNull();
-    expect(view.getByTestId('segment-detail-heading')).toBeTruthy();
-    // Storage updated — renameSegment is idempotent-verifiable
+    // The displayed name, not just the wrapper's presence — segment-detail-
+    // heading is the Pressable, which renders in both states and is truthy
+    // even if the reactive re-render never happened.
+    expect(view.getByText('New name')).toBeTruthy();
     const stored = readSegments().find((s) => s.id === segment.id);
     expect(stored?.name).toBe('New name');
   });
@@ -320,8 +329,70 @@ describe('SegmentDetailScreen inline rename on heading [Story 4.5, FR40, UX-DR25
     await fireEvent(input, 'blur');
 
     expect(view.queryByTestId('segment-detail-inline-input')).toBeNull();
+    // The revert itself: the heading must display the original name again.
+    // The storage assertion alone holds trivially, since blur invokes no
+    // write path at all.
+    expect(view.getByText('Bar 24 arpeggio')).toBeTruthy();
     const stored = readSegments().find((s) => s.id === segment.id);
     expect(stored?.name).toBe('Bar 24 arpeggio');
+  });
+
+  it('announces a disambiguated name rather than silently showing a different one', async () => {
+    createSegment('Scales');
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+    const input = view.getByTestId('segment-detail-inline-input');
+    await fireEvent.changeText(input, 'scales');
+    await act(async () => {
+      await fireEvent(input, 'submitEditing');
+    });
+
+    expect(view.getByTestId('segment-detail-notice')).toHaveTextContent('Renamed to "scales (2)"');
+    const stored = readSegments().find((s) => s.id === segment.id);
+    expect(stored?.name).toBe('scales (2)');
+  });
+
+  it('keeps the field open with an inline error when the write fails', async () => {
+    // Forced at the lib boundary rather than by deleting the record: a
+    // delete fires the store subscription, so useSegment returns undefined
+    // and the whole heading unmounts to "not found" before submit is ever
+    // reached — correct app behavior, but not this error path.
+    const failing = jest.spyOn(segments, 'renameSegment').mockImplementation(() => {
+      throw new Error('storage full');
+    });
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+    const input = view.getByTestId('segment-detail-inline-input');
+    await fireEvent.changeText(input, 'New name');
+    await act(async () => {
+      await fireEvent(input, 'submitEditing');
+    });
+
+    expect(view.getByTestId('segment-detail-inline-input').props.value).toBe('New name');
+    expect(view.getByTestId('segment-detail-inline-error')).toHaveTextContent('Could not rename that segment.');
+    failing.mockRestore();
+  });
+
+  it('removes the hint and the button role while editing (UX-DR25)', async () => {
+    const view = await render(<SegmentDetailScreen />);
+
+    expect(view.getByTestId('segment-detail-heading').props.accessibilityHint).toBe('Press and hold to rename');
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+
+    const heading = view.getByTestId('segment-detail-heading');
+    expect(heading.props.accessibilityHint).toBeUndefined();
+    expect(heading.props.accessibilityRole).toBeUndefined();
+  });
+
+  it('announces entry into edit mode (UX-DR25)', async () => {
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
+
+    expect(announce).toHaveBeenCalledWith('Editing segment name');
   });
 
   it('empty submit shows error, keeps field editable, does not rename (AC #4)', async () => {
@@ -330,7 +401,9 @@ describe('SegmentDetailScreen inline rename on heading [Story 4.5, FR40, UX-DR25
     await fireEvent(view.getByTestId('segment-detail-heading'), 'longPress');
     const input = view.getByTestId('segment-detail-inline-input');
     await fireEvent.changeText(input, '');
-    await fireEvent(input, 'submitEditing');
+    await act(async () => {
+      await fireEvent(input, 'submitEditing');
+    });
 
     expect(view.getByTestId('segment-detail-inline-input')).toBeTruthy();
     expect(view.getByTestId('segment-detail-inline-error')).toBeTruthy();

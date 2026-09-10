@@ -114,13 +114,18 @@ export default function HomeScreen() {
   // A write can still fail underneath these (a full disk, a record removed
   // in between), and an exception thrown from a press handler is not caught
   // by any boundary — it takes the app down instead of the row.
-  const runAction = (action: () => void, failureMessage: string) => {
+  // Returns whether the action succeeded. Story 4.5's inline rename is the
+  // only caller that reads it: the row has to know whether to close its
+  // editable field or hold it open with the user's text intact.
+  const runAction = (action: () => void, failureMessage: string): boolean => {
     try {
       setError(null);
       clearNotice();
       action();
+      return true;
     } catch {
       setError(failureMessage);
+      return false;
     }
   };
 
@@ -129,6 +134,18 @@ export default function HomeScreen() {
       if (noticeTimer.current) clearTimeout(noticeTimer.current);
     };
   }, []);
+
+  // Story 4.5 (FR40). Disambiguation can hand back a name the user did not
+  // type (FR30's collision rule), and renameSegment's return value is the
+  // only place that is visible — saying so matches the duplicate notice
+  // below rather than silently displaying a different name.
+  const handleInlineRename = (id: string, name: string): boolean =>
+    runAction(() => {
+      const renamed = renameSegment(id, name);
+      if (renamed.name !== name) {
+        showNotice(`Renamed to "${renamed.name}"`);
+      }
+    }, 'Could not rename that segment.');
 
   const handleDuplicate = (id: string) => {
     runAction(() => {
@@ -184,7 +201,7 @@ export default function HomeScreen() {
                   segment={item}
                   onOpen={() => router.push(`/segment/${item.id}`)}
                   onRename={() => router.push(`/segment/${item.id}/rename`)}
-                  onInlineRename={(name) => runAction(() => renameSegment(item.id, name), 'Could not rename that segment.')}
+                  onInlineRename={(name) => handleInlineRename(item.id, name)}
                   onDuplicate={() => handleDuplicate(item.id)}
                   onDelete={() => runAction(() => deleteSegment(item.id), 'Could not delete that segment.')}
                 />

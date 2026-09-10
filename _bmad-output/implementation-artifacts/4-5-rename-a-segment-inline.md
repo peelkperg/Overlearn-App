@@ -1,6 +1,6 @@
 # Story 4.5: Rename a Segment Inline
 
-Status: review
+Status: done
 
 <!-- Note: Validate with validate-create-story before dev-story if desired. -->
 
@@ -110,7 +110,7 @@ On iOS, `onSubmitEditing` fires before the keyboard-dismiss `onBlur`. The `submi
 The key is matching the exact dimensions of the replaced `<ThemedText>`:
 - `flex: 1` — fills the Pressable's available width (same as `ThemedText` inside `styles.rowLabel`)
 - `paddingHorizontal: Spacing.three`, `paddingVertical: Spacing.three` — matches `styles.rowLabel`
-- `fontSize: 14` (ThemedText default), `fontWeight: 'normal'` for the list row
+- `fontSize: 16`, `lineHeight: 24`, `fontWeight: '500'` for the list row — `themed-text.tsx`'s `default` type, verified by direct inspection. (Corrected by code review 2026-09-10: this note originally read `fontSize: 14` / `fontWeight: 'normal'`, which matches nothing in `themed-text.tsx`. The shipped code was always correct; the note was not. Recorded because this file is used as precedent by later stories.)
 - For the detail heading: `fontSize` and `fontWeight` matching `type="title"` (see `themed-text.tsx` for the exact values)
 - `color: theme.text` — uses the theme token, not a hardcoded color
 - `backgroundColor: 'transparent'` — the `ThemedView` row background already shows through
@@ -148,7 +148,7 @@ The key is matching the exact dimensions of the replaced `<ThemedText>`:
 
 - [Source: _bmad-output/planning-artifacts/epics.md#Story-4.5] — story statement and all 5 ACs (verbatim above)
 - [Source: _bmad-output/planning-artifacts/ux-design-specification.md#Inline-Rename-(FR40)] (~lines 591–607) — trigger, editing state, commit, cancel, "no new component," accessibility
-- [Source: _bmad-output/planning-artifacts/ux-design-specification.md#Accessibility-(v1.1)] — UX-DR25: `accessibilityHint="Press and hold to rename"` static, "Editing segment name" on entry
+- [Source: _bmad-output/planning-artifacts/ux-design-specification.md#Inline-Rename-(FR40)] — UX-DR25: `accessibilityHint="Press and hold to rename"` static, "Editing segment name" on entry. (Citation corrected by code review 2026-09-10: this pointed at `#Accessibility-(v1.1)`, which does not mention FR40 — the requirement lives in the Inline Rename section. The announcement half was also never implemented; fixed in the same review.)
 - [Source: _bmad-output/planning-artifacts/architecture.md] (edit 2026-09-06) — "second UI entry point to the existing renameSegment function, not a second implementation of it. No new lib/ function, no schema change."
 - [Source: _bmad-output/project-context.md] — `useRef` pattern, RNTL v14 async-API rule, co-located vs. `app-tests/` rule, no direct MMKV (storage.ts only), single-contact `renameSegment` rule
 
@@ -186,3 +186,79 @@ None — all tests green on first implementation pass.
 ### Change Log
 
 - 2026-09-10: Implemented Story 4.5 in full (Tasks 1–5) — inline rename via press-and-hold at the segment list row and segment detail heading. No new lib/ functions, no new routes. 11 new tests. 288/288 passing, tsc clean. Status: ready-for-dev → review.
+
+- 2026-09-10: Code review (3 layers) on commit `5df8da1` — 4 decisions resolved, 21 patches applied, 1 deferred. Status: review → done. Suite 288 → 300 passing, `tsc` clean, lint unchanged (its 1 error / 2 warnings are pre-existing, in files this story never touched — verified by re-running lint at HEAD). See Review Findings below.
+
+## Review Findings
+
+Code review 2026-09-10 (commit `5df8da1`), three layers: Blind Hunter, Edge Case
+Hunter, Acceptance Auditor. Suite re-verified independently: 288/288 passing,
+`tsc --noEmit` clean — both Dev Agent Record claims confirmed.
+
+### Decisions required
+
+- [x] [Review][Decision] Divergent failure behavior between the two entry points — on a `renameSegment` throw the list row has already run `setIsEditing(false)` and discarded `editValue` (parent's `runAction` shows a screen-level banner), while the detail screen's `try/catch` keeps the field open with an inline error. Same operation, two recoveries. Which is authoritative? [SegmentListItem.tsx:54-58, app/index.tsx:187, app/segment/[id].tsx:79-89]
+- [x] [Review][Decision] Disambiguation silently rewrites the submitted name — `renameSegment` returns `{...target, name: disambiguate(...)}` (lib/segments.ts:116) and both call sites discard the return. Renaming to a colliding name stores `Scales (2)` and re-renders a name the user never typed, unexplained. Story 4.2 set the opposite precedent (`showNotice(\`Duplicated as "${copy.name}"\`)`, index.tsx:136). AC #2 names the disambiguation rule; no test covers a colliding submit. Notify or stay silent? [app/index.tsx:187, app/segment/[id].tsx:81]
+- [x] [Review][Decision] Detail heading layout shift violates AC #1 — static heading is `numberOfLines={2}` at fontSize 48/lineHeight 52 (up to 104pt); the editing branch is `multiline={false}` at a single 52pt line. Any name that wraps collapses the heading by ≥52pt on long-press, shoving Start and history upward — and the name then scrolls out of view horizontally. Fix approach changes submit semantics (a multiline input makes the return key insert a newline instead of submitting). [app/segment/[id].tsx:111-138, 203-214]
+- [x] [Review][Decision] Row-level error UX for a non-empty-but-invalid name — with the `trim()`/`normalizeSegmentName` gap closed (patch below), a zero-width-only name becomes a UI-level empty. Should the row's inline error surface lib throws generally, or only the empty case AC #4 names?
+
+### Patches
+
+- [x] [Review][Patch] Tapping the row while editing navigates away and discards the edit — `onPress={onOpen}` stays live in the editing branch and the TextInput *and* error text are children of that same Pressable inside `rowLabel`'s 16px padding. A tap on the padding (the AC #3 "tap outside" gesture) fires `router.push` instead of blurring. Gate `onPress`/`onLongPress` on `isEditing`. [SegmentListItem.tsx:69-104]
+- [x] [Review][Patch] `submittedRef` is dead code — set and cleared inside one synchronous handler, so it is always `false` by the time the native `onBlur` arrives; `handleBlur`'s early return can never fire. Mutation-verified: disabling the guard leaves all 15 SegmentListItem tests green. Remove the ref and its two misleading comments (which assert a data-integrity invariant that does not exist — `handleBlur` performs no write). [SegmentListItem.tsx:54-65, app/segment/[id].tsx:79-89]
+- [x] [Review][Patch] The test named for the `submittedRef` guard proves nothing — after submit the input is already unmounted and `onInlineRename` already fired, so both assertions hold under any implementation. Delete or rewrite. [SegmentListItem.test.tsx ~384-399]
+- [x] [Review][Patch] Long-press while already editing wipes typed text — `handleLongPress` has no `isEditing` guard and `onLongPress` stays bound; a hold on surrounding padding resets `editValue` to the stored name with no undo. [SegmentListItem.tsx:43-47, app/segment/[id].tsx:67-72]
+- [x] [Review][Patch] Empty-check uses `trim()` where the lib uses `normalizeSegmentName()` — lib/segments.ts:71-75 strips zero-width/bidi chars precisely because `trim()` does not; `SegmentForm.tsx:37-38` uses the normalizer. Both inline paths use bare `trim()`, so a U+200B-only name passes the UI guard and takes a divergent, misleading failure path. [SegmentListItem.tsx:49-53, app/segment/[id].tsx:74-78]
+- [x] [Review][Patch] No `maxLength` on either inline field — bypasses the 80-char cap AC #2 requires ("same validation as Story 4.1"); `SegmentForm.tsx:59` sets `maxLength={MaxNameLength}` and `renameSegment` has no length guard, so the inline path can persist a name the screen-based path cannot. [SegmentListItem.tsx:80-90, app/segment/[id].tsx:111-122]
+- [x] [Review][Patch] UX-DR25's "Editing segment name" announcement never shipped — the UX spec's Inline Rename (FR40) section requires it on entry; only the static `accessibilityHint` half exists. Completion Notes claim full UX-DR25 coverage. [both files, editing branch]
+- [x] [Review][Patch] Inline errors are not announced to assistive tech — rendered with only `type="small" themeColor="textSecondary"`, no `accessibilityRole="alert"` / `accessibilityLiveRegion="polite"`, unlike `SegmentForm.tsx:62-71`, `index.tsx:154-164`, and `rename.tsx:50-60`. A screen-reader user submitting an empty name gets no feedback. `textSecondary` also renders a validation failure in de-emphasised colour (others use `danger`). [SegmentListItem.tsx:91-99, app/segment/[id].tsx:123-132]
+- [x] [Review][Patch] `accessibilityRole="button"` stays on the row wrapper while it hosts a text field — the hint is conditionally removed but the role is not, so the a11y tree presents a button containing an edit field. [SegmentListItem.tsx:477-479]
+- [x] [Review][Patch] Detail heading Pressable has an `accessibilityHint` but no `accessibilityRole` — inconsistent with the row; a hint on a roleless element is frequently not announced, so the entry point may be undiscoverable to screen-reader users. [app/segment/[id].tsx:224-230]
+- [x] [Review][Patch] `renameSegment(id ?? '', ...)` coerces a routing bug into a storage error — `segment` is guaranteed non-null on this branch, so `segment.id` is correct; `?? ''` exists only to satisfy the type checker and would report "Could not rename that segment." for a missing route param. [app/segment/[id].tsx:81]
+- [x] [Review][Patch] "Cursor at end" dropped — the UX spec's editing state specifies "pre-filled with the current name, **cursor at end**". The story's AC #1 paraphrase omits the clause, so it was never implemented or tested. [both files]
+- [x] [Review][Patch] Detail AC #2 assertion is vacuous — asserts `getByTestId('segment-detail-heading')` is truthy, but that is the Pressable wrapper, present in both branches. The test's stated purpose ("heading shows new name reactively") is untested; needs `getByText('New name')`. [segment-detail.test.tsx ~287-303]
+- [x] [Review][Patch] Detail blur-revert test does not verify the revert — blur invokes no write path, so the unchanged `readSegments()` value holds trivially. Nothing asserts the heading re-displays the original name (the list-row counterpart does this correctly). [segment-detail.test.tsx ~82-93]
+- [x] [Review][Patch] List-row AC #2 display half is unverified and currently unverifiable — the component renders `segment.name` from an unchanged prop with a `jest.fn()` parent, so static text after submit is still the old name. Rerender with an updated prop or assert at integration level. [SegmentListItem.test.tsx submit test]
+- [x] [Review][Patch] AC #5 regression test bypasses the threshold it guards — `fireEvent.press` invokes the `onPress` prop directly and never exercises `delayLongPress`; it would pass with `delayLongPress={0}`. No test covers mutual exclusion (longPress must not also call `onOpen`) or the 1000 ms value FR40 specifies. [SegmentListItem.test.tsx ~119-128]
+- [x] [Review][Patch] Detail-screen rename-failure `catch` branch untested — the only distinct error-recovery path this diff adds is unverified. [app/segment/[id].tsx:204-207]
+- [x] [Review][Patch] Inconsistent `act()` usage between the two new detail tests — the success test wraps `submitEditing` in `await act(async () => {...})`, the empty-submit test calls it bare. One of the two is wrong; if the wrapper is needed to flush the store subscription, its omission is a latent flake. [segment-detail.test.tsx ~70-72 vs ~101]
+- [x] [Review][Patch] Input config diverges between the two sites — detail sets `multiline={false}`, the row sets neither `multiline` nor `numberOfLines`, losing the `numberOfLines={1}` clamp the static label had; a long name can change row height in edit mode, the shift the style comment claims to prevent. [SegmentListItem.tsx:80-90 vs app/segment/[id].tsx:111-122]
+- [x] [Review][Patch] No test for the `accessibilityHint` removal branch (`isEditing ? undefined : ...`) at either site, and the detail heading's hint is never asserted at all despite UX-DR25 applying at exactly two sites. [both test files]
+- [x] [Review][Patch] Story-file bookkeeping and two spec errors — Tasks 1–3 are marked `[x]` with every subtask `[ ]`; the Dev Note "`fontSize: 14` (ThemedText default)" is wrong (`themed-text.tsx` default is 16/24/500 — the shipped code is correct, the note is not); the UX-DR25 citation points at `#Accessibility-(v1.1)`, which does not mention FR40 (the requirement lives in the Inline Rename (FR40) section); and Task 1's `theme.backgroundElement` directive was silently shipped as `backgroundColor: 'transparent'`. [this file]
+
+### Resolution notes
+
+Decisions were taken as: (1) the detail screen's failure behavior is
+authoritative — a failed write keeps the field open with the typed text
+intact; (2) disambiguation is announced, matching Story 4.2's notice
+convention; (3) the detail heading's shift is fixed by preserving two lines,
+not by shrinking the static heading; (4) only the empty case renders inline
+at the row, other failures go to the existing list-level banner.
+
+Two patches were implemented differently than written, both deliberately:
+
+- **`submittedRef` was made functional rather than removed.** The finding was
+  correct that it was dead code, and removal was the right call *for a
+  single-line field*. But fix (3) makes the heading's input `multiline`, and
+  the return key then only submits via `submitBehavior="blurAndSubmit"` —
+  which fires `onBlur` alongside `onSubmitEditing`. That is the ordering
+  hazard the original comment described but the original code did not
+  actually guard. The ref now clears at edit *entry* instead of at the end of
+  `handleSubmit`, so it survives into the blur that follows. Both sites use
+  the same shape. The replacement test fails if the flag is not cleared at
+  entry (a second edit's blur would be swallowed), which the deleted test
+  could not detect.
+- **The two inputs remain configured differently, now intentionally.** The
+  row stays `multiline={false}` (its static label is `numberOfLines={1}`, so
+  a single-line field is the no-shift match); the heading is `multiline`
+  (its static label is `numberOfLines={2}`). The original divergence was
+  unexplained; this one is load-bearing and commented at both sites.
+
+`MaxNameLength` moved from `SegmentForm.tsx` to `lib/segments.ts` and is now
+imported by both. A UI-layer-only constant was exactly what let the inline
+path bypass the cap; it belongs with `normalizeSegmentName` and
+`disambiguate` as a name-domain rule.
+
+### Deferred
+
+- [x] [Review][Defer] Row height grows when the inline error renders, reflowing rows below it in the FlatList — `inlineInput` has `flex: 1` inside `rowLabel` (a column, `minHeight: 44`), so the error `ThemedText` becomes a second column child and pushes the row past its minimum. Deferred: AC #1's no-shift constraint covers *entering edit mode*, not error display, and reflow-on-error is conventional. Noted as caused by this change, not pre-existing. [SegmentListItem.tsx:80-99, 180-188]

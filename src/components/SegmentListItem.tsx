@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { AccessibilityInfo, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { MaxNameLength, normalizeSegmentName } from '@/lib/segments';
 import type { Segment } from '@/lib/types';
 
 type SegmentListItemProps = {
@@ -13,9 +14,13 @@ type SegmentListItemProps = {
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  // Story 4.5 (FR40): called with the trimmed new name when the user submits
-  // an inline rename; parent owns the data write and error recovery.
-  onInlineRename: (name: string) => void;
+  // Story 4.5 (FR40): called with the normalized new name when the user
+  // submits an inline rename; the parent owns the data write. Returns whether
+  // the write succeeded — on failure this row keeps the field open with the
+  // user's text intact rather than discarding it (code review 2026-09-10:
+  // the parent's error banner is the message surface, but only the row knows
+  // whether to close the field).
+  onInlineRename: (name: string) => boolean;
 };
 
 // Row in the segment list (FR6). The UX spec allows swipe-actions or a menu
@@ -29,9 +34,16 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
-  // Distinguishes blur-after-submit from blur-without-submit: onSubmitEditing
-  // fires before onBlur on iOS; without this guard the revert branch in
-  // handleBlur would undo a successful save.
+  // Places the caret at the end on entry (UX spec: "pre-filled with the
+  // current name, cursor at end"). Released on the first selection change so
+  // the user's own caret movement is not fought by a controlled value.
+  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+  // Distinguishes blur-after-submit from blur-without-submit. Deliberately
+  // cleared at edit *entry*, never at the end of handleSubmit: onBlur arrives
+  // as a later native event, so a same-tick reset would leave the flag false
+  // by the time handleBlur reads it, making the guard dead code (code review
+  // 2026-09-10 confirmed the original by mutation — the suite stayed green
+  // with the guard disabled).
   const submittedRef = useRef(false);
   const theme = useTheme();
 
@@ -41,21 +53,36 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
   };
 
   const handleLongPress = () => {
+    // A second long-press while the field is open would reset editValue to
+    // the stored name and silently discard what the user has typed.
+    if (isEditing) return;
+    submittedRef.current = false;
     setEditValue(segment.name);
+    setSelection({ start: segment.name.length, end: segment.name.length });
     setIsEditing(true);
     setEditError(null);
+    AccessibilityInfo.announceForAccessibility('Editing segment name');
   };
 
   const handleSubmit = () => {
-    if (editValue.trim().length === 0) {
+    // normalizeSegmentName, not trim(): trim() leaves zero-width and bidi
+    // characters standing, so a name made only of those would pass this
+    // guard and then throw inside renameSegment — reported as a storage
+    // failure rather than the empty name it actually is.
+    const normalized = normalizeSegmentName(editValue);
+    if (normalized.length === 0) {
       setEditError('Name must not be empty');
       return;
     }
     submittedRef.current = true;
-    onInlineRename(editValue.trim());
+    if (!onInlineRename(normalized)) {
+      // The parent surfaces the message in the list-level error banner; the
+      // field stays open so the typed name is not lost to a failed write.
+      submittedRef.current = false;
+      return;
+    }
     setIsEditing(false);
     setEditError(null);
-    submittedRef.current = false;
   };
 
   const handleBlur = () => {
@@ -69,10 +96,17 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
       <Pressable
         testID={`segment-row-${segment.id}`}
         style={styles.rowLabel}
-        onPress={onOpen}
-        onLongPress={handleLongPress}
+        // Both handlers are unbound while editing: the TextInput and the
+        // error text are children of this Pressable, so a tap on the row's
+        // padding — the "tap outside to cancel" gesture of AC #3 — would
+        // otherwise fire onOpen and navigate away mid-edit.
+        onPress={isEditing ? undefined : onOpen}
+        onLongPress={isEditing ? undefined : handleLongPress}
         delayLongPress={1000}
-        accessibilityRole="button"
+        // While this Pressable hosts a text field it is not a button, and
+        // announcing it as one puts screen-reader focus on a wrapper whose
+        // role no longer matches what it contains.
+        accessibilityRole={isEditing ? undefined : 'button'}
         accessibilityHint={isEditing ? undefined : 'Press and hold to rename'}
       >
         {isEditing ? (
@@ -83,8 +117,13 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
               onChangeText={setEditValue}
               onSubmitEditing={handleSubmit}
               onBlur={handleBlur}
+              selection={selection}
+              onSelectionChange={() => setSelection(undefined)}
               autoFocus
               returnKeyType="done"
+              multiline={false}
+              maxLength={MaxNameLength}
+              accessibilityLabel="Segment name"
               underlineColorAndroid="transparent"
               style={[styles.inlineInput, { color: theme.text }]}
             />
@@ -92,7 +131,9 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
               <ThemedText
                 testID={`segment-row-inline-error-${segment.id}`}
                 type="small"
-                themeColor="textSecondary"
+                themeColor="danger"
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
               >
                 {editError}
               </ThemedText>
