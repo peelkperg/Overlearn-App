@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useActiveSession } from '@/hooks/useActiveSession';
+import { useSegment } from '@/hooks/useSegments';
 import { useSettings } from '@/hooks/useSettings';
 import { calculateTargetStreak } from '@/lib/mechanic';
 import { readSettings } from '@/lib/settings';
@@ -15,11 +17,33 @@ import { readSettings } from '@/lib/settings';
 // every stepper tap writes immediately via setOverlearningPercent.
 export default function SettingsScreen() {
   const { settings, setOverlearningPercent } = useSettings();
+  // Story 5.3 (FR39): the notice's segment name is sourced live via
+  // useSegment, not session.segmentName — same rule as every other FR31
+  // display site, so a rename made after the session started is reflected
+  // here too, not frozen at session-start time. [Review][Patch] found via
+  // code review 2026-09-11: falls back to session.segmentName (matching
+  // app/index.tsx:228's identical fallback) for the case useSegment can't
+  // resolve — otherwise the notice would interpolate the literal string
+  // "undefined" if the segment lookup ever misses.
+  const { session } = useActiveSession();
+  const inProgressSegment = useSegment(session?.segmentId);
+  const inProgressSegmentName = inProgressSegment?.name ?? session?.segmentName;
+  const showInProgressNotice = Boolean(session && !session.sessionComplete);
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText>Overlearning target</ThemedText>
+        {showInProgressNotice && (
+          <ThemedText
+            testID="in-progress-session-notice"
+            type="small"
+            themeColor="textSecondary"
+            accessibilityLiveRegion="polite"
+          >
+            {`You have a session in progress for '${inProgressSegmentName}.' Changing this target updates it immediately — and may complete the session.`}
+          </ThemedText>
+        )}
         <ThemedView style={styles.stepperRow}>
           <Pressable
             testID="settings-decrease"

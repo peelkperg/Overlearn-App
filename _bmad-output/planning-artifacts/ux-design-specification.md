@@ -46,6 +46,24 @@ editHistory:
       than saving a partial edit. Coexists with the FR30 rename screen -
       neither replaces the other. No new custom component: a Pressable
       with onLongPress/delayLongPress swapping Text/TextInput locally.
+  - date: '2026-09-11'
+    changes: >-
+      Corrected the in-progress-session notice's copy (FR39), both where
+      first specified below and in the Resolved Questions section - Story
+      5.2's code review found the wording described only a recalculation,
+      not the completion Story 5.2's Task 3 reconciliation effect can also
+      trigger from a single tap with no confirmation gate. epics.md's
+      Story 5.3 AC #1 was corrected in that same review pass; this
+      document was not, until Story 5.3's implementation synchronized it.
+      No layout, placement, or visual-register change - copy only.
+      Story 5.3's own code review (2026-09-11) found a second, more
+      consequential stale spot missed by the first pass: the "Mid-session
+      change" paragraph still declared "No UI is specified for this on the
+      Settings screen" and "Deliberately not designed: a warning or
+      confirmation" - true only before FR39 existed, false since the
+      notice shipped, and cited as authority by Story 5.2's own dev notes.
+      Corrected to point at the shipped notice and the completion
+      consequence.
 ---
 
 # UX Design Specification Overlearn
@@ -519,7 +537,9 @@ Still no tab bar and no drawer. Settings and Rename are both leaf screens with a
    The example uses a fixed illustrative mistake count (10) so only the outcome changes as the user steps, keeping the sentence stable enough to re-read at a glance. This exists because the setting is otherwise abstract: the percentage applies to mistakes made, a quantity that is not on screen at the moment of choosing.
 4. **Floor note** — one line, small, neutral: *"A session never targets fewer than 5 correct in a row."* States the fixed `TARGET_FLOOR` so a user setting 50% understands why low mistake counts still demand 5.
 5. **In-progress-session notice (FR39)** — shown above the stepper, only when an in-progress session exists for any segment: a low-contrast neutral banner, same visual register as the floor note rather than an alert color, reading:
-   > *"You have a session in progress for 'Bar 24 arpeggio.' Changing this target updates it immediately."*
+   > *"You have a session in progress for 'Bar 24 arpeggio.' Changing this target updates it immediately — and may complete the session."*
+   >
+   > (Corrected 2026-09-11, code review of Story 5.2: the original wording described only a recalculation, not the completion Story 5.2's Task 3 reconciliation effect can also trigger from a single tap, with no confirmation gate to carry that warning per-tap instead.)
 
    **Standing notice, not a confirmation gate.** It is present the whole time Settings is open with an active session elsewhere — it does not interrupt the stepper, does not require dismissal, and does not repeat per tap. Ten taps in a row show the same one line the whole time, not ten dialogs. This follows the app's existing rule that friction is reserved for destructive, hard-to-reverse actions (Restart, Delete) — changing a target is neither; the user can step back to the previous value just as easily. Absent when no session is in progress: the row simply isn't rendered, rather than showing an empty or negated state.
 
@@ -536,7 +556,7 @@ Disabled-at-bounds is chosen over a silent no-op so the range is discoverable by
 
 **No confirmation on change.** Consistent with the app's existing posture: confirmation is reserved for destructive actions (Restart, Delete). Changing a target is reversible by stepping back.
 
-**Mid-session change.** FR37 requires an in-progress session's target to recalculate immediately. No UI is specified for this on the Settings screen — the user changing a setting mid-session is an edge case, and the Active Session screen's existing target-raise signal already covers the case where the visible target changes. **Deliberately not designed:** a warning or confirmation when changing the setting while a session is active. Flagged here as a conscious omission rather than an oversight; revisit if it proves confusing in use.
+**Mid-session change.** FR37 requires an in-progress session's target to recalculate immediately, and can complete the session outright (see the Mechanic Specification's Settings-driven completion transition). A UI **is** specified for this on the Settings screen: the standing in-progress-session notice (FR39, see item 5 in "Layout, top to bottom" above), which warns of both consequences before the user changes the value. (Corrected 2026-09-11, Story 5.3's implementation: this paragraph previously read "No UI is specified for this on the Settings screen" and "Deliberately not designed: a warning or confirmation" — true when first written (2026-09-06, before FR39 existed), but left uncorrected when FR39 and the notice were added later the same day, and again when Story 5.2's code review amended the completion consequence. `_bmad-output/implementation-artifacts/5-2-...md` cited the old wording as authority for adding no UI; that citation is now stale too.)
 
 ## Segment List Additions
 
@@ -653,5 +673,5 @@ The gear icon, being icon-only, carries `accessibilityLabel="Settings"` — the 
 
 Both questions logged when this section was first written have been resolved and specified above, backed by PRD FR38/FR39:
 
-- **Mid-session settings change** → FR39, designed as the standing in-progress-session notice on the Settings screen (see Settings screen above).
+- **Mid-session settings change** → FR39, designed as the standing in-progress-session notice on the Settings screen (see Settings screen above; copy corrected 2026-09-11, code review of Story 5.2, to name the completion consequence Story 5.2's Task 3 introduced).
 - **Solidification % never displayed** → FR38, designed as the history log's summary line (see Segment History Log Addition above).
