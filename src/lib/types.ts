@@ -21,6 +21,14 @@ export interface SessionState {
   totalIncorrectThisSession: number;
   sessionComplete: boolean;
   sessionStartTimestamp: string; // ISO 8601
+  // Story 5.1 code review [Review][Patch]: the target that was actually met
+  // when sessionComplete flipped true, captured in the same write. Without
+  // this, complete() had to re-derive the target from the *live*
+  // overlearningLevel setting at Done-time — a settings change between
+  // completion and Done would permanently misrecord history with a
+  // finalTarget the user never actually practiced under, with no way to
+  // detect or correct it later. null until the session completes.
+  completedTarget: number | null;
 }
 
 // One completed-session record (FR28). Written only on Done (FR14) — never
@@ -127,7 +135,8 @@ export function isSessionState(value: unknown): value is SessionState {
     isNonNegativeInteger(value.totalCorrectThisSession) &&
     isNonNegativeInteger(value.totalIncorrectThisSession) &&
     typeof value.sessionComplete === 'boolean' &&
-    typeof value.sessionStartTimestamp === 'string'
+    typeof value.sessionStartTimestamp === 'string' &&
+    (value.completedTarget === null || isNonNegativeInteger(value.completedTarget))
   );
 }
 

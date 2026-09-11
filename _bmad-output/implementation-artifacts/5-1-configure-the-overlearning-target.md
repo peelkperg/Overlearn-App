@@ -1,6 +1,6 @@
 # Story 5.1: Configure the Overlearning Target
 
-Status: review
+Status: done
 
 <!-- Note: Validate with validate-create-story before dev-story if desired. -->
 
@@ -109,6 +109,22 @@ so that I can make the mechanic stricter or more lenient than the default.
   - [x] Correct the paragraph claiming `logCorrect` and `logIncorrect` "both already call `calculateTargetStreak` internally" (~architecture.md:548) — only `logCorrect` does.
   - [x] Correct the Enforcement bullet listing `calculateTargetStreak`, `logCorrect`, and `logIncorrect` as never taking a required parameter (~architecture.md:672) — `logIncorrect` does not carry this parameter at all, required or optional, so naming it there is misleading.
 
+### Review Findings
+
+- [x] [Review][Patch] `finalTarget` can permanently misrecord history on a mid-session settings change — `complete()` recomputes `finalTarget` from the *live* `overlearningLevel` at Done-time rather than the level in effect when `sessionComplete` actually flipped true. Reachable: a user can complete a session at level A, back out to Home (Home stays mounted under the session screen; its post-completion redirect only guards against re-firing for the *same* session, not against manual back-navigation), change the setting to level B in Settings, return, and tap Done — `complete()` writes `finalTarget` computed at level B, not the level the streak was actually achieved under. This is the exact "silent data-integrity defect... no way to detect or correct it later" this story's own Task 4 comment warns about; the fix built here (passing the live `overlearningLevel` into `complete()`) narrows but does not close it. **Fix:** add `completedTarget: number | null` to `SessionState`/`isSessionState`; `logCorrect`'s transition sets it to the just-met target in the same write that flips `sessionComplete` true; `complete()` prefers `current.completedTarget` over recomputing live (fallback to the live computation retained as defense-in-depth, matching the codebase's existing style for supposedly-unreachable states).
+- [x] [Review][Defer] `sessionComplete` can stay `false` after a mid-session settings change lowers the target below the already-achieved streak — only `logCorrect`'s transition flips `sessionComplete`, so lowering the live target via Settings mid-session (same reachable path as above) doesn't retroactively mark a session complete; the UI can show `currentStreak >= targetStreak` while completion stays denied until the next tap. Deferred — self-correcting on the next Correct/Incorrect tap, writes nothing permanent (no history entry until Done), and sits squarely in Story 5.2's (FR37 live-target verification) and Story 5.3's (FR39 mid-session warning) stated scope rather than this story's.
+- [x] [Review][Patch] `architecture.md:551` still reads "passes it to all three sites above" — contradicts the corrected "four" call-site count two lines above it, added in this same commit.
+- [x] [Review][Patch] `architecture.md:25` (changelog-style note) still claims "session-transitions' logCorrect/logIncorrect gain an OPTIONAL second parameter" — `logIncorrect` does not, per this story's own Task 3 correction.
+- [x] [Review][Patch] `architecture.md:656` (file-tree comment) still reads "logCorrect/logIncorrect gain optional 2nd param" — same stale claim as above.
+- [x] [Review][Patch] `useActiveSession.ts`'s new comment claims to be "the one and only place in the app that converts the stored percent... to the level" [src/hooks/useActiveSession.ts:29-32] — false: `src/app/settings.tsx:53` performs the identical `settings.overlearningPercent / 100` conversion for its own worked-example line, added in this same commit.
+- [x] [Review][Patch] `mechanic.ts`'s `safeLevel` guard comment blames "`setOverlearningPercent`'s own defensive clamp" for a possible `NaN` [src/lib/mechanic.ts:~20] — that clamp's `Number.isFinite` guard runs first and makes that specific scenario impossible; the comment describes a threat that cannot occur through the path it names.
+- [x] [Review][Patch] Test-coverage gaps (unambiguous additions, no behavior change needed):
+  - No `HomeScreen` test asserts the gear icon is present once segments exist (only the zero-segment case is covered) — a regression that moved the gear inside the non-empty branch would pass both existing new tests.
+  - No test presses `settings-decrease`/`settings-increase` at its disabled boundary to confirm it is actually inert (only `accessibilityState` is asserted, never behavior).
+  - No test exercises `setOverlearningPercent`'s non-finite (`NaN`/`Infinity`) guard, despite it carrying the longest comment in the diff (CLAUDE.md §11.1 requires error-condition tests for new logic).
+  - No test exercises a fractional-decade rounding case above `.5` (only `123→120` is tested) — `Math.round` could regress to `Math.floor`/`Math.trunc` with no red test.
+- [x] [Review][Patch] `settings.tsx`'s stepper closes over the render-time `settings.overlearningPercent` rather than reading fresh [src/app/settings.tsx:26,40] — two taps dispatched before a re-render commits net only one 10-point step instead of two, the same race class `useActiveSession` was deliberately hardened against for session taps (see that file's own comment). Fix: read via `readSettings()` from `lib/settings.ts` inside each `onPress`, mirroring `sessionStore.readSession()`'s pattern.
+
 ## Dev Notes
 
 ### Architecture compliance
@@ -205,6 +221,7 @@ None — no failing runs or investigation needed. `npx tsc --noEmit` failed once
 - Task 3's correction (`logIncorrect` does not take the optional parameter, since it never calls `calculateTargetStreak`) was implemented as specified — no parameter added to `logIncorrect`.
 - Task 14: `architecture.md`'s stale Epic 5 section corrected in the same change (three→four call sites, `logIncorrect` removed from the optional-parameter list and Enforcement bullet) per CLAUDE.md §13.4.
 - Full test suite (325 tests across 25 suites), lint, and typecheck all pass clean. No regressions in any pre-existing test.
+- **Post-review fixes (2026-09-10, same day):** a three-layer adversarial code review (Blind Hunter, Edge Case Hunter, Acceptance Auditor) found 1 decision-needed issue, 7 patch findings, and 8 non-issues (dismissed — mostly explicit spec compliance mistaken for defects, e.g. the floor note's hardcoded "5" is the literal string Task 6 mandates, not a single-source-of-truth violation). User resolved the decision-needed finding as "fix now": added `SessionState.completedTarget` to capture the target actually met at the moment `sessionComplete` flips true (`logCorrect`'s transition), so `complete()` no longer re-derives `finalTarget` from a possibly-since-changed live setting — closing a real data-integrity gap where a settings change between session completion and tapping Done could permanently misrecord history. A related, lower-severity sub-case (`sessionComplete` staying `false` after a mid-session level *decrease* already satisfies the new target) was deferred to Story 5.2/5.3, which are explicitly scoped to mid-session settings-change behavior — logged in `deferred-work.md`. The remaining 7 patches were all applied: 3 stale `architecture.md` claims corrected (a leftover "three sites" count, and two more "logIncorrect gains a parameter" mentions Task 14 missed), 2 misleading code comments fixed (a false "one and only place" claim, a comment blaming a guard for a `NaN` its own sibling clamp already prevents), 4 test-coverage gaps closed (gear icon with segments present, disabled-boundary press behavior, the non-finite-input guard, and `Math.round`'s `.5`-boundary behavior), and a stepper double-tap race fixed (`settings.tsx`'s `onPress` now reads `readSettings()` fresh instead of closing over the render-time value). Full suite re-verified at 347/347 passing, lint and typecheck clean after all fixes.
 
 ### File List
 
@@ -220,14 +237,20 @@ None — no failing runs or investigation needed. `npx tsc --noEmit` failed once
 - `src/hooks/useActiveSession.ts`
 - `src/app/index.tsx`
 - `src/app/stack-screens.ts`
+- `src/lib/types.ts` (post-review: `SessionState.completedTarget`)
 - `src/lib/settings.test.ts`
 - `src/lib/mechanic.test.ts`
 - `src/lib/session-transitions.test.ts`
 - `src/hooks/useActiveSession.test.ts`
+- `src/lib/types.test.ts` (post-review: `completedTarget` validation)
+- `src/lib/segments.test.ts` (post-review: `completedTarget` on direct `writeSession` literals)
+- `src/app-tests/home-session-interaction.test.tsx` (post-review: same)
 - `src/app-tests/stack-screens.test.ts`
 - `src/app-tests/index.test.tsx`
-- `_bmad-output/planning-artifacts/architecture.md` (Task 14: spec/code sync)
+- `_bmad-output/planning-artifacts/architecture.md` (Task 14 spec/code sync; post-review: 3 more stale claims corrected, editHistory note added)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (post-review: 1 item logged)
 
 ### Change Log
 
 - 2026-09-10: Implemented Story 5.1 — `setOverlearningPercent` storage boundary, optional `overlearningLevel` parameter threaded through `calculateTargetStreak`/`logCorrect`/all four `useActiveSession` call sites, new Settings screen with stepper/worked-example/floor-note, gear icon on the segment list, `settings` route registration, and corresponding tests across 7 files. Corrected `architecture.md`'s stale three-call-site/both-functions-take-the-parameter claims to match shipped behavior (CLAUDE.md §13.4).
+- 2026-09-10: Code review (3-layer adversarial) found and fixed a data-integrity gap in `complete()`'s `finalTarget` (now anchored via new `SessionState.completedTarget` field, captured at the moment of completion rather than re-derived live) plus 7 lower-severity patches (stale doc claims, misleading comments, test-coverage gaps, a stepper double-tap race). Deferred one related sub-case to Story 5.2/5.3. Story status: `review` → `done`.

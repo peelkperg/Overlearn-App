@@ -17,6 +17,7 @@ export function startSession(segmentId: string, segmentName: string): SessionSta
     totalIncorrectThisSession: 0,
     sessionComplete: false,
     sessionStartTimestamp: new Date().toISOString(),
+    completedTarget: null,
   };
 }
 
@@ -34,11 +35,23 @@ export function startSession(segmentId: string, segmentName: string): SessionSta
 export function logCorrect(session: SessionState, overlearningLevel?: number): SessionState {
   const currentStreak = session.currentStreak + 1;
   const targetStreak = calculateTargetStreak(session.totalIncorrectThisSession, overlearningLevel);
+  const sessionComplete = currentStreak >= targetStreak;
   return {
     ...session,
     currentStreak,
     totalCorrectThisSession: session.totalCorrectThisSession + 1,
-    sessionComplete: currentStreak >= targetStreak,
+    sessionComplete,
+    // [Review][Patch] found via code review 2026-09-10: captured the first
+    // time sessionComplete flips true, then frozen — `session.completedTarget
+    // ?? ...` rather than a bare `sessionComplete ? targetStreak : ...`
+    // means even a caller that mistakenly re-invokes this transition after
+    // completion (useActiveSession's own logCorrect() already guards
+    // against this, but this keeps the guarantee independent of that
+    // caller-side check) cannot overwrite the already-captured value at a
+    // since-changed level. A later settings change, before Done writes the
+    // history entry, can no longer alter which target this session is
+    // recorded as having met — see complete() in hooks/useActiveSession.ts.
+    completedTarget: session.completedTarget ?? (sessionComplete ? targetStreak : null),
   };
 }
 

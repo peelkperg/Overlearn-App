@@ -76,6 +76,7 @@ describe('lib/segments deletion cascade [Review][Patch]', () => {
       totalIncorrectThisSession: 0,
       sessionComplete: false,
       sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+      completedTarget: null,
     });
 
     deleteSegment(segment.id);
@@ -94,6 +95,7 @@ describe('lib/segments deletion cascade [Review][Patch]', () => {
       totalIncorrectThisSession: 0,
       sessionComplete: false,
       sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+      completedTarget: null,
     });
 
     deleteSegment(removed.id);

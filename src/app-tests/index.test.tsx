@@ -56,6 +56,17 @@ describe('HomeScreen [Story 1.3]', () => {
     expect(view.getByTestId('segment-list-settings')).toBeTruthy();
   });
 
+  // [Review][Patch] found via code review 2026-09-10: the only other gear
+  // test covered zero segments — a regression that moved the gear inside
+  // the non-empty branch instead would have passed both existing tests.
+  it('shows the gear icon once segments exist too', async () => {
+    createSegment('Bar 24 arpeggio');
+    const view = await render(<HomeScreen />);
+
+    expect(view.queryByTestId('segment-list-empty')).toBeNull();
+    expect(view.getByTestId('segment-list-settings')).toBeTruthy();
+  });
+
   it('keeps creation reachable once segments exist (FR1, FR4)', async () => {
     createSegment('Bar 24 arpeggio');
     const view = await render(<HomeScreen />);

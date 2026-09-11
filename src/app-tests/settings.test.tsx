@@ -91,3 +91,54 @@ describe('SettingsScreen [Story 5.1]', () => {
     expect(view.queryByText(/confirm/i)).toBeNull();
   });
 });
+
+// [Review][Patch] found via code review 2026-09-10: the disabled prop's
+// accessibilityState was asserted, but nothing pressed the button at its
+// boundary to confirm it is actually inert, not just visually dimmed.
+describe('SettingsScreen disabled stepper boundaries [Review][Patch]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('pressing − at 50% does not change the value', async () => {
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent.press(view.getByTestId('settings-decrease'));
+
+    expect(view.getByText('50%')).toBeTruthy();
+    expect(readSettings().overlearningPercent).toBe(50);
+  });
+
+  it('pressing + at 300% does not change the value', async () => {
+    setOverlearningPercent(300);
+    const view = await render(<SettingsScreen />);
+
+    await fireEvent.press(view.getByTestId('settings-increase'));
+
+    expect(view.getByText('300%')).toBeTruthy();
+    expect(readSettings().overlearningPercent).toBe(300);
+  });
+});
+
+// [Review][Patch] found via code review 2026-09-10: onPress used to close
+// over the render-time `settings.overlearningPercent`, so two taps
+// dispatched before a re-render commits both computed from the same stale
+// value — netting one 10-point step instead of two.
+describe('SettingsScreen rapid taps [Review][Patch]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('compounds two rapid + taps issued before a re-render, instead of netting one step', async () => {
+    const view = await render(<SettingsScreen />);
+    const increase = view.getByTestId('settings-increase');
+
+    // Both presses are kicked off before either is awaited — fireEvent.press
+    // is itself async in RNTL v14, so awaiting them individually would let
+    // the first tap's state update (and re-render) commit before the second
+    // fires, which is not what a fast double-tap looks like.
+    await Promise.all([fireEvent.press(increase), fireEvent.press(increase)]);
+
+    expect(readSettings().overlearningPercent).toBe(70);
+  });
+});

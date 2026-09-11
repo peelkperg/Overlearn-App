@@ -8,6 +8,7 @@ const validSession = {
   totalIncorrectThisSession: 0,
   sessionComplete: false,
   sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+  completedTarget: null,
 };
 
 describe('lib/types isSessionState [Review][Patch]', () => {
@@ -28,6 +29,29 @@ describe('lib/types isSessionState [Review][Patch]', () => {
       expect(isSessionState({ ...validSession, [field]: Infinity })).toBe(false);
     },
   );
+});
+
+// Story 5.1 code review [Review][Patch]: completedTarget captures the target
+// actually met when sessionComplete flips true (see session-transitions.ts's
+// logCorrect) so complete() never has to re-derive it from a possibly-changed
+// live setting.
+describe('lib/types isSessionState completedTarget [Review][Patch]', () => {
+  it('accepts null (not yet complete)', () => {
+    expect(isSessionState({ ...validSession, completedTarget: null })).toBe(true);
+  });
+
+  it('accepts a non-negative integer (complete)', () => {
+    expect(isSessionState({ ...validSession, completedTarget: 6 })).toBe(true);
+  });
+
+  it('rejects a missing completedTarget field', () => {
+    const { completedTarget: _omit, ...withoutField } = validSession;
+    expect(isSessionState(withoutField)).toBe(false);
+  });
+
+  it.each([-1, 1.5, NaN, Infinity, 'six'])('rejects an invalid completedTarget (%p)', (value) => {
+    expect(isSessionState({ ...validSession, completedTarget: value })).toBe(false);
+  });
 });
 
 const validSettings = {

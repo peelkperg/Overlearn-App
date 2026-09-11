@@ -23,12 +23,15 @@ export function calculateTargetStreak(
   overlearningLevel: number = OVERLEARNING_LEVEL,
 ): number {
   const safeTotal = Number.isFinite(totalIncorrectThisSession) ? totalIncorrectThisSession : 0;
-  // Not reachable through the shipped UI (the stepper only ever produces a
-  // valid clamped value), but setOverlearningPercent's own defensive clamp
-  // (lib/settings.ts) can itself produce NaN from a NaN/Infinity caller —
-  // without this guard, that NaN would propagate to a non-finite target,
-  // silently soft-locking any session using it. Same failure class as the
-  // totalIncorrectThisSession guard above.
+  // Not reachable through any call site in this codebase today —
+  // setOverlearningPercent's own Number.isFinite guard (lib/settings.ts)
+  // runs before its clamp, so a non-finite value can never actually reach
+  // storage or a caller of this function via that path. [Review][Patch]
+  // found via code review 2026-09-10: this comment previously blamed that
+  // same clamp for a NaN it in fact cannot produce. Kept as a general
+  // defensive layer against calculateTargetStreak's own exported contract —
+  // any future or external caller could pass a non-finite level directly —
+  // same posture as the totalIncorrectThisSession guard above.
   const safeLevel = Number.isFinite(overlearningLevel) ? overlearningLevel : OVERLEARNING_LEVEL;
   // overlearningPercent / 100 is not exact in floating point for most of the
   // 26 valid values (e.g. 110/100 -> 1.1, and 50 * 1.1 -> 55.00000000000001,

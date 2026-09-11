@@ -6,6 +6,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSettings } from '@/hooks/useSettings';
 import { calculateTargetStreak } from '@/lib/mechanic';
+import { readSettings } from '@/lib/settings';
 
 // Story 5.1: Configure the Overlearning Target (FR35, FR36, UX-DR13-16). A
 // leaf screen, same shape as segment/[id]/rename.tsx — no header (this app
@@ -23,7 +24,13 @@ export default function SettingsScreen() {
           <Pressable
             testID="settings-decrease"
             style={[styles.stepperButton, settings.overlearningPercent <= 50 && styles.stepperButtonDisabled]}
-            onPress={() => setOverlearningPercent(settings.overlearningPercent - 10)}
+            // [Review][Patch] found via code review 2026-09-10: reads fresh
+            // rather than closing over the render-time `settings` value —
+            // mirrors useActiveSession's sessionStore.readSession() pattern.
+            // Two taps dispatched before a re-render commits would otherwise
+            // both compute from the same stale percent, netting one 10-point
+            // step instead of two.
+            onPress={() => setOverlearningPercent(readSettings().overlearningPercent - 10)}
             disabled={settings.overlearningPercent <= 50}
             accessibilityRole="button"
             accessibilityLabel="Decrease overlearning target"
@@ -37,7 +44,7 @@ export default function SettingsScreen() {
           <Pressable
             testID="settings-increase"
             style={[styles.stepperButton, settings.overlearningPercent >= 300 && styles.stepperButtonDisabled]}
-            onPress={() => setOverlearningPercent(settings.overlearningPercent + 10)}
+            onPress={() => setOverlearningPercent(readSettings().overlearningPercent + 10)}
             disabled={settings.overlearningPercent >= 300}
             accessibilityRole="button"
             accessibilityLabel="Increase overlearning target"

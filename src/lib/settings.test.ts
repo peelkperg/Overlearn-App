@@ -56,6 +56,41 @@ describe('lib/settings setOverlearningPercent [Story 5.1]', () => {
     expect(readSettings().overlearningPercent).toBe(120);
   });
 
+  // [Review][Patch] found via code review 2026-09-10: only 123 (below the
+  // .5 boundary) was tested — Math.round could silently regress to
+  // Math.floor/Math.trunc with no red test. 125 (exactly at the boundary,
+  // 12.5 decades) rounds up to 130 only under true half-up rounding; floor
+  // and trunc would both give 120.
+  it('rounds up at exactly the .5 boundary within a decade, not down', () => {
+    setOverlearningPercent(125);
+    expect(readSettings().overlearningPercent).toBe(130);
+  });
+
+  it('leaves the exact boundary values 50 and 300 unchanged', () => {
+    setOverlearningPercent(50);
+    expect(readSettings().overlearningPercent).toBe(50);
+    setOverlearningPercent(300);
+    expect(readSettings().overlearningPercent).toBe(300);
+  });
+
+  // [Review][Patch] found via code review 2026-09-10: the non-finite guard
+  // carried the longest comment in the diff but had zero test coverage —
+  // CLAUDE.md SS11.1 requires error-condition tests for new logic. A bare
+  // clamp on NaN/Infinity still yields NaN (Math.max/min/round all
+  // propagate it), which would fail isSettings on the next read and
+  // quarantine the entire settings.general key, including the unrelated
+  // sortKey/sortDirection fields.
+  it.each([NaN, Infinity, -Infinity])('falls back to the default instead of writing a non-finite value (%p)', (value) => {
+    setOverlearningPercent(value);
+    expect(readSettings().overlearningPercent).toBe(50);
+  });
+
+  it('does not quarantine sortKey/sortDirection when given a non-finite value', () => {
+    setSortOption('lastPracticed', 'desc');
+    setOverlearningPercent(NaN);
+    expect(readSettings()).toEqual({ overlearningPercent: 50, sortKey: 'lastPracticed', sortDirection: 'desc' });
+  });
+
   it('preserves the existing sortKey/sortDirection fields', () => {
     setSortOption('lastPracticed', 'desc');
     setOverlearningPercent(200);

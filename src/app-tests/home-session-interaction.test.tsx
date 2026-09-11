@@ -60,6 +60,7 @@ describe('Home mounted underneath Active Session [Review][Patch, CRITICAL]', () 
       totalIncorrectThisSession: 0,
       sessionComplete: false,
       sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+      completedTarget: null,
     });
     useLocalSearchParams.mockReturnValue({ id: segment.id });
 
@@ -96,6 +97,7 @@ describe('Home mounted underneath Active Session [Review][Patch, CRITICAL]', () 
       totalIncorrectThisSession: 0,
       sessionComplete: false,
       sessionStartTimestamp: '2026-08-31T12:00:00.000Z',
+      completedTarget: null,
     });
     useLocalSearchParams.mockReturnValue({ id: segment.id });
 
