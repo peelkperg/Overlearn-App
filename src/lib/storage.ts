@@ -61,7 +61,7 @@ function quarantine(key: string, raw: string): void {
 // SCHEMA_VERSION and adding a migrations[oldVersion] entry is the intended
 // upgrade path; there is nothing in the registry yet because v1 is the only
 // version that has ever shipped.
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 type VersionedEnvelope<T> = { __v: number; data: T };
 
@@ -81,8 +81,23 @@ function isVersionedEnvelope(value: unknown): value is VersionedEnvelope<unknown
 // [Review][Patch, CRITICAL] found via code review 2026-09-05: without this
 // entry, every pre-existing on-device segment/history/session record was
 // silently discarded (quarantined) on first read after this envelope shipped.
+// [Review][Patch] found via code review 2026-09-11: SessionState.completedTarget
+// (Story 5.2) became a required field of the guard with no migration entry —
+// every in-progress session persisted by a build before this change has no
+// completedTarget key, so isSessionState would reject it and quarantine
+// the user's session on first read after upgrade. v1 -> v2 defaults a
+// missing completedTarget to null on session-shaped data only (detected by
+// the presence of sessionComplete, a field unique to SessionState among
+// this app's persisted shapes); every other shape (segments, history,
+// settings) has no sessionComplete field and passes through unchanged.
 const migrations: Record<number, (data: unknown) => unknown> = {
   0: (data) => data,
+  1: (data) => {
+    if (typeof data === 'object' && data !== null && !Array.isArray(data) && 'sessionComplete' in data && !('completedTarget' in data)) {
+      return { ...data, completedTarget: null };
+    }
+    return data;
+  },
 };
 
 function migrate(fromVersion: number, data: unknown): unknown {

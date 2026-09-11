@@ -1,5 +1,5 @@
 import { calculateTargetStreak } from './mechanic';
-import { logCorrect, logIncorrect, restartSession, startSession } from './session-transitions';
+import { logCorrect, logIncorrect, reconcileCompletion, restartSession, startSession } from './session-transitions';
 
 describe('lib/session-transitions startSession [Story 2.1]', () => {
   it('initializes current_streak, total_correct_this_session, and total_incorrect_this_session to 0', () => {
@@ -116,6 +116,110 @@ describe('lib/session-transitions logCorrect with an explicit overlearningLevel 
     for (let i = 0; i < 5; i++) atDefaultLevel = logCorrect(atDefaultLevel);
     expect(atDefaultLevel.currentStreak).toBe(5);
     expect(atDefaultLevel.sessionComplete).toBe(true); // 5 >= calculateTargetStreak(10) = 5
+  });
+});
+
+describe('lib/session-transitions logCorrect completedTarget [Review][Patch]', () => {
+  it('stays null while the session is not yet complete', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 4; i++) session = logCorrect(session);
+    expect(session.completedTarget).toBeNull();
+  });
+
+  it('captures the target that was actually met, in the same write that flips sessionComplete', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 6
+    for (let i = 0; i < 6; i++) session = logCorrect(session);
+    expect(session.sessionComplete).toBe(true);
+    expect(session.completedTarget).toBe(6);
+  });
+
+  it('once captured, is not overwritten by a further call at a different level', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 6
+    for (let i = 0; i < 6; i++) session = logCorrect(session); // completes at level 0.5, target 6
+    expect(session.completedTarget).toBe(6);
+
+    // A caller must not call logCorrect again post-completion
+    // (useActiveSession's own logCorrect() already guards this), but the
+    // transition itself is asserted independently here to keep the
+    // guarantee from resting solely on that caller-side check — at level
+    // 3.0 the same totalIncorrectThisSession (11) would recompute to 33,
+    // which must NOT overwrite the already-captured 6.
+    const again = logCorrect(session, 3.0);
+    expect(again.completedTarget).toBe(6);
+  });
+});
+
+describe('lib/session-transitions reconcileCompletion [Story 5.2 Task 3, Review][Patch] 2026-09-11', () => {
+  it('returns the same session reference, unchanged, when the target is not yet met', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 6, at level 0.5
+    for (let i = 0; i < 5; i++) session = logCorrect(session); // currentStreak 5, still below 6
+    const result = reconcileCompletion(session, 0.5);
+    expect(result).toBe(session); // reference equality: no-op, nothing to write
+  });
+
+  it('does not complete at currentStreak exactly one below the recalculated target (boundary)', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session);
+    for (let i = 0; i < 5; i++) session = logCorrect(session); // currentStreak 5
+    // At level 3.0, calculateTargetStreak(11, 3.0) = 33, well above 5 — sanity
+    // check the boundary at the actual level in force instead.
+    expect(calculateTargetStreak(11, 0.5)).toBe(6);
+    const result = reconcileCompletion(session, 0.5); // 5 < 6
+    expect(result.sessionComplete).toBe(false);
+    expect(result.completedTarget).toBeNull();
+  });
+
+  it('completes when currentStreak exactly equals the recalculated target (boundary)', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session);
+    for (let i = 0; i < 6; i++) session = logCorrect(session); // currentStreak 6, target(0.5) = 6
+    const result = reconcileCompletion(session, 0.5);
+    expect(result.sessionComplete).toBe(true);
+    expect(result.completedTarget).toBe(6);
+  });
+
+  it('completes via a settings decrease alone, with no further Correct/Incorrect tap', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 33 at level 3.0
+    for (let i = 0; i < 6; i++) session = logCorrect(session, 3.0); // currentStreak 6, genuinely incomplete at 3.0
+    expect(session.sessionComplete).toBe(false);
+    expect(reconcileCompletion(session, 3.0)).toBe(session); // still not yet met at 3.0
+
+    const reconciled = reconcileCompletion(session, 0.5); // target drops to 6, already met
+    expect(reconciled.sessionComplete).toBe(true);
+    expect(reconciled.completedTarget).toBe(6);
+  });
+
+  // [Review][Decision] resolved 2026-09-11 (Story 5.2 code review, option:
+  // record the achieved streak): when currentStreak overshoots the
+  // recalculated target, completedTarget captures the achieved streak, not
+  // the newly-lowered target — logCorrect can never produce this shape
+  // (its own completion always lands at currentStreak === targetStreak
+  // exactly), so this case is reachable only through a settings decrease.
+  it('captures the achieved streak, not the recalculated target, when the streak overshoots it', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 33 at level 3.0
+    for (let i = 0; i < 20; i++) session = logCorrect(session, 3.0); // currentStreak 20, still below 33
+    expect(session.sessionComplete).toBe(false);
+
+    const reconciled = reconcileCompletion(session, 0.5); // target drops to 6; 20 >= 6
+    expect(reconciled.sessionComplete).toBe(true);
+    expect(reconciled.completedTarget).toBe(20); // not 6 — the streak the user actually achieved
+  });
+
+  it('is a no-op on an already-complete session, regardless of level', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 4; i++) session = logCorrect(session); // completes at the floor, target 5
+    session = logCorrect(session);
+    expect(session.sessionComplete).toBe(true);
+    expect(session.completedTarget).toBe(5);
+
+    const result = reconcileCompletion(session, 3.0); // would recompute to a much higher target
+    expect(result).toBe(session); // reference equality: no-op
+    expect(result.completedTarget).toBe(5); // unchanged
   });
 });
 

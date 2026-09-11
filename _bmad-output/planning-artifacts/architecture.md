@@ -3,7 +3,7 @@ stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisio
 lastStep: 8
 status: 'complete'
 completedAt: '2026-08-31'
-lastUpdated: '2026-09-06'
+lastUpdated: '2026-09-11'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
@@ -15,6 +15,16 @@ versionCoverage:
   v1.0: 'Everything above the "v1.1 Architectural Decisions" heading. Shipped, frozen at git tag v1.0.0.'
   v1.1: 'The "v1.1 Architectural Decisions" section - lib/settings.ts storage boundary, optional-parameter threading through calculateTargetStreak/session-transitions, FR38-FR39 read paths, rename propagation, sort, rename/duplicate. Designed, not implemented.'
 editHistory:
+  - date: '2026-09-11'
+    changes: >-
+      Code review of Story 5.2 found the FR37 paragraph's "no session-state
+      field changes, no explicit propagation code" claim stale — Story 5.2
+      Task 3 added both (SessionState.completedTarget, and
+      reconcileCompletion's settings-driven completion effect). Narrowed
+      the claim to the displayed target number specifically, and appended
+      a correction paragraph. Also corrected the types.ts file-tree line,
+      left stale in the same 2026-09-10 review pass that updated its
+      session-transitions.ts sibling.
   - date: '2026-09-06'
     changes: >-
       Extended rather than regenerated, matching the pattern used for
@@ -40,6 +50,23 @@ editHistory:
       epics-and-stories extraction): a second UI entry point to the
       existing renameSegment function, not a second implementation of
       it. No new lib/ function, no schema change.
+  - date: '2026-09-10'
+    changes: >-
+      Correction (Story 5.1 code review, CLAUDE.md SS13.4): the
+      2026-09-06 entry above states logCorrect AND logIncorrect both
+      gain the optional overlearningLevel parameter. Confirmed false by
+      direct inspection of the shipped session-transitions.ts:
+      logIncorrect never calls calculateTargetStreak (it only zeroes
+      currentStreak and increments totalIncorrectThisSession; the
+      caller re-derives the target afterward), so only logCorrect
+      carries the parameter. The v1.1 Architectural Decisions section
+      body is corrected accordingly; this note exists so this changelog
+      itself isn't also read as current truth. Also added:
+      SessionState.completedTarget (captures the target met at
+      completion, so a settings change between completion and Done
+      can't alter what gets permanently recorded in history) - a schema
+      addition beyond what this document's v1.1 section originally
+      scoped.
 ---
 
 # Architecture Decision Document
@@ -548,9 +575,11 @@ export function calculateTargetStreak(
 
 **`lib/session-transitions.ts` gets the same optional-parameter treatment on `logCorrect(session, overlearningLevel?)` only** — corrected 2026-09-10: `logIncorrect` does not call `calculateTargetStreak` at all (it only zeroes `currentStreak` and increments `totalIncorrectThisSession`; the target is re-derived by the caller afterward), so it does not take this parameter. Same rationale for `logCorrect`: existing tests calling with one argument keep working unchanged.
 
-**Where the live value comes from:** `useActiveSession()` calls `useSettings().settings.overlearningPercent / 100` once per render and passes it to all three sites above. `useSettings()` is a new hook, same `useSyncExternalStore(settingsStore.subscribeToSettings, settingsStore.readSettings)` pattern as `useSegments()`, returning `{ settings, setSortOption }` — [Review][Patch] found via Story 4.3's code review 2026-09-08: this section previously illustrated a flat `useSettings().overlearningPercent`, which the shipped hook shape does not resolve; corrected here ahead of Epic 5 implementing this call site, per CLAUDE.md §13.4.
+**Where the live value comes from:** `useActiveSession()` calls `useSettings().settings.overlearningPercent / 100` once per render and passes it to all four sites above. `useSettings()` is a new hook, same `useSyncExternalStore(settingsStore.subscribeToSettings, settingsStore.readSettings)` pattern as `useSegments()`, returning `{ settings, setSortOption }` — [Review][Patch] found via Story 4.3's code review 2026-09-08: this section previously illustrated a flat `useSettings().overlearningPercent`, which the shipped hook shape does not resolve; corrected here ahead of Epic 5 implementing this call site, per CLAUDE.md §13.4.
 
-**FR37 (applies immediately to an in-progress session) requires no additional mechanism.** This is the payoff of the v1.0 decision to derive `target_streak` on every read rather than store it: `useActiveSession`'s returned `targetStreak` is already recomputed on every render from whatever `totalIncorrectThisSession` and `overlearningLevel` currently are. Changing the setting in Settings triggers a re-render (via `useSettings`'s subscription) wherever `useActiveSession` is also mounted, and the next read of `targetStreak` reflects the new value automatically. No session-state field changes, no explicit propagation code, no risk of a stale cached target — the same state-drift class the v1.0 derive-on-read decision was chosen to eliminate by construction.
+**FR37's *displayed target number* requires no additional mechanism.** This is the payoff of the v1.0 decision to derive `target_streak` on every read rather than store it: `useActiveSession`'s returned `targetStreak` is already recomputed on every render from whatever `totalIncorrectThisSession` and `overlearningLevel` currently are. Changing the setting in Settings triggers a re-render (via `useSettings`'s subscription) wherever `useActiveSession` is also mounted, and the next read of `targetStreak` reflects the new value automatically. No risk of a stale cached target — the same state-drift class the v1.0 derive-on-read decision was chosen to eliminate by construction.
+
+**[Review][Patch] found via code review 2026-09-11: the paragraph above previously also claimed "no session-state field changes, no explicit propagation code" for FR37 overall — false as of Story 5.2.** `SessionState` gained `completedTarget` (Story 5.1's code review) and `useActiveSession` gained an explicit reconciliation `useEffect` (Story 5.2 Task 3, `lib/session-transitions.ts`'s `reconcileCompletion`) that can flip `session_complete` true as a direct consequence of a settings change alone, with no Correct tap — see prd.md's Mechanic Specification, "Settings-driven completion transition", and Story 5.2's Review Findings (`_bmad-output/implementation-artifacts/5-2-apply-a-changed-target-to-an-in-progress-session.md`) for the accepted user-facing consequences.
 
 ## FR39: Detecting an In-Progress Session from the Settings Screen
 
@@ -653,8 +682,8 @@ src/
 │   ├── segments.ts                        # + renameSegment, duplicateSegment, sortSegments
 │   ├── history.ts                         # + calculateSolidificationPercent
 │   ├── mechanic.ts                        # calculateTargetStreak gains optional 2nd param
-│   ├── session-transitions.ts             # logCorrect/logIncorrect gain optional 2nd param
-│   └── types.ts                           # + Settings interface, isSettings guard
+│   ├── session-transitions.ts             # logCorrect gains optional 2nd param (logIncorrect does not — it never calls calculateTargetStreak); + reconcileCompletion (Story 5.2 Task 3)
+│   └── types.ts                           # + Settings interface, isSettings guard; + SessionState.completedTarget, isSessionState guard extended (Story 5.1/5.2, [Review][Patch] 2026-09-11 — this line previously omitted the SessionState change, left stale in the same review pass that corrected the sibling line above)
 ```
 
 Every new route must be added to `src/app/stack-screens.ts` and given a `<Stack.Screen>` entry in `_layout.tsx` — per `project-context.md`'s standing regression guard (commit `b2dc4e6`): a route missing from either is silently dropped in production with no dev-mode signal.

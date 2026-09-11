@@ -4,11 +4,22 @@ inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/architecture.md
-lastUpdated: '2026-09-06'
+lastUpdated: '2026-09-11'
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Requirements Inventory" heading, and Epic 1-3 below "## Epic List". Shipped, frozen at git tag v1.0.0.'
   v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40, UX-DR13-25), and Epic 4-5 below "## Epic List" (8 stories: 4.1-4.5, 5.1-5.3). Fully specified, not yet implemented.'
 editHistory:
+  - date: '2026-09-11'
+    changes: >-
+      Code review of Story 5.2 (see its Review Findings section) surfaced
+      that its Task 3 mechanism completes an in-progress session as a
+      settings-side effect, not just recalculates its displayed target —
+      undocumented in Story 5.2's AC #1. Added a second AC to Story 5.2
+      covering this completion path (captured target, FR22 lockout,
+      completion feedback parity). Amended Story 5.3's standing-notice copy
+      to disclose that a change "may complete the session," since its own
+      AC bars a per-tap confirmation that would otherwise carry that
+      warning.
   - date: '2026-09-06'
     changes: >-
       Extended in place rather than overwritten by the template (this
@@ -771,7 +782,11 @@ So that the app never operates on two different rules at once.
 **When** the user changes the overlearning-% in Settings and returns to that session
 **Then** the displayed target streak reflects the new percentage immediately, with no restart or re-navigation required (FR37)
 
-*(Note: per `architecture.md`, this requires no new mechanism — it verifies the behavior Story 5.1's plumbing already produces, since `target_streak` is derived on every read. Same shape as v1.0's Story 2.9, which verified an already-built guarantee rather than building a new one.)*
+**Given** a session is in progress with `current_streak` already meeting or exceeding what the recalculated target would be
+**When** the user lowers the overlearning-% in Settings
+**Then** the session completes immediately as a result of the setting change alone — `session_complete` flips true, `completed_target` captures the achieved streak (not the newly-lowered target, if the streak exceeds it), the FR22 lockout applies, and the same completion feedback (haptic, screen-reader announcement) fires as a Correct-triggered completion (FR37, FR22, FR12, UX-DR3) (added 2026-09-11, code review of Story 5.2)
+
+*(Note: per `architecture.md`, this requires no new mechanism for the displayed target number — it verifies the behavior Story 5.1's plumbing already produces, since `target_streak` is derived on every read. Same shape as v1.0's Story 2.9, which verified an already-built guarantee rather than building a new one. The second AC above is not covered by that note: it is new behavior, deferred from Story 5.1's code review and requiring the reconciliation mechanism Story 5.2's Task 3 implements.)*
 
 ### Story 5.3: See a Warning Before Changing Settings Mid-Session
 
@@ -783,7 +798,7 @@ So that I'm not surprised by a target that moved without my noticing.
 
 **Given** an in-progress session exists for any segment
 **When** the user opens the Settings screen
-**Then** a standing notice appears above the stepper: "You have a session in progress for '{segment name}.' Changing this target updates it immediately.", using `accessibilityLiveRegion="polite"` (FR39, UX-DR17, UX-DR24)
+**Then** a standing notice appears above the stepper: "You have a session in progress for '{segment name}.' Changing this target updates it immediately — and may complete the session.", using `accessibilityLiveRegion="polite"` (FR39, UX-DR17, UX-DR24) (copy amended 2026-09-11, code review of Story 5.2 — the original wording described only a recalculation, not the completion Story 5.2's Task 3 mechanism can also trigger from a single tap with no confirmation gate, per the next AC)
 
 **Given** the notice is showing
 **When** the user taps `+`/`−` any number of times

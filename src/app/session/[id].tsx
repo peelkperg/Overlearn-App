@@ -148,7 +148,20 @@ export default function ActiveSessionScreen() {
       <CompletionScreen
         session={session}
         segmentName={segment.name}
-        finalTarget={targetStreak}
+        // Story 5.2 (Task 2): completedTarget (Story 5.1's code review fix,
+        // lib/types.ts) anchors this to the target actually met, so a
+        // settings change made while sitting on this screen — before
+        // tapping Done — can't show a number here that differs from what
+        // complete() then permanently records. The ?? fallback is defense
+        // in depth only: both of lib/session-transitions.ts's
+        // completion-writing transitions (logCorrect, and its
+        // settings-driven counterpart reconcileCompletion added by Task 3)
+        // always set completedTarget in the same write that sets
+        // sessionComplete, so this fallback should be unreachable.
+        // ([Review][Patch] 2026-09-11: corrected from "sessionComplete is
+        // only ever set true ... by logCorrect" — no longer true once
+        // reconcileCompletion exists.)
+        finalTarget={session.completedTarget ?? targetStreak}
         onDone={handleDone}
         onRepeat={handleRepeat}
       />

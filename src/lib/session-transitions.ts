@@ -68,6 +68,35 @@ export function logIncorrect(session: SessionState): SessionState {
   };
 }
 
+// Settings-driven completion (v1.1, FR37; Story 5.2 Task 3, deferred from
+// Story 5.1's code review). [Review][Patch] found via code review
+// 2026-09-11: this used to be hand-built inline in
+// hooks/useActiveSession.ts's reconciliation effect — the only completion
+// logic in the app that didn't go through this module, duplicating
+// logCorrect's completion rule (>= target, capture completedTarget) as a
+// second copy that could silently drift from it. No-op (returns the same
+// session reference) if already complete or if the recalculated target
+// isn't yet met — the caller uses reference equality to detect whether a
+// write is needed.
+//
+// completedTarget captures max(targetStreak, session.currentStreak), not
+// targetStreak alone: unlike logCorrect (which always completes with
+// currentStreak === targetStreak exactly), a settings decrease can leave
+// currentStreak strictly greater than the newly-recalculated targetStreak
+// (e.g. streak 20, target dropped from 33 to 6) — recording the lower
+// number would understate the run in permanent history. See
+// prd.md's Mechanic Specification, "Settings-driven completion transition".
+export function reconcileCompletion(session: SessionState, overlearningLevel?: number): SessionState {
+  if (session.sessionComplete) return session;
+  const targetStreak = calculateTargetStreak(session.totalIncorrectThisSession, overlearningLevel);
+  if (session.currentStreak < targetStreak) return session;
+  return {
+    ...session,
+    sessionComplete: true,
+    completedTarget: Math.max(targetStreak, session.currentStreak),
+  };
+}
+
 // Restart (FR20): all four session fields reset to starting values —
 // current_streak = 0, total_incorrect_this_session = 0, target back to the
 // floor (derived, not stored, from totalIncorrectThisSession = 0), and

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 import { useFeedbackSignal } from '@/components/session/useFeedbackSignal';
 import { useSettings } from '@/hooks/useSettings';
@@ -26,11 +26,89 @@ import type { SessionState } from '@/lib/types';
 export function useActiveSession() {
   const session = useSyncExternalStore(sessionStore.subscribeToSession, sessionStore.readSession) ?? null;
   const feedback = useFeedbackSignal();
-  // Story 5.1 (FR35, FR36): the one and only place in the app that converts
-  // the stored percent (50-300) to the level the mechanic layer expects
-  // (0.5-3.0) — lib/mechanic.ts and lib/session-transitions.ts never read
-  // storage or perform this conversion themselves.
+  // [Review][Patch] found via code review 2026-09-11: useFeedbackSignal()
+  // returns a new object every render (its methods aren't memoized), so the
+  // settings-driven reconciliation effect below calling feedback.completion
+  // directly would need `feedback` in its dependency array — which would
+  // make it re-run on every render, defeating the deliberate
+  // overlearningLevel-only trigger. A ref sidesteps this: the effect always
+  // calls through to the *latest* feedback without needing it as a
+  // dependency, matching this file's own established fresh-read-over-stale-
+  // closure posture (see the mutators below and their header comment).
+  const feedbackRef = useRef(feedback);
+  useEffect(() => {
+    feedbackRef.current = feedback;
+  });
+  // Story 5.1 (FR35, FR36): converts the stored percent (50-300) to the
+  // level the mechanic layer expects (0.5-3.0) — lib/mechanic.ts and
+  // lib/session-transitions.ts never read storage or perform this
+  // conversion themselves. [Review][Patch] found via code review
+  // 2026-09-10: this used to claim to be "the one and only place in the
+  // app" doing this conversion, which app/settings.tsx's own worked-example
+  // line already contradicted in the same commit — corrected to drop that
+  // claim rather than repeat it.
   const overlearningLevel = useSettings().settings.overlearningPercent / 100;
+
+  // Story 5.2 (Task 3, deferred from Story 5.1's code review): sessionComplete
+  // is a stored flag, only ever flipped inside a transition's own write —
+  // unlike targetStreak, it is not derived fresh on every read. Lowering the
+  // live level mid-session (reachable via Home's gear icon while a session
+  // is in progress) can leave currentStreak >= the new, lower targetStreak
+  // true while sessionComplete stays false, until the next Correct/Incorrect
+  // tap happens to re-evaluate it — the completion screen and the FR22
+  // lockout would otherwise stay wrong until then.
+  //
+  // [Review][Decision] resolved 2026-09-11 (Story 5.2 code review): keeping
+  // this effect was a deliberate choice, not an oversight — see the story's
+  // Review Findings for the accepted consequences (a single stepper tap can
+  // end an in-progress session irreversibly; it can eject the user off the
+  // Settings screen to the Completion screen mid-adjustment; FR22's lockout
+  // becomes reachable with no tap; it can complete an *interrupted* session
+  // at app open, bypassing FR24's Resume/Discard prompt). All now specified
+  // in prd.md (FR22, FR24, FR37, and the Mechanic Specification's
+  // Settings-driven completion transition) and epics.md (Story 5.2 AC #2,
+  // Story 5.3's notice copy).
+  //
+  // reconcileCompletion (lib/session-transitions.ts) is the single source
+  // of the completion rule shared with logCorrect — this effect no longer
+  // hand-builds the next SessionState itself ([Review][Patch] found via
+  // code review 2026-09-11: doing so here duplicated logCorrect's `>=
+  // target` / capture-completedTarget logic as a second, driftable copy
+  // outside the transitions module every other mutator routes through).
+  // reconcileCompletion returns the same object reference when nothing
+  // changes, so `next === current` is the write-needed check.
+  //
+  // Reads fresh via sessionStore.readSession() rather than closing over the
+  // `session` above, matching every mutator's own stale-closure guard: a
+  // tap racing this effect must not be overwritten by a stale
+  // reconciliation write. Deliberately keyed on overlearningLevel alone,
+  // not on every render — a tap-driven completion is already handled
+  // correctly by logCorrect itself; this effect exists to catch a
+  // settings-driven change, and (per the accepted consequences above) also
+  // runs once on mount for whatever session is already on disk.
+  useEffect(() => {
+    const current = sessionStore.readSession();
+    if (!current) return;
+    const next = transitions.reconcileCompletion(current, overlearningLevel);
+    if (next === current) return;
+    try {
+      sessionStore.writeSession(next);
+    } catch {
+      // [Review][Patch] found via code review 2026-09-11: an uncaught throw
+      // here would escape a useEffect body during React's commit phase and
+      // crash the app, unlike every other write site in this codebase
+      // (screens' runAction wraps start/logCorrect/logIncorrect/restart).
+      // This effect has no screen to report an error through, so it
+      // swallows and leaves the on-disk value as source of truth — the
+      // next tap (via its own screen-level runAction) or settings change
+      // will retry the same reconciliation.
+      return;
+    }
+    // Parity with logCorrect's own completion tier (FR12, UX-DR3): a
+    // settings-driven completion is a real completion, not a silent state
+    // flip, so it gets the same haptic + screen-reader announcement.
+    feedbackRef.current.completion(`Session complete. Target of ${next.currentStreak} reached.`);
+  }, [overlearningLevel]);
 
   // Story 2.1 (FR8, FR9): begins a session immediately, no input/confirmation.
   const start = (segmentId: string, segmentName: string): SessionState => {
@@ -120,7 +198,20 @@ export function useActiveSession() {
     if (!current || !current.sessionComplete) return;
     writeHistoryEntry(current.segmentId, {
       date: new Date().toISOString(),
-      finalTarget: calculateTargetStreak(current.totalIncorrectThisSession, overlearningLevel),
+      // [Review][Patch] found via code review 2026-09-10: prefer the target
+      // captured at the moment completion actually happened
+      // (session-transitions.ts's logCorrect, or its settings-driven
+      // counterpart reconcileCompletion) over recomputing from the live
+      // setting here — a settings change between completion and this Done
+      // tap must not alter what gets permanently recorded. The live
+      // recomputation is retained only as defense-in-depth for a
+      // currently-unreachable state: current.sessionComplete is true, and
+      // both of this module's completion-writing transitions always set
+      // completedTarget in the same write that sets sessionComplete
+      // ([Review][Patch] 2026-09-11: corrected from "only logCorrect ...
+      // sets" — reconcileCompletion, added by Story 5.2 Task 3, is a second
+      // writer of both fields together, per the same invariant).
+      finalTarget: current.completedTarget ?? calculateTargetStreak(current.totalIncorrectThisSession, overlearningLevel),
       totalMistakes: current.totalIncorrectThisSession,
       totalAttempts: current.totalCorrectThisSession + current.totalIncorrectThisSession,
       sessionStartTimestamp: current.sessionStartTimestamp,

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 
 import { readHistory } from '@/lib/history';
 import { createSegment, renameSegment } from '@/lib/segments';
+import { setOverlearningPercent } from '@/lib/settings';
 
 import ActiveSessionScreen from '@/app/session/[id]';
 
@@ -166,5 +167,78 @@ describe('ActiveSessionScreen [Story 2.1-2.8, 2.4]', () => {
     expect(readHistory(segment.id)).toHaveLength(1);
     expect(view.getByTestId('correct-button')).toBeTruthy();
     expect(view.getByTestId('streak-readout').props.children[0]).toBe(0);
+  });
+});
+
+// Story 5.2 (FR37): a target change made mid-session — the user backs out to
+// Settings and back, this screen never unmounts — must apply immediately,
+// with no restart/re-navigation. useActiveSession's targetStreak is already
+// derived fresh every render (Story 5.1's plumbing); this is the first test
+// that actually calls setOverlearningPercent() *after* a session has
+// started, rather than before.
+describe('ActiveSessionScreen mid-session settings change [Story 5.2]', () => {
+  it('reflects a changed overlearning-% in the visible target with no restart (AC #1)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    await pressTimes(view, 'incorrect-button', 11); // target -> 6 at the 50% default
+    expect(view.getByTestId('streak-readout').props.children[2]).toBe(6);
+
+    await act(async () => {
+      setOverlearningPercent(300); // level 3.0: calculateTargetStreak(11, 3.0) = 33
+    });
+
+    expect(view.getByTestId('streak-readout').props.children[2]).toBe(33);
+    // currentStreak is untouched by the settings change — only the target moved.
+    expect(view.getByTestId('streak-readout').props.children[0]).toBe(0);
+  });
+
+  it("anchors the Completion screen's displayed target to what was actually achieved, not a later settings change (Task 2)", async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    // With 0 mistakes the floor (5) governs regardless of level — that
+    // would pass even with the live-value bug this test guards against.
+    // 11 mistakes raises the target to 6 at the 50% default, distinct from
+    // what it would recompute to at 300% (33), so the two are actually
+    // distinguishable.
+    await pressTimes(view, 'incorrect-button', 11); // target -> 6
+    await pressTimes(view, 'correct-button', 6); // completes at target 6
+    expect(view.getByTestId('completion-stats')).toHaveTextContent(/Target reached: 6/);
+
+    await act(async () => {
+      setOverlearningPercent(300); // live recompute would be 33 — must not change what's already shown
+    });
+
+    expect(view.getByTestId('completion-stats')).toHaveTextContent(/Target reached: 6/);
+  });
+
+  // [Review][Patch] found via code review 2026-09-11: Task 3's own subtask
+  // specified asserting "what ... the rendered screen actually do", but no
+  // test exercised the screen — only the hook. This is the user-visible
+  // half of the settings-driven completion path: the active controls
+  // disappear and the Completion screen renders, with no Correct/Incorrect
+  // tap at all.
+  it('swaps to the Completion screen when a settings change alone completes the session (Task 3)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    await act(async () => {
+      setOverlearningPercent(300); // level 3.0
+    });
+    const view = await render(<ActiveSessionScreen />);
+
+    await pressTimes(view, 'incorrect-button', 11); // target -> 33 at level 3.0
+    await pressTimes(view, 'correct-button', 20); // currentStreak 20, still below 33
+    expect(view.queryByTestId('completion-stats')).toBeNull();
+    expect(view.getByTestId('correct-button')).toBeTruthy();
+
+    await act(async () => {
+      setOverlearningPercent(50); // target drops to 6; currentStreak 20 already overshoots it
+    });
+
+    expect(view.queryByTestId('correct-button')).toBeNull();
+    expect(view.getByTestId('completion-stats')).toHaveTextContent(/Target reached: 20/); // achieved streak, not the lowered target of 6
   });
 });

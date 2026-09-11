@@ -13,8 +13,21 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
-lastEdited: '2026-09-06'
+lastEdited: '2026-09-11'
 editHistory:
+  - date: '2026-09-11'
+    changes: >-
+      Code review of Story 5.2 surfaced that FR37's implementation (a
+      settings change reconciling an in-progress session's completion, not
+      just its displayed target) was undocumented and directly contradicted
+      the Mechanic Specification's monotonicity sentence. Amended the
+      monotonicity sentence to hold within a fixed OVERLEARNING_LEVEL only;
+      added a Settings-driven completion transition to the Mechanic
+      Specification; clarified FR37 to state the completion consequence;
+      annotated FR22 (lockout reachable without a tap) and FR24 (relaunch
+      may show a completion summary directly if a settings change completed
+      the session while interrupted). No requirement numbers added or
+      removed — all changes clarify FR22/FR24/FR37's existing scope.
   - date: '2026-09-06'
     changes: >-
       Added FR30-FR34 (segment rename with live-name propagation, duplicate,
@@ -286,13 +299,14 @@ Evaluated at session start and re-evaluated after every increment of `total_inco
 | 12 | 6 |
 | 13 | 7 |
 
-The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decreasing within a session — it rises or holds, never falls, except via Restart.
+The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decreasing **within a fixed `OVERLEARNING_LEVEL`** — it rises or holds, never falls, except via Restart. It can also change — including falling — via an explicit `OVERLEARNING_LEVEL` change (v1.1, FR37); see the Constants section above and the Settings-driven completion transition below. [Review][Patch] found via code review 2026-09-11: this sentence predated FR37 and was never reconciled with it — see epics.md's Story 5.2 review findings.
 
 ### Transitions
 
-- **Correct:** `current_streak += 1`. If `current_streak >= target_streak`, the session completes.
+- **Correct:** `current_streak += 1`. If `current_streak >= target_streak`, the session completes, capturing `completed_target = target_streak` at that instant.
 - **Incorrect:** applied in this order — `current_streak = 0`, then `total_incorrect_this_session += 1`, then recalculate `target_streak`.
 - **Restart:** `current_streak = 0`, `total_incorrect_this_session = 0`, `target_streak = TARGET_FLOOR`, `session_start_timestamp` = now. All four fields, not a subset.
+- **Settings-driven completion (v1.1, FR37):** an `OVERLEARNING_LEVEL` change alone, with no Correct/Incorrect tap, re-evaluates `target_streak` for every in-progress session; if the newly-recalculated `target_streak` is now met or exceeded by the session's existing `current_streak`, the session completes exactly as the Correct transition above would, capturing `completed_target = max(target_streak, current_streak)` — the achieved streak, not the (possibly lower) recalculated target, so history never understates a run that exceeded the target it was originally being measured against. This is a real completion path, not merely a display update: it sets `session_complete = true` and is subject to the same FR22 lockout as any other completion. (added 2026-09-11, code review of Story 5.2 — Task 3's reconciliation effect is this transition's implementation.)
 
 ## Functional Requirements
 
@@ -331,12 +345,12 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR19: User cannot undo an individual correct/incorrect log entry (constraint on FR16–FR17, not a standalone capability)
 - FR20: User can reset an in-progress session, returning all four session fields to their starting values per the Mechanic Specification
 - FR21: System requires user confirmation before executing a session reset
-- FR22: System stops accepting repetition input once session completion has triggered
+- FR22: System stops accepting repetition input once session completion has triggered — reachable either by a Correct tap or, from v1.1, by the Settings-driven completion transition (FR37) with no tap at all
 
 ### Session Interruption & Recovery
 
 - FR23: System preserves an in-progress session's full state if the app is backgrounded or closed
-- FR24: User is prompted to resume or discard an interrupted session on relaunch
+- FR24: User is prompted to resume or discard an interrupted session on relaunch — unless the Settings-driven completion transition (FR37) has already completed it (e.g. the overlearning-% was lowered while the session sat interrupted), in which case relaunch shows its completion summary directly, matching the existing behavior for a session that completed normally before being interrupted
 - FR25: User can resume an interrupted session with all prior progress intact
 - FR26: User can discard an interrupted session, leaving no history record
 
@@ -351,7 +365,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 
 - FR35: **(v1.1)** User can access a Settings screen to configure the overlearning-% target used in the Mechanic Specification's `OVERLEARNING_LEVEL`
 - FR36: **(v1.1)** System accepts any overlearning-% value from 50% to 300% in 10-percentage-point increments; no other value is selectable
-- FR37: **(v1.1)** System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change (supersedes any assumption that `target_streak` is fixed for a session's duration once started)
+- FR37: **(v1.1)** System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change (supersedes any assumption that `target_streak` is fixed for a session's duration once started). If the recalculated target is now met or exceeded by the session's existing streak, the session completes immediately as a result of the setting change alone (see Mechanic Specification's Settings-driven completion transition) — this can end an in-progress session with no further user action, including from Home if the session is interrupted. (clarified 2026-09-11, code review of Story 5.2 — the original text covered only the displayed target number, not the completion consequence Story 5.2's implementation also produces.)
 - FR39: **(v1.1)** When an in-progress session exists for any segment, the Settings screen warns the user that a change to the overlearning-% will apply to that session immediately (per FR37), before they change the value — not as a confirmation gate on every tap, but as a standing notice visible while the setting is open. (added 2026-09-06 — resolves the v1.1 design review's open question that a mid-session change had no warning designed)
 
 ## Non-Functional Requirements

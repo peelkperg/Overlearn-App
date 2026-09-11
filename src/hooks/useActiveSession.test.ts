@@ -493,4 +493,237 @@ describe('useActiveSession overlearningLevel threading [Story 5.1]', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].finalTarget).toBe(6);
   });
+
+  // [Review][Patch] found via code review 2026-09-10: complete() used to
+  // recompute finalTarget from the *live* overlearningLevel at Done-time
+  // instead of the level in effect when the session actually completed —
+  // a settings change in that window would permanently misrecord history.
+  it('writes the target actually met, unaffected by a settings change between completion and Done', async () => {
+    setOverlearningPercent(150); // level 1.5
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    // 10 mistakes at level 1.5: calculateTargetStreak(10, 1.5) = ceil(15) = 15.
+    for (let i = 0; i < 10; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    for (let i = 0; i < 15; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.sessionComplete).toBe(true);
+
+    // Simulates backing out to Settings before tapping Done and lowering
+    // the level — must not change what gets recorded for this session.
+    await act(() => {
+      setOverlearningPercent(50);
+    });
+
+    await act(() => {
+      result.current.complete();
+    });
+
+    const entries = readHistory('segment-1');
+    expect(entries).toHaveLength(1);
+    expect(entries[0].finalTarget).toBe(15); // the target actually met, not calculateTargetStreak(10, 0.5) = 5
+  });
+});
+
+// Story 5.2 (FR37, AC #1): the setting is changed *after* the session has
+// already started, not before — the case Story 5.1's own threading tests
+// above never exercised. targetStreak must reflect it on the very next
+// read, with no restart() call.
+describe('useActiveSession mid-session settings change [Story 5.2]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it("reflects a level changed after start(), with no restart or re-navigation", async () => {
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    expect(result.current.targetStreak).toBe(6); // 50% default
+
+    await act(() => {
+      setOverlearningPercent(300); // changed mid-session, not before start()
+    });
+
+    expect(result.current.targetStreak).toBe(33); // calculateTargetStreak(11, 3.0)
+    expect(result.current.session?.totalIncorrectThisSession).toBe(11); // untouched by the settings change
+  });
+});
+
+// Story 5.2 (Task 3) — reproduces the deferred finding from Story 5.1's code
+// review (deferred-work.md, "code review of 5-1..."): sessionComplete is a
+// stored boolean, only ever flipped inside logCorrect's own transition —
+// unlike targetStreak, it is not derived fresh on every read. Lowering the
+// live level mid-session, enough that the already-achieved currentStreak now
+// meets or exceeds the new (lower) target, must not leave the session stuck
+// showing incomplete until another tap.
+describe('useActiveSession mid-session target decrease reconciliation [Story 5.2, Task 3]', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('marks the session complete once a settings change alone brings the target down to the achieved streak', async () => {
+    setOverlearningPercent(300); // level 3.0
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    for (let i = 0; i < 6; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    // At level 3.0: calculateTargetStreak(11, 3.0) = 33; currentStreak 6 < 33,
+    // genuinely incomplete so far.
+    expect(result.current.session?.sessionComplete).toBe(false);
+    expect(result.current.session?.currentStreak).toBe(6);
+
+    await act(() => {
+      setOverlearningPercent(50); // level 0.5: calculateTargetStreak(11, 0.5) = 6, already met
+    });
+
+    expect(result.current.targetStreak).toBe(6);
+    expect(result.current.session?.currentStreak).toBe(6);
+    // No further Correct/Incorrect tap has happened — only the setting
+    // changed. sessionComplete must still become true, and completedTarget
+    // must be captured, exactly as a tap-driven completion would.
+    expect(result.current.session?.sessionComplete).toBe(true);
+    expect(result.current.session?.completedTarget).toBe(6);
+  });
+
+  // [Review][Patch] found via code review 2026-09-11: this test previously
+  // set the level to 50 when it was already the default 50 — a no-op
+  // dependency change that never re-fires the effect, so it passed even
+  // with the `>=` guard deleted entirely. Now genuinely changes the level
+  // to one whose recalculated target the streak still falls short of.
+  it('does not affect a session that genuinely remains below the new target', async () => {
+    setOverlearningPercent(50); // level 0.5
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    await act(() => {
+      result.current.logCorrect();
+    });
+    expect(result.current.session?.currentStreak).toBe(1); // target(11, 0.5) = 6
+
+    await act(() => {
+      setOverlearningPercent(300); // target rises to 33 — moves further away, not closer
+    });
+
+    expect(result.current.session?.sessionComplete).toBe(false);
+    expect(result.current.session?.completedTarget).toBeNull();
+  });
+
+  // [Review][Patch] found via code review 2026-09-11: only the
+  // currentStreak === target boundary was covered; nothing distinguished
+  // `>=` from `===`, and nothing covered the off-by-one just below it.
+  it('does not complete at currentStreak exactly one below the new target (boundary)', async () => {
+    setOverlearningPercent(300); // level 3.0
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.currentStreak).toBe(5); // target(11, 0.5) = 6, one above
+
+    await act(() => {
+      setOverlearningPercent(50);
+    });
+
+    expect(result.current.session?.sessionComplete).toBe(false);
+  });
+
+  // [Review][Decision] resolved 2026-09-11 (record the achieved streak):
+  // a settings decrease can leave currentStreak strictly above the newly
+  // recalculated target — a shape logCorrect itself can never produce
+  // (tap-driven completion always lands at currentStreak === targetStreak
+  // exactly). completedTarget must record what was actually achieved.
+  it('captures the achieved streak, not the lowered target, when the streak overshoots it', async () => {
+    setOverlearningPercent(300); // level 3.0, target(11, 3.0) = 33
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    for (let i = 0; i < 20; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.sessionComplete).toBe(false);
+
+    await act(() => {
+      setOverlearningPercent(50); // target drops to 6; currentStreak 20 overshoots it
+    });
+
+    expect(result.current.session?.sessionComplete).toBe(true);
+    expect(result.current.session?.completedTarget).toBe(20); // not 6
+  });
+
+  // [Review][Patch] found via code review 2026-09-11: a settings-driven
+  // completion previously wrote state directly with no feedback.completion
+  // call, unlike logCorrect's own completion tier — a screen-reader user
+  // got no announcement at all that their session had just ended.
+  it('fires the same completion feedback tier a tap-driven completion would', async () => {
+    setOverlearningPercent(300);
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    for (let i = 0; i < 6; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.settled).toBe(false);
+
+    await act(() => {
+      setOverlearningPercent(50);
+    });
+
+    expect(result.current.session?.sessionComplete).toBe(true);
+    expect(result.current.settled).toBe(true); // useFeedbackSignal's completion tier fired
+  });
 });
