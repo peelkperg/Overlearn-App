@@ -425,7 +425,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 # v1.1 UAT Scripts: Epic 4 & Epic 5 (added 2026-09-06)
 
-**Status: NOT YET EXECUTABLE.** No v1.1 code exists — Epic 4 and Epic 5 are fully specified (`epics.md`) and test-designed (`test-design-epic-4-5.md`) but not implemented. These scripts are written now so Story 4.1 onward has a ready on-device checklist the moment a build exists, matching this document's own purpose for v1.0. Boxes are left unchecked; do not check them until run against a real build, and record the build id in this section's own frontmatter-style note when that happens.
+**Status: READY TO EXECUTE.** Updated 2026-09-11 — Epic 4 (Stories 4.1–4.5) and Epic 5 (Stories 5.1–5.3) are fully implemented, code-reviewed, and `done`; all 372 Jest tests pass. No on-device pass has been run against this code yet. Boxes are left unchecked; do not check them until run against a real build, and record the build id in this section's own frontmatter-style note when that happens. Scripts below were revised this pass to match two behavioral additions found by Stories 5.1/5.2's code reviews after this section was first written (2026-09-06): FR37 can now **complete** an in-progress session from a settings change alone, not just recalculate its displayed target (UAT-39, UAT-41), and FR40's inline rename applies at two sites, not one (UAT-37).
 
 **Numbering continues from UAT-31** (v1.0's last active script) — this section is UAT-32 onward, same document, same rules (top to bottom, P0 first, note anything off).
 
@@ -497,8 +497,9 @@ Two things this checklist does not cover and remain open regardless of this resu
 3. Repeat, but tap outside the field without submitting.
 4. Repeat, but submit an empty name.
 5. Tap a segment row normally (a quick tap, not a hold).
+6. Open that segment's detail screen and repeat steps 1–2 by pressing and holding the name in the **detail heading** — FR40's second entry point, alongside the list row above.
 
-**Expected:** Step 1 turns the name into an editable field in place with no layout jump. Step 2 saves and returns to static text. Step 3 discards the edit, reverting to the original name. Step 4 is rejected with an inline error, field stays editable. Step 5 still navigates to the segment's detail screen as before.
+**Expected:** Step 1 turns the name into an editable field in place with no layout jump. Step 2 saves and returns to static text. Step 3 discards the edit, reverting to the original name. Step 4 is rejected with an inline error, field stays editable. Step 5 still navigates to the segment's detail screen as before. Step 6 behaves identically to steps 1–2 at the detail heading site.
 
 - [ ] Pass — Notes: ___________________________
 
@@ -517,15 +518,18 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 - [ ] Pass — Notes: ___________________________
 
-### UAT-39: Change the target mid-session
+### UAT-39: Change the target mid-session — display update and outright completion
 
-**Priority:** P0 · **FR:** FR37
+**Priority:** P0 · **FRs:** FR22, FR37
 
-1. Start a practice session and log a few mistakes so a target streak is showing.
-2. Without ending the session, navigate to Settings and change the overlearning-%.
+1. Start a practice session and log a few mistakes so a target streak is showing, but stay well short of it (e.g. streak 2, target still climbing).
+2. Without ending the session, navigate to Settings and change the overlearning-% by one step.
 3. Return to the session screen.
+4. Start a fresh session on a different segment. Log enough mistakes to raise the target well above the floor, then log correct taps until the current streak is a few short of that target.
+5. Navigate to Settings and lower the overlearning-% repeatedly until the recalculated target drops to (or below) the streak from step 4.
+6. Attempt to tap Restart on that same session immediately after step 5, before doing anything else.
 
-**Expected:** The target streak on the session screen reflects the new percentage immediately — no restart, no re-navigation trick required.
+**Expected:** Step 3 — the target streak reflects the new percentage immediately, no restart or re-navigation trick required. Step 5 — the session **completes outright from the settings change alone**: the app moves to the Completion screen (or, if you backed out to Home first, Home redirects there) with no Correct/Incorrect tap and no confirmation step, the same haptic/announcement as a tap-driven completion fires, and "Target reached: N" shows the streak you actually achieved (not the lower recalculated target). Step 6 — Restart is locked out with no tap having been made (FR22), same as any other completed session.
 
 - [ ] Pass — Notes: ___________________________
 
@@ -535,9 +539,23 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 1. With no session in progress, open Settings.
 2. Start a session, then (without ending it) open Settings again.
-3. Tap `+`/`−` several times while the notice is showing.
+3. Tap `+`/`−` several times while the notice is showing, without causing a completion.
+4. Repeat step 2, then lower the value enough to complete that session per UAT-39's step 5.
 
-**Expected:** Step 1 shows no notice. Step 2 shows a standing notice naming the segment. Step 3 leaves the same single notice in place the whole time — no per-tap popup or dialog interrupts the stepper.
+**Expected:** Step 1 shows no notice. Step 2 shows a standing notice naming the segment, worded as a warning that the change may complete the session. Step 3 leaves the same single notice in place the whole time — no per-tap popup or dialog interrupts the stepper. Step 4 — the notice disappears the instant the session completes (it is no longer "in progress"), coinciding with the same redirect-to-Completion behavior UAT-39 describes.
+
+- [ ] Pass — Notes: ___________________________
+
+### UAT-41: Settings change completes an *interrupted* session, bypassing Resume/Discard
+
+**Priority:** P0 · **FRs:** FR24, FR37
+
+1. Start a session, log enough mistakes to raise the target above the floor, then log correct taps to a streak a few short of that target.
+2. Background the app (do not force-kill) — do not touch the Resume/Discard prompt.
+3. From the OS (recent-apps or home screen), reopen the app fresh, but instead of acting on any prompt shown, navigate straight to Settings and lower the overlearning-% enough to complete the backgrounded session (same math as UAT-39's step 5).
+4. Navigate back to Home.
+
+**Expected:** Step 4 — Home shows the session's **completion summary directly**, not the Resume/Discard prompt — the settings change completed the session while it sat interrupted, and FR24 specifies this bypasses the prompt entirely (matching how a normally-completed-then-interrupted session already behaves). This is the one v1.1 scenario most likely to surprise a user with no tap of their own; note anything that reads as confusing, not just anything that's outright broken.
 
 - [ ] Pass — Notes: ___________________________
 
@@ -546,9 +564,9 @@ Two things this checklist does not cover and remain open regardless of this resu
 | Section | Scripts | P0 | P1 | P2 | P3 |
 |---|---|---|---|---|---|
 | 6. Segment Organization & Insight | 6 | 4 | 2 | – | – |
-| 7. Configurable Overlearning Target | 3 | 2 | 1 | – | – |
-| **v1.1 Total** | **9 (UAT-32–UAT-40)** | **6** | **3** | **–** | **–** |
+| 7. Configurable Overlearning Target | 4 | 3 | 1 | – | – |
+| **v1.1 Total** | **10 (UAT-32–UAT-41)** | **7** | **3** | **–** | **–** |
 
-**Minimum bar before calling v1.1 release-ready:** all 6 P0 scripts pass, with UAT-32 the highest-priority one to run first — it's the direct on-device confirmation of R8, the one HIGH risk in `test-design-epic-4-5.md`.
+**Minimum bar before calling v1.1 release-ready:** all 7 P0 scripts pass. Run in this order of priority: UAT-32 first (direct on-device confirmation of R8, the one HIGH risk in `test-design-epic-4-5.md`), then UAT-39/UAT-41 (the settings-driven completion behavior — the single most consequential addition since this section was first written, capable of ending a session or bypassing Resume/Discard with no tap at all).
 
-**Not yet run.** Execute this section against the first build that includes Epic 4/5 code, following the same pass/fail/note discipline as the v1.0 section above.
+**Not yet run.** Execute this section against the next preview build that includes Epic 4/5 code, following the same pass/fail/note discipline as the v1.0 section above.

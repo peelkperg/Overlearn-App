@@ -10,7 +10,7 @@ Items surfaced by review workflows that were real but not actionable at the time
 
 - **The UX spec's "Layout, top to bottom" enumeration still lists the in-progress notice fifth while it ships second.** Item 5's own body says "shown above the stepper" (item 2), and Story 5.1 already adjudicated in favour of that placement, which AC #1 and the shipped code both follow. Deferred because it is a residual numbering inconsistency in a document section this story only touched for copy, and renumbering the list invites re-litigating the order rather than just correcting it.
 
-- **`traceability-matrix.md` still marks FR39 PLANNED.** So does it for FR35–FR37, which Stories 5.1 and 5.2 shipped. Deferred because this is pre-existing project-wide drift rather than a Story 5.3 regression, and the fix is one pass over the whole matrix after Epic 5 closes, not a single-row edit mid-epic.
+- ~~**`traceability-matrix.md` still marks FR39 PLANNED.** So does it for FR35–FR37, which Stories 5.1 and 5.2 shipped.~~ **Resolved via `bmad-testarch-trace` re-run (2026-09-11).** The v1.1 section was rewritten wholesale against the real, implemented test suite (372 Jest tests) rather than the pre-implementation `test-design-epic-4-5.md` scenario IDs it previously cited. Gate moved from NOT_APPLICABLE to **CONCERNS** — all 11 v1.1 FRs have full automated coverage with 0 at NONE, but the 10-script on-device UAT layer (also refreshed this pass, adding coverage for FR37's completion consequence and FR40's second inline-rename site) has never been executed. `uat-scripts.md` awaits Gerardo's next preview build.
 
 ## Deferred from: code review of 5-2-apply-a-changed-target-to-an-in-progress-session (2026-09-11)
 
