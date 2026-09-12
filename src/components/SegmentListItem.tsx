@@ -40,9 +40,22 @@ const MonthAbbreviations = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+// Local-calendar-day, not UTC: uses Date's local getters on purpose
+// (confirmed by code review 2026-09-12, resolving what was an unstated
+// assumption) — a practice logged at 23:30 local time should read as
+// "today," not roll over to UTC's next day, matching the same intent
+// HistoryEntryRow.tsx's toLocaleDateString() already has for a different
+// display. Tests pin `TZ` (jest.config.js) so this stays deterministic
+// across CI environments rather than only "safe" at the UTC offsets the
+// fixtures happen to use.
 function formatRowDate(iso: string | null): string {
   if (iso === null) return '—';
   const date = new Date(iso);
+  // Untrusted-storage defense: isSegmentArray/isHistoryEntryArray validate
+  // these fields as strings, not as valid dates (code review 2026-09-12) —
+  // a corrupted-but-string value must still render "—", never
+  // "NaN undefined NaN", per this component's own no-crash contract.
+  if (Number.isNaN(date.getTime())) return '—';
   const day = String(date.getDate()).padStart(2, '0');
   return `${day} ${MonthAbbreviations[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -53,7 +66,8 @@ function formatRowDate(iso: string | null): string {
 // "100.0%"/"0.0%" only for the true mathematical boundary, otherwise
 // clamped to [0.1, 99.9] — so a rounding artifact never claims a false
 // "fully solidified" or "zero correct" read the underlying data doesn't
-// support.
+// support. Confirmed by code review 2026-09-12 (this clamp is now
+// specified, not just implemented — see FR41/ux-design-specification.md).
 function formatRowSolidification(pct: number | null): string {
   if (pct === null) return '—';
   if (pct >= 100) return '100.0%';
@@ -136,9 +150,14 @@ export function SegmentListItem({ segment, aggregate, onOpen, onRename, onDuplic
   const lastPracticeLabel = formatRowDate(aggregate?.lastPracticed ?? null);
   const solidificationLabel = formatRowSolidification(aggregate?.solidification ?? null);
   const createdLabel = formatRowDate(segment.createdAt);
+  // "never"/"no data" wording confirmed by code review 2026-09-12 (now
+  // specified in ux-design-specification.md, not just implemented) — far
+  // clearer to a screen-reader user than announcing "em dash". Branches on
+  // the source value, not the rendered '—' string: a future change to the
+  // em-dash glyph must not silently break this without a type error.
   const rowAccessibilityLabel = `${segment.name}, last practice ${
-    lastPracticeLabel === '—' ? 'never' : lastPracticeLabel
-  }, solidification ${solidificationLabel === '—' ? 'no data' : solidificationLabel}, created ${createdLabel}`;
+    aggregate?.lastPracticed == null ? 'never' : lastPracticeLabel
+  }, solidification ${aggregate?.solidification == null ? 'no data' : solidificationLabel}, created ${createdLabel}`;
 
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
@@ -162,53 +181,62 @@ export function SegmentListItem({ segment, aggregate, onOpen, onRename, onDuplic
         // order — read while editing the field's own "Segment name" label
         // (Story 4.5) is what should announce, not the whole row.
         accessibilityLabel={isEditing ? undefined : rowAccessibilityLabel}
+        // Collapses this Pressable's subtree into one accessible element
+        // (code review 2026-09-12): without this, RN's Text is accessible
+        // by default on iOS, so the two summary lines below would focus
+        // separately from the combined label above — exactly what AC #4
+        // forbids. `false` while editing hands focus to the TextInput's
+        // own "Segment name" label instead.
+        accessible={!isEditing}
       >
-        {isEditing ? (
-          <>
-            <TextInput
-              testID={`segment-row-inline-input-${segment.id}`}
-              value={editValue}
-              onChangeText={setEditValue}
-              onSubmitEditing={handleSubmit}
-              onBlur={handleBlur}
-              selection={selection}
-              onSelectionChange={() => setSelection(undefined)}
-              autoFocus
-              returnKeyType="done"
-              multiline={false}
-              maxLength={MaxNameLength}
-              accessibilityLabel="Segment name"
-              underlineColorAndroid="transparent"
-              style={[styles.inlineInput, { color: theme.text }]}
-            />
-            {editError !== null && (
-              <ThemedText
-                testID={`segment-row-inline-error-${segment.id}`}
-                type="small"
-                themeColor="danger"
-                accessibilityRole="alert"
-                accessibilityLiveRegion="polite"
-              >
-                {editError}
-              </ThemedText>
-            )}
-          </>
-        ) : (
-          // Story 4.6 (FR41): three lines — name, then "Last practice: {date}
-          // · {Solidification %}", then "Created {date}". Not individually
-          // focusable (AC #4) — plain ThemedText carries no accessibility
-          // role by default, so no suppression is needed beyond simply not
-          // adding accessibilityLabel to these two lines.
-          <View>
+        <View>
+          {isEditing ? (
+            <>
+              <TextInput
+                testID={`segment-row-inline-input-${segment.id}`}
+                value={editValue}
+                onChangeText={setEditValue}
+                onSubmitEditing={handleSubmit}
+                onBlur={handleBlur}
+                selection={selection}
+                onSelectionChange={() => setSelection(undefined)}
+                autoFocus
+                returnKeyType="done"
+                multiline={false}
+                maxLength={MaxNameLength}
+                accessibilityLabel="Segment name"
+                underlineColorAndroid="transparent"
+                style={[styles.inlineInput, { color: theme.text }]}
+              />
+              {editError !== null && (
+                <ThemedText
+                  testID={`segment-row-inline-error-${segment.id}`}
+                  type="small"
+                  themeColor="danger"
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite"
+                >
+                  {editError}
+                </ThemedText>
+              )}
+            </>
+          ) : (
             <ThemedText numberOfLines={1}>{segment.name}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {`Last practice: ${lastPracticeLabel} · ${solidificationLabel}`}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {`Created ${createdLabel}`}
-            </ThemedText>
-          </View>
-        )}
+          )}
+          {/* Story 4.6 (FR41): "Last practice: {date} · {Solidification %}"
+              and "Created {date}" — rendered in both the editing and
+              static states (code review 2026-09-12: these used to live only
+              in the static branch, so entering inline rename collapsed the
+              row by ~40pt, breaking Story 4.5's no-shift invariant). Not
+              individually focusable (AC #4) — collapsed into the Pressable
+              above via `accessible`, not by any prop on these two lines. */}
+          <ThemedText type="small" numberOfLines={1} themeColor="textSecondary">
+            {`Last practice: ${lastPracticeLabel} · ${solidificationLabel}`}
+          </ThemedText>
+          <ThemedText type="small" numberOfLines={1} themeColor="textSecondary">
+            {`Created ${createdLabel}`}
+          </ThemedText>
+        </View>
       </Pressable>
       <Pressable
         testID={`segment-row-menu-${segment.id}`}

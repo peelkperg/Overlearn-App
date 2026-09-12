@@ -61,7 +61,7 @@ inputDocuments:
 | Risk ID | Category | Description | Probability | Impact | Score | Mitigation | Owner |
 |---|---|---|---|---|---|---|---|
 | R7 | DATA | `disambiguate`'s self-exclusion fix (rename to own name, different case) must still catch a genuine collision with a *third* segment in a different case — easy to under-fix. | 2 | 2 | 4 | 3-case unit matrix (C21): own-name/diff-case succeeds; other-segment same-case disambiguates; other-segment diff-case still disambiguates. | Solo dev (Gerardo) |
-| R9 | TECH | `useSegments()`'s new `subscribeToHistory` wiring (FR33's live re-sort) risks over-subscribing (unnecessary re-renders) or under-subscribing (missed re-sort). | 2 | 2 | 4 | Render-count-spy test (C28) asserting re-render only on relevant history writes when sorted by last-practiced/Solidification %. | Solo dev (Gerardo) |
+| R9 | TECH | **[Superseded 2026-09-12 by Story 4.6/FR41]** `useSegments()`'s new `subscribeToHistory` wiring (FR33's live re-sort) risks over-subscribing (unnecessary re-renders) or under-subscribing (missed re-sort). *Original mitigation, valid only for v1.1's FR33-only scope:* Render-count-spy test (C28) asserting re-render only on relevant history writes when sorted by last-practiced/Solidification %. **Story 4.6 (FR41) requires every row to display last-practiced date/Solidification % regardless of sort key, so the subscription is now unconditional by design — the "over-subscribing" half of this risk is accepted, not mitigated.** `src/app-tests/index.test.tsx`'s rewritten test now asserts the new contract (aggregates recomputed exactly once per relevant render, never skipped) instead of C28's original "no over-render" guarantee. | 2 | 2 | 4 | See above. | Solo dev (Gerardo) |
 | R10 | DATA | `calculateSolidificationPercent` must return `null` (no data) distinctly from `0` (a real 0%-correct session) — a boundary slip misrepresents a new segment as measured-and-failing. | 2 | 2 | 4 | Boundary unit test (C31): zero sessions → `null`; one session, zero correct → `0`. | Solo dev (Gerardo) |
 | R11 | TECH | FR40's inline rename and FR30's dedicated screen both target `renameSegment` through independent UI paths — natural drift point if one path re-implements validation instead of sharing it. | 2 | 2 | 4 | Parametrized unit test (C35) exercised from both entry points against one shared assertion set. | Solo dev (Gerardo) |
 | R12 | OPS | No E2E/on-device tool exists (v1.0's R3 gap, never resolved). FR40's long-press timing and FR39's live-region delivery are real-device behaviors Jest/RNTL cannot fully assert. | 2 | 2 | 4 | Fake-timer test for the `delayLongPress` wiring + static-prop assertion for `accessibilityLiveRegion`, backed by a manual on-device pass (C42) before release. | Solo dev (Gerardo) |
@@ -127,7 +127,7 @@ inputDocuments:
 | Requirement | Test Level | Risk Link | Scenario | Notes |
 |---|---|---|---|---|
 | FR33 | Unit | - | C27 | Zero-history sort placement |
-| FR33, R9 | Component/Hook | R9 | C28 | History-subscription re-sort, no over-render |
+| FR33, R9 | Component/Hook | R9 | C28 | History-subscription re-sort (superseded 2026-09-12: "no over-render" no longer holds — see R9) |
 | FR38 | Component | - | C32 | History screen summary line placement/text |
 | FR40, R11 | Unit | R11 | C35 | Shared validation path, both entry points |
 | FR39 | Component | - | C40 | Standing notice presence/absence/no-per-tap-dialog |

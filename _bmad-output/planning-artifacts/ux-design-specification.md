@@ -11,6 +11,18 @@ versionCoverage:
 editHistory:
   - date: '2026-09-12'
     changes: >-
+      Synced against Story 4.6's implementation and code review: specified
+      the Solidification % display's [0.1%, 99.9%] clamp (shipped as a
+      default before this), specified that the summary lines stay visible
+      during inline-rename editing (shipped once as a collapse that broke
+      FR40's no-shift requirement, corrected in the same review), specified
+      the accessibility label's "never"/"no data" wording (a deliberate
+      third convention alongside the visual em dash and the sort
+      comparator's 0%-floor), and corrected the row-height claim from "no
+      truncation or ellipsis" to single-line truncation via
+      numberOfLines={1} on both summary lines, matching what shipped.
+  - date: '2026-09-12'
+    changes: >-
       Added design for FR41, FR42, FR43 following manual UAT of the shipped
       v1.1 build (UAT-32 through UAT-41): Settings gear icon added to Active
       Session and Segment Detail screens, fixed top corner, same treatment
@@ -641,11 +653,13 @@ Last practice: 10 Sep 2026 · 42.3%
 Created 02 Sep 2026
 ```
 
-- **Line 2:** `Last practice: {dd Mmm yyyy} · {Solidification %}`, one decimal place. A segment never practiced reads `Last practice: — · —` — same em-dash convention as FR38's history-log summary, for the same reason (avoids "0.0%" misreading as "scored zero").
+- **Line 2:** `Last practice: {dd Mmm yyyy} · {Solidification %}`, one decimal place. A segment never practiced reads `Last practice: — · —` — same em-dash convention as FR38's history-log summary, for the same reason (avoids "0.0%" misreading as "scored zero"). **(Specified 2026-09-12, Story 4.6's code review):** a true value strictly between 0 and 100 is clamped to `[0.1%, 99.9%]` — `"100.0%"`/`"0.0%"` are reserved for the true mathematical boundary only, so a rounding artifact at, say, 99.97% never misreads as "fully solidified." This mirrors FR38's whole-number reserve-the-boundary rule at one decimal's precision; it shipped as an implementation default before being specified here.
 - **Line 3:** `Created {dd Mmm yyyy}`, always populated — every segment has a creation date from FR1.
 - **Type treatment:** lines 2–3 use the small/secondary label type already used for the sort menu's non-selected items — supporting data, not competing with the name for visual weight.
 - **No new interaction.** Static text, not tappable independent of the row itself; a normal tap still opens Segment Detail (unchanged from FR40/UAT-37's step 5).
-- **Row height:** grows to accommodate three lines; no truncation or ellipsis — `dd Mmm yyyy` and `NN.N%` are both fixed-width enough that all three lines fit without wrapping at supported device widths (NFR — same responsive floor as the rest of Segment List).
+- **Row height:** three lines when static. **(Corrected 2026-09-12, Story 4.6's code review):** the original wording here claimed "no truncation or ellipsis... all three lines fit without wrapping" — the shipped implementation applies `numberOfLines={1}` to lines 2–3 (matching the name line), so a summary line exceeding the row's width truncates rather than wrapping. Corrected because a wrapped, taller row was found untested and undesirable at large OS font scales; single-line truncation keeps the row height stable in that case, at the cost of an occasional clipped date/percent on very narrow devices or very large text sizes.
+- **Interaction with inline rename (FR40), specified 2026-09-12, Story 4.6's code review:** these two lines remain visible and unchanged while the name is being edited inline (Story 4.5) — only the name line swaps for the `TextInput`. This was left unspecified when FR41 was added and shipped, once, as a collapse (the lines disappeared during editing, shrinking the row and violating FR40's own no-layout-shift requirement); corrected to keep the row's height stable in both states.
+- **Accessibility wording, specified 2026-09-12, Story 4.6's code review:** the combined row accessibility label (see Accessibility (v1.1) below) reads a never-practiced segment's fields as "last practice **never**, solidification **no data**" — not a literal "em dash" — since announcing the glyph itself would be meaningless to a screen-reader user. This is deliberately a third convention alongside the visual em dash (FR38) and the sort comparator's 0%-as-floor (FR33): each surface reads correctly for its own audience, and none of the three needs to match the others' internal representation.
 
 ### Row Action Menu Additions
 

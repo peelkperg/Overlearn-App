@@ -17,6 +17,16 @@ lastEdited: '2026-09-12'
 editHistory:
   - date: '2026-09-12'
     changes: >-
+      Amended FR41 following Story 4.6's code review: the one-decimal
+      Solidification % display clamps a true value strictly between 0 and
+      100 to [0.1%, 99.9%], reserving the exact boundary strings for the
+      true mathematical boundary only. This shipped as an implementation
+      default (formatRowSolidification) before being specified here -
+      resolved in favor of keeping the clamp, consistent with FR38's
+      whole-number precedent, rather than a literal unclamped
+      one-decimal reading.
+  - date: '2026-09-12'
+    changes: >-
       Added FR43: manual UAT of UAT-38 through UAT-41 (2026-09-12) found the
       active-session screen (src/app/session/[id].tsx) has no navigation
       control at all - no way to reach Settings or even Home while a session
@@ -355,7 +365,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR33: **(v1.1)** User can sort the segment list by name, creation date, most recent practice date, or Solidification %, where Solidification % = (sum of correct repetitions across every completed session for that segment) ÷ (sum of total repetitions across those same sessions) — one aggregate ratio per segment, not an average of per-session percentages; a segment with no completed sessions is treated as 0% / oldest-possible-date for sorting purposes regardless of sort direction (added 2026-09-06)
 - FR34: **(v1.1)** System persists the user's selected sort option and direction across app relaunches (added 2026-09-06)
 - FR40: **(v1.1)** User can rename a segment by pressing and holding its name for 1 second at the segment list row or the segment detail heading, which turns the name into an editable field in place; submitting via the keyboard's return/enter action saves the new name. This is an additional rename entry point alongside FR30's dedicated Rename screen — both exist; neither replaces the other. Applies only at these two sites, not at the active-session readout, completion summary, or resume/discard prompt, which remain read-only displays of the current name (per FR31). Uses the same name validation and disambiguation rule as FR30. (added 2026-09-06)
-- FR41: **(v1.1)** Each segment list row displays the segment's creation date, most recent practice date ("Last practice: dd Mmm yyyy"; an empty-state wording applies if the segment has never been practiced), and Solidification % (one decimal place, e.g. "42.3%"). Solidification % uses FR33's aggregate definition and FR38's em-dash-for-no-completed-sessions convention — never "0.0%" for a segment with no completed sessions. (added 2026-09-12, following manual UAT of UAT-32–UAT-37)
+- FR41: **(v1.1)** Each segment list row displays the segment's creation date, most recent practice date ("Last practice: dd Mmm yyyy"; an empty-state wording applies if the segment has never been practiced), and Solidification % (one decimal place, e.g. "42.3%"). Solidification % uses FR33's aggregate definition and FR38's em-dash-for-no-completed-sessions convention — never "0.0%" for a segment with no completed sessions. A true value strictly between 0 and 100 is clamped to the range [0.1%, 99.9%] for display — the boundary strings "100.0%" and "0.0%" are reserved for the true mathematical boundary only, the same reserve-the-boundary principle FR38's whole-number display already applies, scaled to one decimal place. (added 2026-09-12, following manual UAT of UAT-32–UAT-37; clamp rule specified 2026-09-12 following Story 4.6's code review, resolving what had shipped as an implementation default with no PRD backing)
 - FR42: **(v1.1)** User can flip the segment list's sort direction via a dedicated toggle control next to the Sort control, independent of re-selecting the currently-active sort option. Operates on whichever sort key is active per FR33 and persists per FR34; does not change FR33's per-key default direction on first selection. Exact visual/interaction form is a UX-design decision, not fixed by this requirement. (added 2026-09-12, following manual UAT of UAT-35)
 
 ### Practice Session Lifecycle
