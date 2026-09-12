@@ -1,13 +1,32 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-03-core-experience, step-04-emotional-response, step-05-inspiration, step-06-design-system, step-07-defining-experience, step-08-visual-foundation, step-09-design-directions, step-10-user-journeys, step-11-component-strategy, step-12-ux-patterns, step-13-responsive-accessibility, step-14-complete, v1.1-extension]
+stepsCompleted: [step-01-init, step-02-discovery, step-03-core-experience, step-04-emotional-response, step-05-inspiration, step-06-design-system, step-07-defining-experience, step-08-visual-foundation, step-09-design-directions, step-10-user-journeys, step-11-component-strategy, step-12-ux-patterns, step-13-responsive-accessibility, step-14-complete, v1.1-extension, v1.1.1-extension]
 lastStep: 14
-lastUpdated: '2026-09-06'
+lastUpdated: '2026-09-12'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Design Additions" heading. Shipped, frozen at git tag v1.0.0.'
   v1.1: 'The "v1.1 Design Additions" section — Settings screen with in-progress-session notice (FR35-FR37, FR39), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31), inline press-and-hold rename (FR40), history log Solidification % summary (FR38). Designed, not implemented.'
+  v1.1.1: 'Targeted addition (2026-09-12), driven by gaps manual UAT found in the shipped v1.1 build: Settings gear icon on every screen (FR43), segment list row summary data (FR41), sort-direction toggle button (FR42). Superseded passages marked inline rather than rewritten silently. Designed, not implemented.'
 editHistory:
+  - date: '2026-09-12'
+    changes: >-
+      Added design for FR41, FR42, FR43 following manual UAT of the shipped
+      v1.1 build (UAT-32 through UAT-41): Settings gear icon added to Active
+      Session and Segment Detail screens, fixed top corner, same treatment
+      as the existing Home instance (FR43 — closes the gap that left
+      FR37/FR39 unreachable mid-session, UAT-38-41). Segment list row grows
+      to three lines: name, "Last practice: dd Mmm yyyy · NN.N%", "Created
+      dd Mmm yyyy" (FR41). A dedicated ↑/↓ direction-toggle icon button
+      added next to the Sort control, alongside (not replacing) the
+      existing re-tap-active-option gesture (FR42 — the prior gesture was
+      found non-obvious in UAT-35). Marked and corrected three now-false
+      statements this extension's decisions contradicted: Principle 1
+      ("Settings is reachable only from Home, never mid-session"), the
+      Navigation Update diagram, and the Sort Control section's "keeps
+      direction control inside the existing menu" line — each marked
+      Superseded with the correction appended, per the project's
+      spec-sync convention (don't silently rewrite prior decisions).
   - date: '2026-09-06'
     changes: >-
       Extended rather than regenerated: the 14-step create workflow was
@@ -505,7 +524,7 @@ Not applicable in the traditional sense — no tablet/desktop breakpoints exist 
 
 The v1.0 principles are not renegotiated here. Three constrain every decision below:
 
-1. **The Active Session screen is untouched.** No v1.1 feature adds anything to the practice loop — the one screen whose design is load-bearing to the product's value. Settings is reachable only from Home, never mid-session.
+1. **The Active Session screen's practice loop is untouched.** No v1.1 feature adds anything to the Correct/Incorrect/Restart loop itself — the one interaction sequence whose design is load-bearing to the product's value. **(Superseded 2026-09-12, FR43):** "Settings is reachable only from Home, never mid-session" is no longer true — manual UAT of UAT-38/39/40/41 found this left FR37/FR39 untestable and unreachable in the shipped build. The screen now carries a gear icon (see "Settings Entry Point on Every Screen (FR43)" below); the practice loop itself gains no new control.
 2. **Calm rigor, minimal chrome.** New controls are subordinate to the segment list, not competing with it.
 3. **No fifth feedback tier.** Rename, duplicate, and sort are non-gameplay actions and use plain design-system feedback (instant list update, standard snackbar), exactly as segment creation and delete already do.
 
@@ -521,9 +540,20 @@ Segment List (home) ──┬─→ Segment Detail ──→ Active Session / Co
 
 Still no tab bar and no drawer. Settings and Rename are both leaf screens with a single back exit. The three-level practice path is unchanged in depth and shape.
 
+**(Superseded 2026-09-12, FR43):** the diagram above under-states reachability — Settings is now pushed from a gear icon present on **every** screen (Home, Segment Detail, Active Session, Completion), not only Home's header:
+
+```
+Segment List (home) ──┬─→ Segment Detail ─┬─→ Active Session / Completion
+     │                 ├─→ Segment Rename  │        │
+     │                 └─→ Settings ◄──────┴────────┘
+     └─→ Settings ◄── (also reachable directly from Home)
+```
+
+Settings remains a leaf screen with a single back exit from every entry point. Navigating to it from Active Session/Completion does not end, reset, or otherwise mutate the session underneath — the practice screen is simply covered by the push and restored on back, per FR43.
+
 ## New Screen: Settings
 
-**Entry point:** a gear icon in the Segment List header, right-aligned. Present on Home only — it does not appear on Segment Detail, Active Session, or Completion.
+**Entry point:** a gear icon, right-aligned in a fixed corner. **(Superseded 2026-09-12, FR43):** originally Home-only; now present on every screen — see "Settings Entry Point on Every Screen (FR43)" below for the Active Session/Completion treatment specifically.
 
 **Content — one setting, nothing else.** FR35–FR37 specify only the overlearning-%; per the No-Invention Rule, no other settings, no account section, no about/version block unless later specified.
 
@@ -558,6 +588,22 @@ Disabled-at-bounds is chosen over a silent no-op so the range is discoverable by
 
 **Mid-session change.** FR37 requires an in-progress session's target to recalculate immediately, and can complete the session outright (see the Mechanic Specification's Settings-driven completion transition). A UI **is** specified for this on the Settings screen: the standing in-progress-session notice (FR39, see item 5 in "Layout, top to bottom" above), which warns of both consequences before the user changes the value. (Corrected 2026-09-11, Story 5.3's implementation: this paragraph previously read "No UI is specified for this on the Settings screen" and "Deliberately not designed: a warning or confirmation" — true when first written (2026-09-06, before FR39 existed), but left uncorrected when FR39 and the notice were added later the same day, and again when Story 5.2's code review amended the completion consequence. `_bmad-output/implementation-artifacts/5-2-...md` cited the old wording as authority for adding no UI; that citation is now stale too.)
 
+## Settings Entry Point on Every Screen (FR43, added 2026-09-12)
+
+**Root cause:** manual UAT of UAT-38 through UAT-41 (2026-09-12) found the Active Session screen had no navigation control at all — no way to reach Settings, or even Home, while a session was in progress or interrupted. FR37 (live target recalculation) and FR39 (in-progress-session notice) both assume Settings is reachable mid-session; nothing in this document specified how, because the original v1.1 extension's Principle 1 explicitly assumed the opposite ("Settings is reachable only from Home, never mid-session").
+
+**Design:** a small gear icon, fixed top corner, 44×44 minimum tap target, added to:
+- Active Session screen (both the in-progress state and the Completion state)
+- Segment Detail screen
+
+Home already carries the gear icon (unchanged). This is the same icon, same placement convention, same `accessibilityLabel="Settings"` treatment as the existing Home instance — not a new visual pattern, just a new set of screens that carry it.
+
+**Behavior:** tapping it pushes Settings on top of the current screen, exactly as it does from Home. Returning (back) restores the underlying screen exactly as left — an in-progress or interrupted session is not ended, reset, completed, or otherwise mutated by the navigation itself. (A session **can** still complete as a side effect of a value the user changes once inside Settings — that is FR37's existing, correctly-specified behavior, unrelated to the navigation gap FR43 closes.)
+
+**Why a corner icon, not a header bar with back+gear:** the Active Session screen has no header today and none of the v1.0 principles call for adding one — a single small icon is the minimum change that satisfies FR43 without adding chrome that competes with Correct/Incorrect for thumb reach or visual priority. Decided with the user 2026-09-12, choosing this over a full header-bar-with-back-button alternative.
+
+**Component:** default pressable + icon, no new custom component — same budget statement as the rest of v1.1 (see Component Strategy Additions below).
+
 ## Segment List Additions
 
 ### Sort Control
@@ -575,13 +621,31 @@ Disabled-at-bounds is chosen over a silent no-op so the range is discoverable by
 | Last practiced | Most recent first |
 | Solidification % | Highest first |
 
-**Direction toggle:** tapping the **already-active** option flips its direction; tapping a different option selects it at that option's default direction. This keeps direction control inside the existing menu rather than adding a second control to the list header.
+**Direction toggle:** tapping the **already-active** option flips its direction; tapping a different option selects it at that option's default direction.
+
+**(Superseded 2026-09-12, FR42):** the paragraph above ("keeps direction control inside the existing menu rather than adding a second control") is no longer the whole picture. Manual UAT of UAT-35 found that flipping direction by re-selecting the active menu option is a non-obvious, undiscoverable gesture. FR42 adds a dedicated `↑`/`↓` icon button immediately to the right of the `Sort: X ▾` trigger, same row, same 44×44 minimum target. Tapping it flips direction in place and re-sorts the list live — same effect as the menu's re-tap-active-option path, which is kept, not removed (both remain valid ways to flip direction). The icon shows the *current* direction (↑ ascending, ↓ descending), not an action glyph, matching the stepper's disabled-at-bounds philosophy of showing state rather than requiring a tap to discover it.
 
 **Persistence (FR34):** the selected option and direction are restored on next launch. The list therefore never reorders unexpectedly between sessions.
 
 **Empty and single-segment states:** the sort control is hidden when zero segments exist (the v1.0 empty state per FR7/UX-DR11 is unchanged) and when exactly one exists, where sorting is meaningless.
 
 **Supersedes:** the v1.0 statement under *UX Consistency Patterns → Additional Patterns* — *"Search/filtering: not applicable — no PRD requirement calls for it, and inventing one would violate the No-Invention Rule."* That remains true for **search and filtering**, which FR33 does not introduce. FR33 introduces **ordering only** — no query input, no subset of segments is ever hidden.
+
+### Row Summary Data (FR41, added 2026-09-12)
+
+Each row gains a second and third line below the segment name — the row grows from one line to three:
+
+```
+Bar 24 arpeggio
+Last practice: 10 Sep 2026 · 42.3%
+Created 02 Sep 2026
+```
+
+- **Line 2:** `Last practice: {dd Mmm yyyy} · {Solidification %}`, one decimal place. A segment never practiced reads `Last practice: — · —` — same em-dash convention as FR38's history-log summary, for the same reason (avoids "0.0%" misreading as "scored zero").
+- **Line 3:** `Created {dd Mmm yyyy}`, always populated — every segment has a creation date from FR1.
+- **Type treatment:** lines 2–3 use the small/secondary label type already used for the sort menu's non-selected items — supporting data, not competing with the name for visual weight.
+- **No new interaction.** Static text, not tappable independent of the row itself; a normal tap still opens Segment Detail (unchanged from FR40/UAT-37's step 5).
+- **Row height:** grows to accommodate three lines; no truncation or ellipsis — `dd Mmm yyyy` and `NN.N%` are both fixed-width enough that all three lines fit without wrapping at supported device widths (NFR — same responsive floor as the rest of Segment List).
 
 ### Row Action Menu Additions
 
@@ -653,8 +717,11 @@ Consistent with the v1.0 hybrid strategy — **no new custom components.** All f
 | Rename form | Existing `SegmentForm` |
 | Duplicate confirmation | Default snackbar |
 | Inline rename (FR40) | `Pressable` + `onLongPress`, swapping `<Text>`/`<TextInput>` in place |
+| Settings gear icon on Session/Detail screens (FR43, added 2026-09-12) | Same default pressable + icon as the existing Home instance |
+| Sort direction toggle (FR42, added 2026-09-12) | Default pressable + icon, no custom component |
+| Row summary data (FR41, added 2026-09-12) | Plain `<Text>` lines, no custom component |
 
-The custom-component budget remains spent entirely on the Active Session screen, exactly as the v1.0 Design System Foundation decided.
+The custom-component budget remains spent entirely on the Active Session screen's practice loop (Correct/Incorrect/Restart), exactly as the v1.0 Design System Foundation decided — the FR43 gear icon is chrome around that loop, not a change to it.
 
 ## Accessibility (v1.1)
 
@@ -667,7 +734,12 @@ Inherits the v1.0 bar — WCAG 2.1 AA, 44×44pt minimum targets, no color-alone 
 - **In-progress-session notice (FR39)** uses `accessibilityLiveRegion="polite"` and is read as part of the screen's normal content when Settings opens with a session active — it is not an alert interruption, consistent with its standing-notice, non-blocking treatment above.
 - **Solidification % summary (FR38)** is read as ordinary text ("Solidification: 78 percent") — no special announcement treatment needed, since it is static content, not a state change.
 
-The gear icon, being icon-only, carries `accessibilityLabel="Settings"` — the same rule the v1.0 spec applies to the icon-only Correct/Incorrect buttons.
+The gear icon, being icon-only, carries `accessibilityLabel="Settings"` — the same rule the v1.0 spec applies to the icon-only Correct/Incorrect buttons. This applies identically to every instance of the icon, including the two added by FR43 (Active Session, Segment Detail).
+
+**Two additions specific to FR41–FR43 (added 2026-09-12):**
+
+- **Sort direction toggle (FR42)** carries `accessibilityLabel` naming both the key and the resulting direction after the tap (e.g. "Sort direction, currently most recent first, double-tap to switch to oldest first") — never the bare `↑`/`↓` glyph alone, same rule as the sort control itself.
+- **Row summary data (FR41)** — the added lines are read as part of the row's existing accessibility label (segment name), appended in order: name, last-practice date, Solidification %, creation date. Not exposed as separate focusable elements — this matches how the row already reads as one unit for navigation to Segment Detail.
 
 ## Resolved Questions (2026-09-06)
 
