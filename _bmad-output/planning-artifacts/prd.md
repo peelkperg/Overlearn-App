@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2]
+stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2, step-e-01-discovery-3, step-e-02-review-3, step-e-03-edit-3]
 validationReports:
   - _bmad-output/planning-artifacts/validation-report-2026-09-06.md
 releaseMode: phased
@@ -13,8 +13,22 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
-lastEdited: '2026-09-11'
+lastEdited: '2026-09-12'
 editHistory:
+  - date: '2026-09-12'
+    changes: >-
+      Added FR41 and FR42 during v1.1 UAT: manual testing of UAT-32 through
+      UAT-37 found the segment list row showed only the name, with no way to
+      see a segment's creation date, last-practiced date, or Solidification %
+      without opening it, and that flipping sort direction required
+      re-selecting the already-active sort option from the menu rather than a
+      dedicated control. FR41 adds the three data points to each list row.
+      FR42 requires a dedicated, independently-operable sort-direction toggle
+      next to the Sort control; its exact visual form is deferred to
+      ux-design-specification.md, consistent with how FR33/FR34 were
+      written. Neither FR changes FR33's sort criteria or FR38's history-log
+      display; FR41's list-row Solidification % reuses FR33's aggregate
+      definition and FR38's em-dash-for-no-data convention.
   - date: '2026-09-11'
     changes: >-
       Code review of Story 5.2 surfaced that FR37's implementation (a
@@ -143,7 +157,8 @@ Scoped after v1.0 shipped; **not** part of the v1.0 MVP. Four independent capabi
 
 - **Segment rename** (FR30, FR31) — with the renamed name reflected everywhere it is displayed, including past history entries and any in-progress session.
 - **Segment duplicate** (FR32) — disambiguated name, no copied history.
-- **Segment list sorting** (FR33, FR34) — by name, creation date, last-practiced date, or Solidification %; selection persisted across launches.
+- **Segment list sorting** (FR33, FR34) — by name, creation date, last-practiced date, or Solidification %; selection persisted across launches. A dedicated direction toggle (FR42) flips ascending/descending independent of re-selecting the sort key.
+- **Segment list row summary data** (FR41) — creation date, last-practice date, and Solidification % shown inline per row.
 - **Settings screen with a configurable overlearning-%** (FR35–FR37) — 50–300% in 10% increments, applied live to in-progress sessions.
 
 ### Growth Features (Phase 2, Post-MVP)
@@ -325,6 +340,8 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR33: **(v1.1)** User can sort the segment list by name, creation date, most recent practice date, or Solidification %, where Solidification % = (sum of correct repetitions across every completed session for that segment) ÷ (sum of total repetitions across those same sessions) — one aggregate ratio per segment, not an average of per-session percentages; a segment with no completed sessions is treated as 0% / oldest-possible-date for sorting purposes regardless of sort direction (added 2026-09-06)
 - FR34: **(v1.1)** System persists the user's selected sort option and direction across app relaunches (added 2026-09-06)
 - FR40: **(v1.1)** User can rename a segment by pressing and holding its name for 1 second at the segment list row or the segment detail heading, which turns the name into an editable field in place; submitting via the keyboard's return/enter action saves the new name. This is an additional rename entry point alongside FR30's dedicated Rename screen — both exist; neither replaces the other. Applies only at these two sites, not at the active-session readout, completion summary, or resume/discard prompt, which remain read-only displays of the current name (per FR31). Uses the same name validation and disambiguation rule as FR30. (added 2026-09-06)
+- FR41: **(v1.1)** Each segment list row displays the segment's creation date, most recent practice date ("Last practice: dd Mmm yyyy"; an empty-state wording applies if the segment has never been practiced), and Solidification % (one decimal place, e.g. "42.3%"). Solidification % uses FR33's aggregate definition and FR38's em-dash-for-no-completed-sessions convention — never "0.0%" for a segment with no completed sessions. (added 2026-09-12, following manual UAT of UAT-32–UAT-37)
+- FR42: **(v1.1)** User can flip the segment list's sort direction via a dedicated toggle control next to the Sort control, independent of re-selecting the currently-active sort option. Operates on whichever sort key is active per FR33 and persists per FR34; does not change FR33's per-key default direction on first selection. Exact visual/interaction form is a UX-design decision, not fixed by this requirement. (added 2026-09-12, following manual UAT of UAT-35)
 
 ### Practice Session Lifecycle
 
