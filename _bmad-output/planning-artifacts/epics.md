@@ -1,14 +1,28 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories, v1.1-step-04-final-validation]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories, v1.1-step-04-final-validation, v1.1.1-extension]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/architecture.md
-lastUpdated: '2026-09-11'
+lastUpdated: '2026-09-12'
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Requirements Inventory" heading, and Epic 1-3 below "## Epic List". Shipped, frozen at git tag v1.0.0.'
-  v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40, UX-DR13-25), and Epic 4-5 below "## Epic List" (8 stories: 4.1-4.5, 5.1-5.3). Fully specified, not yet implemented.'
+  v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40, UX-DR13-25), and 8 stories (4.1-4.5, 5.1-5.3) below "## Epic List". Fully specified, not yet implemented.'
+  v1.1.1: 'The "v1.1.1 Requirements Inventory" section (FR41-FR43, UX-DR26-28), and 3 stories (4.6, 4.7, 5.4) below "## Epic List". Targeted addition (2026-09-12), driven by gaps manual UAT found in the shipped v1.1 build. Fully specified, not yet implemented.'
 editHistory:
+  - date: '2026-09-12'
+    changes: >-
+      Extended in place (destructive template-copy step declined again, per
+      the 2026-09-06 precedent). Added a "v1.1.1 Requirements Inventory"
+      section: FR41-FR43, one architecture-derived additional requirement,
+      UX-DR26-28. Added Story 4.6 (row summary data, FR41), Story 4.7
+      (sort direction toggle, FR42) to Epic 4; Story 5.4 (Settings
+      reachable from any screen, FR43) to Epic 5 — no new epic, both fit
+      the existing epics' File Overlap grouping. Driven by three gaps
+      manual UAT of the shipped v1.1 build found unreachable/undiscoverable
+      (UAT-32 through UAT-41), specified through prd.md,
+      ux-design-specification.md, and architecture.md first, in that
+      order, same PRD-first spec chain the FR40 addition used.
   - date: '2026-09-11'
     changes: >-
       Code review of Story 5.2 (see its Review Findings section) surfaced
@@ -281,6 +295,41 @@ FR36: Epic 5 - 50-300% in 10% steps
 FR37: Epic 5 - Applies live to in-progress session
 FR39: Epic 5 - Standing in-progress-session notice
 
+## v1.1.1 Requirements Inventory (added 2026-09-12)
+
+Everything above this heading through the v1.1 section is designed and specified, not yet implemented. This section covers three gaps manual UAT of the shipped v1.1 build found — unreachable Settings mid-session (blocking UAT-38/39/40/41), and two undiscoverable/missing list affordances (found alongside UAT-32-37) — added to `prd.md`, `ux-design-specification.md`, and `architecture.md` in that order before being included here, same PRD-first chain the FR40 addition used.
+
+### v1.1.1 Functional Requirements
+
+**Active Session Interaction extension**
+FR43: User can access Settings from any screen, including the active-session screen while a session is in progress or interrupted, via a consistently-placed control; navigating there does not end, reset, or otherwise mutate the session
+
+**Segment Management extensions**
+FR41: Each segment list row displays creation date, last-practice date ("Last practice: dd Mmm yyyy"), and Solidification % (one decimal place); em dash convention (FR38) for a segment with no completed sessions
+FR42: User can flip the segment list's sort direction via a dedicated toggle control next to the Sort control, independent of re-selecting the currently-active sort option
+
+### v1.1.1 NonFunctional Requirements
+
+None added.
+
+### v1.1.1 Additional Requirements (from architecture.md's v1.1.1 section)
+
+- New shared `components/SettingsButton.tsx`, extracted from `app/index.tsx`'s existing inline gear icon and mounted on `app/session/[id].tsx` and `app/segment/[id].tsx` too (FR43). Pure Expo Router stack push — no new session read/write path, no change to `session/[id].tsx`'s "talks only to `useActiveSession`" boundary.
+- `useSegments()` return value gains `aggregates: Map<string, SortAggregate>` — the same map `buildSortAggregates()` (Story 4.3) already computes internally for sorting, now also exposed for FR41's row display. No new `lib/` function.
+- `SortControl.tsx` gains a second `Pressable` in place (no new component file) for FR42, reusing its existing `directionLabel()` helper.
+
+### v1.1.1 UX Design Requirements
+
+UX-DR26: Settings gear icon, fixed top corner, 44×44 minimum target, added to Active Session (both in-progress and Completion states) and Segment Detail — same icon/placement/`accessibilityLabel="Settings"` treatment as the existing Home instance
+UX-DR27: Segment list row grows to three lines — name, "Last practice: {dd Mmm yyyy} · {Solidification %}", "Created {dd Mmm yyyy}"; secondary/small label type, not competing with the name for visual weight; em-dash convention for a never-practiced segment
+UX-DR28: Sort-direction toggle — a `↑`/`↓` icon button immediately right of the `Sort: X ▾` trigger, same row, 44×44 minimum target, showing current direction; the menu's re-tap-active-option flip path is kept, not replaced; accessibility label names the key and resulting direction, never the bare glyph
+
+### v1.1.1 FR Coverage Map
+
+FR41: Epic 4 - Row summary data (creation/last-practice date, Solidification %)
+FR42: Epic 4 - Sort direction toggle button
+FR43: Epic 5 - Settings reachable from any screen
+
 ## Epic List
 
 ### Epic 1: Segment Management
@@ -298,15 +347,15 @@ Users can review a segment's history of completed sessions to judge, in their ow
 **FRs covered:** FR27, FR28, FR29
 **Implementation notes:** Standard list screen, depends on Epic 2 producing history entries but is otherwise a self-contained read-only view.
 
-### Epic 4: Segment Organization & Insight (v1.1, added 2026-09-06)
+### Epic 4: Segment Organization & Insight (v1.1, added 2026-09-06; extended 2026-09-12)
 Users can rename, duplicate, and sort their segments, and see at a glance how solidified each one is — all without leaving the segment-management screens.
-**FRs covered:** FR30, FR31, FR32, FR33, FR34, FR38, FR40
-**Implementation notes:** Consolidated into one epic per the File Overlap rule — rename (both entry points), duplicate, sort, and the Solidification % summary all touch the same core files Epic 1 already established (`SegmentListItem.tsx`, `lib/segments.ts`, `app/index.tsx`, `app/segment/[id].tsx`), plus `lib/history.ts` for FR38's aggregation. New: `app/segment/[id]/rename.tsx` route, inline-edit state in the list row and detail heading. No dependency on Epic 5.
+**FRs covered:** FR30, FR31, FR32, FR33, FR34, FR38, FR40, FR41, FR42
+**Implementation notes:** Consolidated into one epic per the File Overlap rule — rename (both entry points), duplicate, sort, and the Solidification % summary all touch the same core files Epic 1 already established (`SegmentListItem.tsx`, `lib/segments.ts`, `app/index.tsx`, `app/segment/[id].tsx`), plus `lib/history.ts` for FR38's aggregation. New: `app/segment/[id]/rename.tsx` route, inline-edit state in the list row and detail heading. **v1.1.1 additions (FR41, FR42):** no new file — `SegmentListItem.tsx` gains a prop for row summary data (reusing `buildSortAggregates()`, no new `lib/` computation) and `SortControl.tsx` gains a direction-toggle `Pressable` in place. No dependency on Epic 5.
 
-### Epic 5: Configurable Overlearning Target (v1.1, added 2026-09-06)
+### Epic 5: Configurable Overlearning Target (v1.1, added 2026-09-06; extended 2026-09-12)
 Users can adjust how strict the overlearning target is — from the fixed 50% to anywhere between 50% and 300% — globally, with a change taking effect immediately, including for a session already underway.
-**FRs covered:** FR35, FR36, FR37, FR39
-**Implementation notes:** A distinct core-file set from Epic 4 — new `lib/settings.ts` boundary, new `app/settings.tsx` screen, and the optional-parameter threading through `lib/mechanic.ts` → `lib/session-transitions.ts` → `hooks/useActiveSession.ts` that `architecture.md` already resolved as non-breaking. No dependency on Epic 4; sequenced after it as the higher-risk of the two (it touches the core mechanic layer, even though the threading is designed to be non-breaking).
+**FRs covered:** FR35, FR36, FR37, FR39, FR43
+**Implementation notes:** A distinct core-file set from Epic 4 — new `lib/settings.ts` boundary, new `app/settings.tsx` screen, and the optional-parameter threading through `lib/mechanic.ts` → `lib/session-transitions.ts` → `hooks/useActiveSession.ts` that `architecture.md` already resolved as non-breaking. No dependency on Epic 4; sequenced after it as the higher-risk of the two (it touches the core mechanic layer, even though the threading is designed to be non-breaking). **v1.1.1 addition (FR43):** new shared `components/SettingsButton.tsx`, mounted on `app/session/[id].tsx` and `app/segment/[id].tsx` in addition to `app/index.tsx` — closes the gap that left Story 5.2/5.3's live-apply and standing-notice behavior unreachable/untestable mid-session in the shipped build (UAT-38-41).
 
 ## Epic 1: Segment Management
 
@@ -746,6 +795,54 @@ So that I can fix a name quickly without opening a separate screen.
 **When** the user taps it normally (not a long-press)
 **Then** navigation to the segment detail screen still occurs as before — the long-press threshold does not interfere with the existing tap-to-open behavior (FR40)
 
+### Story 4.6: View Segment List Row Summary Data (v1.1.1, added 2026-09-12)
+
+As a user,
+I want to see each segment's creation date, last-practice date, and Solidification % right in the list,
+So that I don't have to open a segment just to see how it's doing.
+
+**Acceptance Criteria:**
+
+**Given** a segment with one or more completed sessions
+**When** the segment list renders
+**Then** its row shows, below the name: "Last practice: {dd Mmm yyyy} · {Solidification %, one decimal}" and "Created {dd Mmm yyyy}" (FR41, UX-DR27)
+
+**Given** a segment with zero completed sessions
+**When** the segment list renders
+**Then** its row shows "Last practice: — · —" for the summary line, never "0.0%", using the same em-dash convention as Story 4.4's history-log summary (FR41)
+
+**Given** the segment list is showing row summary data
+**When** the underlying data is sourced
+**Then** it reuses `buildSortAggregates()` (Story 4.3) via `useSegments()`'s exposed `aggregates` map — no second computation, no new `lib/` function (FR41, per architecture.md's v1.1.1 section)
+
+**Given** a segment row with summary data
+**When** a screen reader reaches it
+**Then** the name, last-practice date, Solidification %, and creation date are read as one row-level accessibility label, in that order — not as separate focusable elements (FR41, UX-DR27)
+
+### Story 4.7: Flip Sort Direction via Toggle (v1.1.1, added 2026-09-12)
+
+As a user,
+I want a dedicated button to flip the segment list's sort direction,
+So that I don't have to re-open the sort menu and re-tap the already-active option to do it.
+
+**Acceptance Criteria:**
+
+**Given** the segment list's sort control is visible (2+ segments)
+**When** the list renders
+**Then** a `↑`/`↓` icon button appears immediately to the right of the `Sort: X ▾` trigger, showing the current direction (FR42, UX-DR28)
+
+**Given** the direction toggle button
+**When** the user taps it
+**Then** the sort direction flips for the currently active sort key and the list re-sorts live — the same effect as re-tapping the active option in the sort menu (FR42)
+
+**Given** Story 4.3's existing "tap the already-active menu option to flip direction" gesture
+**When** Story 4.7 ships
+**Then** that gesture still works unchanged — the new button is an addition, not a replacement (FR42)
+
+**Given** the direction toggle button
+**When** a screen reader reaches it
+**Then** it announces the sort key and the direction a tap would produce (e.g. "Sort direction, currently most recent first, double-tap to switch to oldest first"), reusing `SortControl.tsx`'s existing `directionLabel()` helper — never the bare glyph alone (FR42, UX-DR28)
+
 ## Epic 5: Configurable Overlearning Target (v1.1, added 2026-09-06)
 
 Users can adjust how strict the overlearning target is — from the fixed 50% to anywhere between 50% and 300% — globally, with a change taking effect immediately, including for a session already underway.
@@ -807,3 +904,31 @@ So that I'm not surprised by a target that moved without my noticing.
 **Given** no session is in progress
 **When** the user opens the Settings screen
 **Then** the notice is not rendered at all (FR39)
+
+### Story 5.4: Reach Settings From Any Screen (v1.1.1, added 2026-09-12)
+
+As a user,
+I want to open Settings while a practice session is active or interrupted,
+So that a target change I need (FR37) or the warning about one (FR39) is actually reachable, not just true in theory.
+
+**Acceptance Criteria:**
+
+**Given** a session is in progress
+**When** the active-session screen is showing
+**Then** a Settings gear icon is visible in a fixed corner, 44×44 minimum tap target, using the same `SettingsButton` component and `accessibilityLabel="Settings"` treatment as the existing Home instance (FR43, UX-DR26)
+
+**Given** the active-session screen's gear icon
+**When** the user taps it
+**Then** Settings opens (pushed on top of the current screen); the session in progress is not ended, reset, or otherwise completed by the navigation itself (FR43)
+
+**Given** Settings is open, reached from an active session
+**When** the user navigates back
+**Then** the active-session screen is restored exactly as left — same streak, same target, same state — unless a setting changed while Settings was open caused a completion per Story 5.2, in which case the Completion screen shows instead, matching Story 5.2's existing behavior (FR43, FR37)
+
+**Given** the segment detail screen
+**When** it renders
+**Then** it also shows the Settings gear icon, same component, same placement convention (FR43, UX-DR26)
+
+**Given** an interrupted session (backgrounded or killed, not yet resumed/discarded)
+**When** the app relaunches and shows the resume/discard prompt
+**Then** the user can still navigate to Settings directly rather than acting on the prompt first, since Home already carries the gear icon — verified end-to-end together with Story 5.2's interrupted-session completion path (FR43, FR24, FR37)
