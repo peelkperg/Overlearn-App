@@ -13,6 +13,10 @@ const renderRow = (overrides: Partial<Parameters<typeof SegmentListItem>[0]> = {
   render(
     <SegmentListItem
       segment={segment}
+      // Story 4.6 (FR41): undefined is the default, matching a segment with
+      // no completed sessions — exercises the em-dash path unless a test
+      // overrides it.
+      aggregate={undefined}
       onOpen={jest.fn()}
       onRename={jest.fn()}
       onDuplicate={jest.fn()}
@@ -202,6 +206,7 @@ describe('SegmentListItem inline rename [Story 4.5, FR40, UX-DR25]', () => {
     await view.rerender(
       <SegmentListItem
         segment={{ ...segment, name: 'New name' }}
+        aggregate={undefined}
         onOpen={jest.fn()}
         onRename={jest.fn()}
         onDuplicate={jest.fn()}
@@ -317,5 +322,70 @@ describe('SegmentListItem inline rename [Story 4.5, FR40, UX-DR25]', () => {
 
     expect(onInlineRename).toHaveBeenCalledTimes(1);
     expect(view.queryByTestId('segment-row-inline-input-segment-1')).toBeNull();
+  });
+});
+
+describe('SegmentListItem row summary data [Story 4.6]', () => {
+  it('shows creation date, last-practice date, and Solidification % (AC #1)', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    expect(view.getByText('Last practice: 10 Sep 2026 · 42.3%')).toBeTruthy();
+    expect(view.getByText('Created 31 Aug 2026')).toBeTruthy();
+  });
+
+  it('shows an em dash, never 0.0%, for a segment with no completed sessions (AC #2)', async () => {
+    const nullAggregate = await renderRow({ aggregate: { lastPracticed: null, solidification: null } });
+    expect(nullAggregate.getByText('Last practice: — · —')).toBeTruthy();
+    expect(nullAggregate.queryByText(/0\.0%/)).toBeNull();
+
+    const undefinedAggregate = await renderRow({ aggregate: undefined });
+    expect(undefinedAggregate.getByText('Last practice: — · —')).toBeTruthy();
+  });
+
+  it('combines name, last-practice date, Solidification %, and creation date into one row accessibility label, and does not label the summary lines separately (AC #4)', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBe(
+      'Bar 24 arpeggio, last practice 10 Sep 2026, solidification 42.3%, created 31 Aug 2026',
+    );
+    expect(view.queryByLabelText('Last practice: 10 Sep 2026 · 42.3%')).toBeNull();
+    expect(view.queryByLabelText('Created 31 Aug 2026')).toBeNull();
+  });
+
+  it('reads "never" and "no data" in the accessibility label for a segment with no history, not a bare em dash (AC #4)', async () => {
+    const view = await renderRow({ aggregate: undefined });
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBe(
+      'Bar 24 arpeggio, last practice never, solidification no data, created 31 Aug 2026',
+    );
+  });
+
+  it('rounds Solidification % to one decimal, reserving 100.0%/0.0% for the true boundary', async () => {
+    const near100 = await renderRow({ aggregate: { lastPracticed: null, solidification: 99.97 } });
+    expect(near100.getByText(/99\.9%/)).toBeTruthy();
+
+    const near0 = await renderRow({ aggregate: { lastPracticed: null, solidification: 0.02 } });
+    expect(near0.getByText(/0\.1%/)).toBeTruthy();
+
+    const exact100 = await renderRow({ aggregate: { lastPracticed: null, solidification: 100 } });
+    expect(exact100.getByText(/100\.0%/)).toBeTruthy();
+
+    const exact0 = await renderRow({ aggregate: { lastPracticed: null, solidification: 0 } });
+    expect(exact0.getByText(/0\.0%/)).toBeTruthy();
+  });
+
+  it('does not clear the row accessibilityLabel while editing — the field label takes over instead', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    await fireEvent(view.getByTestId('segment-row-segment-1'), 'longPress');
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBeUndefined();
+    expect(view.getByTestId('segment-row-inline-input-segment-1').props.accessibilityLabel).toBe('Segment name');
   });
 });

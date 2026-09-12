@@ -383,16 +383,17 @@ describe('HomeScreen sort control [Story 4.3]', () => {
     ]);
   });
 
-  // [Review][Patch] found via code review 2026-09-08: the previous version
-  // of this test asserted "order is unchanged," but order cannot change
-  // under createdAt sort on a history write regardless of whether the
-  // conditional-subscription gate (Task 6) works — it would pass even with
-  // the gate deleted entirely (mutation-verified). A spy on
-  // buildSortAggregates is a real regression guard: that function is only
-  // ever called when the active sort key needs history data (Task 6's
-  // gate), so a history write must not trigger a second call while sorted
-  // by name/createdAt.
-  it('does not recompute sort aggregates when sorted by name/createdAt and a history entry is written (R9 regression guard)', async () => {
+  // Story 4.6 (FR41) supersedes this test's original R9 guarantee. Story
+  // 4.3's code review (2026-09-08) established that buildSortAggregates
+  // must NOT run when sorted by name/createdAt on a history write, since
+  // nothing outside the sort consulted its output for those two keys.
+  // FR41 changes that premise: every row now displays last-practiced
+  // date/Solidification % regardless of the active sort key, so the
+  // aggregates are needed on every history write, always — the opposite
+  // of what this test originally asserted. Rewritten rather than deleted:
+  // it now guards the new contract (recomputed exactly once per relevant
+  // render, not skipped, and not double-invoked).
+  it('recomputes sort aggregates on a history write even when sorted by name/createdAt, for row summary data (FR41; supersedes Story 4.3\'s R9 guard)', async () => {
     const buildSpy = jest.spyOn(segmentsLib, 'buildSortAggregates');
     const first = createSegment('Alpha');
     createSegment('Beta');
@@ -409,8 +410,53 @@ describe('HomeScreen sort control [Story 4.3]', () => {
       });
     });
 
-    expect(buildSpy).not.toHaveBeenCalled();
+    expect(buildSpy).toHaveBeenCalledTimes(1);
     buildSpy.mockRestore();
+  });
+
+  // Story 4.6 (FR41), Task 0 regression guard: the row's last-practiced
+  // date/Solidification % must render correctly under the default v1.0
+  // sort (createdAt), not only when explicitly sorted by lastPracticed or
+  // solidification — the bug this guards against would leave `aggregates`
+  // an empty Map for any other sort key.
+  it('shows a segment\'s Solidification % and last-practice date in the row when sorted by createdAt (FR41 regression guard)', async () => {
+    const segment = createSegment('Bar 24');
+    writeHistoryEntry(segment.id, {
+      date: '2026-09-10T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 1,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-09-10T11:00:00.000Z',
+    });
+    const view = await render(<HomeScreen />);
+
+    // Default sort is createdAt/asc (Story 4.3) — not lastPracticed or
+    // solidification, which is exactly the case the pre-fix code left
+    // unpopulated.
+    expect(view.getByText(/Last practice: 10 Sep 2026/)).toBeTruthy();
+    expect(view.getByText(/80\.0%/)).toBeTruthy();
+  });
+
+  // Story 4.6 (FR41), Task 0 regression guard: the row must update live
+  // when a history entry is written, even sorted by name/createdAt — this
+  // is the live-update half of the same bug Task 0 fixes.
+  it('updates a segment\'s row summary data live when a history entry is written, sorted by createdAt (FR41 regression guard)', async () => {
+    const segment = createSegment('Bar 24');
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByText(/Last practice: — · —/)).toBeTruthy();
+
+    await act(async () => {
+      writeHistoryEntry(segment.id, {
+        date: '2026-09-10T12:00:00.000Z',
+        finalTarget: 5,
+        totalMistakes: 0,
+        totalAttempts: 5,
+        sessionStartTimestamp: '2026-09-10T11:00:00.000Z',
+      });
+    });
+
+    expect(view.getByText(/Last practice: 10 Sep 2026 · 100\.0%/)).toBeTruthy();
   });
 
   it('persists the selected sort option and direction across a relaunch (AC #6)', async () => {

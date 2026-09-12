@@ -29,7 +29,8 @@ const DuplicateNoticeMs = 4000;
 // Story 5.1: gear icon to Settings (FR35) — unconditional, above the
 // segments.length === 0 ternary, since Settings has no other entry point.
 export default function HomeScreen() {
-  const { segments, deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption } = useSegments();
+  const { segments, aggregates, deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption } =
+    useSegments();
   const { session, endSession } = useActiveSession();
   // Story 4.1 (FR31): live lookup, not session.segmentName's frozen
   // snapshot — see architecture.md's Rename Propagation table. The `??`
@@ -210,6 +211,7 @@ export default function HomeScreen() {
               renderItem={({ item }) => (
                 <SegmentListItem
                   segment={item}
+                  aggregate={aggregates.get(item.id)}
                   onOpen={() => router.push(`/segment/${item.id}`)}
                   onRename={() => router.push(`/segment/${item.id}/rename`)}
                   onInlineRename={(name) => handleInlineRename(item.id, name)}

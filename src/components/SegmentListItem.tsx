@@ -5,11 +5,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { MaxNameLength, normalizeSegmentName } from '@/lib/segments';
+import { MaxNameLength, normalizeSegmentName, type SortAggregate } from '@/lib/segments';
 import type { Segment } from '@/lib/types';
 
 type SegmentListItemProps = {
   segment: Segment;
+  // Story 4.6 (FR41): undefined is a real, valid case (a segment absent
+  // from useSegments()'s aggregates map) and must render identically to
+  // "no history" — never crash or show undefined/NaN.
+  aggregate: SortAggregate | undefined;
   onOpen: () => void;
   onRename: () => void;
   onDuplicate: () => void;
@@ -23,13 +27,48 @@ type SegmentListItemProps = {
   onInlineRename: (name: string) => boolean;
 };
 
+// Story 4.6 (FR41): row-display formatting only — not a shared lib/
+// concern, same precedent as segment/[id].tsx's local formatSolidification
+// (Story 4.4). Manual month table, not Intl.DateTimeFormat: the PRD/UX spec
+// pin an exact literal "dd Mmm yyyy" (3-letter month, e.g. "Sep") format
+// that must not vary by device locale or ICU data — confirmed by testing
+// that Intl.DateTimeFormat('en-GB', { month: 'short' }) renders "Sept" for
+// September on this project's ICU data, not the 3-letter form the FR
+// specifies. Distinct from HistoryEntryRow.tsx's toLocaleDateString(),
+// which is intentionally locale-dependent for a different display.
+const MonthAbbreviations = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+function formatRowDate(iso: string | null): string {
+  if (iso === null) return '—';
+  const date = new Date(iso);
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${day} ${MonthAbbreviations[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+// Genuinely different from Story 4.4's formatSolidification (whole-number,
+// segment/[id].tsx): FR41 requires one decimal place. Mirrors that
+// function's reserve-exact-boundary principle scaled to one decimal —
+// "100.0%"/"0.0%" only for the true mathematical boundary, otherwise
+// clamped to [0.1, 99.9] — so a rounding artifact never claims a false
+// "fully solidified" or "zero correct" read the underlying data doesn't
+// support.
+function formatRowSolidification(pct: number | null): string {
+  if (pct === null) return '—';
+  if (pct >= 100) return '100.0%';
+  if (pct <= 0) return '0.0%';
+  const rounded = Math.round(pct * 10) / 10;
+  return `${Math.min(99.9, Math.max(0.1, rounded)).toFixed(1)}%`;
+}
+
 // Row in the segment list (FR6). The UX spec allows swipe-actions or a menu
 // for delete; a menu is used because it is reachable by screen readers and
 // keyboard/switch control, which a swipe gesture is not (NFR6).
 // Story 4.5 (FR40, UX-DR25): the name label also accepts a 1-second
 // press-and-hold to enter inline rename mode — a second entry point to the
 // same renameSegment lib function, no new lib/ code.
-export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDelete, onInlineRename }: SegmentListItemProps) {
+export function SegmentListItem({ segment, aggregate, onOpen, onRename, onDuplicate, onDelete, onInlineRename }: SegmentListItemProps) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -91,6 +130,16 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
     setEditError(null);
   };
 
+  // Story 4.6 (FR41): computed once per render, read by both the static
+  // JSX below and the combined accessibilityLabel — one source, no risk of
+  // the label and the visible text drifting apart.
+  const lastPracticeLabel = formatRowDate(aggregate?.lastPracticed ?? null);
+  const solidificationLabel = formatRowSolidification(aggregate?.solidification ?? null);
+  const createdLabel = formatRowDate(segment.createdAt);
+  const rowAccessibilityLabel = `${segment.name}, last practice ${
+    lastPracticeLabel === '—' ? 'never' : lastPracticeLabel
+  }, solidification ${solidificationLabel === '—' ? 'no data' : solidificationLabel}, created ${createdLabel}`;
+
   return (
     <ThemedView type="backgroundElement" style={styles.row}>
       <Pressable
@@ -108,6 +157,11 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
         // role no longer matches what it contains.
         accessibilityRole={isEditing ? undefined : 'button'}
         accessibilityHint={isEditing ? undefined : 'Press and hold to rename'}
+        // Story 4.6 (FR41, AC #4): one combined row-level label — name,
+        // last-practice date, Solidification %, creation date, in that
+        // order — read while editing the field's own "Segment name" label
+        // (Story 4.5) is what should announce, not the whole row.
+        accessibilityLabel={isEditing ? undefined : rowAccessibilityLabel}
       >
         {isEditing ? (
           <>
@@ -140,7 +194,20 @@ export function SegmentListItem({ segment, onOpen, onRename, onDuplicate, onDele
             )}
           </>
         ) : (
-          <ThemedText numberOfLines={1}>{segment.name}</ThemedText>
+          // Story 4.6 (FR41): three lines — name, then "Last practice: {date}
+          // · {Solidification %}", then "Created {date}". Not individually
+          // focusable (AC #4) — plain ThemedText carries no accessibility
+          // role by default, so no suppression is needed beyond simply not
+          // adding accessibilityLabel to these two lines.
+          <View>
+            <ThemedText numberOfLines={1}>{segment.name}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {`Last practice: ${lastPracticeLabel} · ${solidificationLabel}`}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {`Created ${createdLabel}`}
+            </ThemedText>
+          </View>
         )}
       </Pressable>
       <Pressable
