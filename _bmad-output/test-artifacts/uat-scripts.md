@@ -441,7 +441,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** List and detail heading show the new name immediately. The active-session streak readout, the completion summary (finish that session next), and the resume/discard prompt (trigger it per UAT-18) all also show the new name — the specific cross-file behavior `test-design-epic-4-5.md` flags as risk R8.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: 2026-09-12
 
 ### UAT-33: Rename collision and self-rename
 
@@ -453,7 +453,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 2 produces a disambiguated name ("Bar 24 (2)"), never an error. Step 3 succeeds outright — a segment's own name in a different case is not treated as a collision with itself.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: 2026-09-12
 
 ### UAT-34: Duplicate a segment
 
@@ -463,7 +463,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** A new segment appears with a disambiguated name, today's creation date, and an empty history log — the original segment's history is untouched. A snackbar confirms "Duplicated as '{name}'".
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: 2026-09-12
 
 ### UAT-35: Sort the segment list
 
@@ -476,7 +476,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Each option sorts correctly per its stated default direction; re-tapping the active option flips direction. The list re-orders live after step 3 with no manual refresh. After relaunch, the same sort option and direction are still applied.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: 2026-09-12
 
 ### UAT-36: View Solidification %
 
@@ -486,7 +486,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** The practiced segment shows "Solidification: {percent}%" between the heading and the entry list. The brand-new segment shows "Solidification: —", never "0%".
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: 2026-09-12
 
 ### UAT-37: Inline rename by press-and-hold
 
@@ -501,7 +501,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 1 turns the name into an editable field in place with no layout jump. Step 2 saves and returns to static text. Step 3 discards the edit, reverting to the original name. Step 4 is rejected with an inline error, field stays editable. Step 5 still navigates to the segment's detail screen as before. Step 6 behaves identically to steps 1–2 at the detail heading site.
 
-- [ ] Pass — Notes: ___________________________
+- [x] Pass — Notes: 2026-09-12
 
 ## 7. Configurable Overlearning Target (Epic 5)
 
@@ -516,7 +516,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Settings screen shows the stepper, worked example, and floor note. The buttons visibly disable at 50%/300%. The new session's target streak reflects the changed percentage, not the old one.
 
-- [ ] Pass — Notes: ___________________________
+- [ ] Pass — **Blocked (2026-09-12):** no navigation from an active session screen to Settings — `src/app/session/[id].tsx` exposes only Correct/Incorrect/Restart, no back/Home affordance. Gear icon exists only on `src/app/index.tsx`. Root cause tracked once under UAT-39.
 
 ### UAT-39: Change the target mid-session — display update and outright completion
 
@@ -531,7 +531,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 3 — the target streak reflects the new percentage immediately, no restart or re-navigation trick required. Step 5 — the session **completes outright from the settings change alone**: the app moves to the Completion screen (or, if you backed out to Home first, Home redirects there) with no Correct/Incorrect tap and no confirmation step, the same haptic/announcement as a tap-driven completion fires, and "Target reached: N" shows the streak you actually achieved (not the lower recalculated target). Step 6 — Restart is locked out with no tap having been made (FR22), same as any other completed session.
 
-- [ ] Pass — Notes: ___________________________
+- [ ] Pass — **Blocked (2026-09-12):** step 2 ("navigate to Settings" without ending the session) has no UI path — `src/app/session/[id].tsx` has no way back to Home short of the OS hardware/gesture back button, which is untested and not a designed affordance. FR37/FR39 assume this navigation exists; neither the PRD nor `ux-design-specification.md` specifies how a user reaches Settings mid-session. Filed as a spec/code divergence — see chat response for halt.
 
 ### UAT-40: In-progress-session notice
 
@@ -544,7 +544,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 1 shows no notice. Step 2 shows a standing notice naming the segment, worded as a warning that the change may complete the session. Step 3 leaves the same single notice in place the whole time — no per-tap popup or dialog interrupts the stepper. Step 4 — the notice disappears the instant the session completes (it is no longer "in progress"), coinciding with the same redirect-to-Completion behavior UAT-39 describes.
 
-- [ ] Pass — Notes: ___________________________
+- [ ] Pass — **Blocked (2026-09-12):** same missing mid-session → Settings navigation as UAT-39/UAT-38.
 
 ### UAT-41: Settings change completes an *interrupted* session, bypassing Resume/Discard
 
@@ -557,7 +557,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 4 — Home shows the session's **completion summary directly**, not the Resume/Discard prompt — the settings change completed the session while it sat interrupted, and FR24 specifies this bypasses the prompt entirely (matching how a normally-completed-then-interrupted session already behaves). This is the one v1.1 scenario most likely to surprise a user with no tap of their own; note anything that reads as confusing, not just anything that's outright broken.
 
-- [ ] Pass — Notes: ___________________________
+- [ ] Pass — **Blocked (2026-09-12):** step 3 requires navigating to Settings while the session sits interrupted rather than acting on the Resume/Discard prompt; same missing navigation affordance as UAT-38/39/40.
 
 ## v1.1 Summary
 
@@ -569,4 +569,4 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Minimum bar before calling v1.1 release-ready:** all 7 P0 scripts pass. Run in this order of priority: UAT-32 first (direct on-device confirmation of R8, the one HIGH risk in `test-design-epic-4-5.md`), then UAT-39/UAT-41 (the settings-driven completion behavior — the single most consequential addition since this section was first written, capable of ending a session or bypassing Resume/Discard with no tap at all).
 
-**Not yet run.** Execute this section against the next preview build that includes Epic 4/5 code, following the same pass/fail/note discipline as the v1.0 section above.
+**Result — 2026-09-12:** UAT-32 through UAT-37 pass. UAT-38, UAT-39, UAT-40, UAT-41 (all P0/P1 Settings-navigation scripts) are **blocked, not failed** — no build defect was exercised because no UI path exists from an active/interrupted session to the Settings screen. This blocks the v1.1 release bar (all 7 P0 scripts must pass) until the navigation gap is resolved and the four scripts re-run.
