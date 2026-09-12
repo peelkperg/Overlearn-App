@@ -1,6 +1,6 @@
 # Story 4.7: Flip Sort Direction via Toggle
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validate with validate-create-story before dev-story if desired. -->
 
@@ -24,36 +24,22 @@ so that I don't have to re-open the sort menu and re-tap the already-active opti
 
 ## Tasks / Subtasks
 
-- [ ] Task 0: Resolve a wording gap between architecture.md's snippet and this story's AC #4 before writing any code
-  - [ ] `architecture.md`'s FR42 section shows `accessibilityLabel={\`Sort direction, currently ${directionLabel(sortKey, sortDirection)}\`}` — the *current* direction only, no mention of what a tap would produce.
-  - [ ] AC #4 (epics.md, more specific and acceptance-authoritative) requires the announcement to also state **the direction a tap would produce**: `"Sort direction, currently most recent first, double-tap to switch to oldest first"`.
-  - [ ] Resolution (this story's implementation choice, not a user-facing ambiguity — architecture.md's snippet was an illustrative sketch, not a literal spec): split across `accessibilityLabel` (current state) and `accessibilityHint` (what a tap does) — this matches the existing codebase convention (`SegmentListItem.tsx`'s `accessibilityHint="Press and hold to rename"` names the *action*, not the state) and lets VoiceOver/TalkBack read both in sequence, producing the exact announcement AC #4 describes without concatenating everything into one label string. Do not follow architecture.md's snippet literally — it undershoots the AC.
+- [x] Task 0: Resolve a wording gap between architecture.md's snippet and this story's AC #4 before writing any code
+  - [x] Confirmed the gap as described; resolved by splitting across `accessibilityLabel`/`accessibilityHint`, per the plan.
 
-- [ ] Task 1: Add the direction-toggle button to `SortControl.tsx` (AC #1, #2, #3)
-  - [ ] Current return statement is a bare `<View>` containing the trigger `Pressable` and the `Modal` as siblings (`styles.trigger` has no `flexDirection` set on its parent — the outer `<View>` defaults to column). Wrap the trigger `Pressable` and the new toggle `Pressable` in a new inner `<View style={styles.row}>` (`flexDirection: 'row', alignItems: 'center'`), keeping the `Modal` as a sibling of that row `View`, still a direct child of the outer `<View>` — `Modal` renders via a native overlay and is unaffected by its JSX parent's flex layout, so this restructuring only changes what's visually inline with the trigger.
-  - [ ] Add the new `Pressable`, immediately after the trigger `Pressable`, inside the new row `View`:
-    ```tsx
-    <Pressable
-      testID="segment-sort-direction-toggle"
-      style={styles.directionToggle}
-      onPress={() => onChange(sortKey, sortDirection === 'asc' ? 'desc' : 'asc')}
-      accessibilityRole="button"
-      accessibilityLabel={`Sort direction, currently ${directionLabel(sortKey, sortDirection)}`}
-      accessibilityHint={`Double tap to switch to ${directionLabel(sortKey, sortDirection === 'asc' ? 'desc' : 'asc')}`}
-    >
-      <ThemedText type="small">{sortDirection === 'asc' ? '↑' : '↓'}</ThemedText>
-    </Pressable>
-    ```
-  - [ ] `styles.directionToggle`: `minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center'` — matches this file's existing `minHeight: 44` convention on `styles.trigger` and the 44×44 minimum target every other row control in this codebase already uses (`SegmentListItem.tsx`'s `menuButton`, `SettingsButton`).
-  - [ ] `onPress` calls the same `onChange` prop the menu's `handleSelect` already calls for the re-tap-active-option case — no new prop on `SortControlProps`, no change to the parent (`app/index.tsx`'s `<SortControl sortKey={sortKey} sortDirection={sortDirection} onChange={handleSortChange} />` call site is unchanged, confirmed against architecture.md).
-  - [ ] `handleSelect`'s existing re-tap-active-option branch (`if (key === sortKey) onChange(key, sortDirection === 'asc' ? 'desc' : 'asc')`) is untouched — AC #3 requires it to keep working exactly as before.
+- [x] Task 1: Add the direction-toggle button to `SortControl.tsx` (AC #1, #2, #3)
+  - [x] Wrapped the trigger `Pressable` and new toggle `Pressable` in a new `<View style={styles.row}>` (`flexDirection: 'row', alignItems: 'center'`); `Modal` stays a sibling of that row, unaffected.
+  - [x] Added the toggle `Pressable` exactly as planned, computing `flippedDirection` once and reusing it for both `onPress` and the `accessibilityHint`.
+  - [x] `styles.directionToggle` added (`minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center'`).
+  - [x] `onPress` calls the same `onChange` prop — no new prop on `SortControlProps`, `app/index.tsx` untouched (confirmed by full test suite passing with no changes there).
+  - [x] `handleSelect`'s re-tap-active-option branch untouched — confirmed by AC #3's regression test passing unmodified.
 
-- [ ] Task 2: Tests in `src/components/SortControl.test.tsx` (AC #1, #2, #3, #4)
-  - [ ] **AC #1 — button present:** render with any `sortKey`/`sortDirection` → `getByTestId('segment-sort-direction-toggle')` exists, showing `'↑'` for `sortDirection: 'asc'` and `'↓'` for `'desc'` (assert via the rendered `ThemedText` content, or the accessibilityLabel's direction phrase).
-  - [ ] **AC #2 — tap flips direction:** render with `sortKey="name" sortDirection="asc"`, press `segment-sort-direction-toggle` → `onChange` called with `('name', 'desc')`. Repeat for a non-`asc`/`desc`-symmetric key to confirm it isn't hardcoded to `'name'` (e.g. `sortKey="lastPracticed" sortDirection="desc"` → `onChange('lastPracticed', 'asc')`).
-  - [ ] **AC #3 — existing menu gesture unaffected:** re-run (or confirm unchanged) the existing `'tapping the active option calls onChange with the flipped direction'` test — it must still pass unmodified, proving the toggle button is additive.
-  - [ ] **AC #4 — announcement:** for `sortKey="lastPracticed" sortDirection="desc"`, assert `getByTestId('segment-sort-direction-toggle').props.accessibilityLabel` is `'Sort direction, currently most recent first'` and `.props.accessibilityHint` is `'Double tap to switch to oldest first'`. Repeat for at least one other key (e.g. `name`) to confirm `directionLabel()` is genuinely reused, not a second hardcoded mapping.
-  - [ ] Regression: full existing suite in this file re-run and passing — the row-layout restructuring (Task 1) must not change the trigger `Pressable`'s existing `testID`, props, or menu behavior.
+- [x] Task 2: Tests in `src/components/SortControl.test.tsx` (AC #1, #2, #3, #4)
+  - [x] AC #1: up/down arrow shown per direction.
+  - [x] AC #2: flips direction for `'name'` and, separately, for `'lastPracticed'` (not hardcoded to one key).
+  - [x] AC #3: existing re-tap-active-option test re-run, passing unmodified.
+  - [x] AC #4: `accessibilityLabel`/`accessibilityHint` asserted for two different keys, confirming `directionLabel()` reuse rather than a second mapping.
+  - [x] Full existing suite in this file re-run: 14/14 passing, no regressions.
 
 ## Dev Notes
 
@@ -101,8 +87,25 @@ so that I don't have to re-open the sort menu and re-tap the already-active opti
 
 ### Agent Model Used
 
+claude-sonnet-5
+
 ### Debug Log References
+
+None — implementation converged on the first pass; Task 0's wording-gap resolution was decided during story creation, not discovered mid-implementation.
 
 ### Completion Notes List
 
+- All 4 ACs implemented and covered by tests. New tests written first and confirmed failing (5 of 6 failed pre-implementation; AC #3's regression test passed immediately since it needed no new code) before implementing, per red-green-refactor.
+- 388/388 tests passing (was 382; 6 net new tests this story added — no existing test removed or rewritten). `tsc --noEmit` clean. Lint: same pre-existing 1 error/1 warning baseline, in files this story never touched.
+- No new prop on `SortControlProps`, no change to `app/index.tsx`'s `<SortControl>` call site, no new `lib/` function — `directionLabel()` reused at its third call site (trigger label, menu items, now the toggle), exactly as architecture.md specified.
+- Task 0's wording-gap resolution (split `accessibilityLabel`/`accessibilityHint` rather than architecture.md's single-string snippet) implemented as decided during story creation — no further ambiguity encountered.
+
 ### File List
+
+**Modified:**
+- `src/components/SortControl.tsx` (new toggle `Pressable`, `flippedDirection` computed once and reused for `onPress`/`accessibilityHint`, `styles.row`/`styles.directionToggle`, restructured return JSX to wrap trigger+toggle in a row `View`)
+- `src/components/SortControl.test.tsx` (new `[Story 4.7]` describe block, 6 tests covering AC #1–#4)
+
+### Change Log
+
+- 2026-09-12: Implemented Story 4.7 in full (Tasks 0–2) — segment list sort control gains a dedicated `↑`/`↓` direction-toggle button next to the `Sort: X ▾` trigger (FR42). No new prop surface, no new `lib/` function, no new dependencies; Story 4.3's existing re-tap-active-menu-option gesture is untouched and still passes its original test. 388/388 passing, `tsc` clean, lint unchanged from baseline. Status: ready-for-dev → review.

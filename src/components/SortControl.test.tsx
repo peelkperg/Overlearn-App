@@ -78,3 +78,56 @@ describe('SortControl [Story 4.3]', () => {
     );
   });
 });
+
+describe('SortControl direction toggle [Story 4.7]', () => {
+  // AC #1: button present, shows current direction.
+  it('shows an up arrow for asc and a down arrow for desc', async () => {
+    const asc = await render(<SortControl sortKey="name" sortDirection="asc" onChange={jest.fn()} />);
+    expect(asc.getByTestId('segment-sort-direction-toggle')).toHaveTextContent('↑');
+    await asc.unmount();
+
+    const desc = await render(<SortControl sortKey="name" sortDirection="desc" onChange={jest.fn()} />);
+    expect(desc.getByTestId('segment-sort-direction-toggle')).toHaveTextContent('↓');
+  });
+
+  // AC #2: tapping flips direction for the active key, not hardcoded to one key.
+  it('tapping the toggle flips direction for the currently active sort key', async () => {
+    const onChange = jest.fn();
+    const view = await render(<SortControl sortKey="name" sortDirection="asc" onChange={onChange} />);
+    await fireEvent.press(view.getByTestId('segment-sort-direction-toggle'));
+    expect(onChange).toHaveBeenCalledWith('name', 'desc');
+  });
+
+  it('tapping the toggle flips direction for a non-name sort key too', async () => {
+    const onChange = jest.fn();
+    const view = await render(<SortControl sortKey="lastPracticed" sortDirection="desc" onChange={onChange} />);
+    await fireEvent.press(view.getByTestId('segment-sort-direction-toggle'));
+    expect(onChange).toHaveBeenCalledWith('lastPracticed', 'asc');
+  });
+
+  // AC #3: the toggle button is additive — Story 4.3's existing
+  // re-tap-active-menu-option gesture must still work unchanged.
+  it('does not interfere with the existing re-tap-active-option menu gesture (AC #3)', async () => {
+    const onChange = jest.fn();
+    const view = await render(<SortControl sortKey="name" sortDirection="asc" onChange={onChange} />);
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name'));
+    expect(onChange).toHaveBeenCalledWith('name', 'desc');
+  });
+
+  // AC #4: announces both the current direction and what a tap would
+  // produce, reusing directionLabel() — not a second hardcoded mapping.
+  it('accessibilityLabel/Hint name the current direction and the direction a tap would produce', async () => {
+    const view = await render(<SortControl sortKey="lastPracticed" sortDirection="desc" onChange={jest.fn()} />);
+    const toggle = view.getByTestId('segment-sort-direction-toggle');
+    expect(toggle.props.accessibilityLabel).toBe('Sort direction, currently most recent first');
+    expect(toggle.props.accessibilityHint).toBe('Double tap to switch to oldest first');
+  });
+
+  it('accessibilityLabel/Hint reuse directionLabel() for a different key too (name)', async () => {
+    const view = await render(<SortControl sortKey="name" sortDirection="asc" onChange={jest.fn()} />);
+    const toggle = view.getByTestId('segment-sort-direction-toggle');
+    expect(toggle.props.accessibilityLabel).toBe('Sort direction, currently A to Z');
+    expect(toggle.props.accessibilityHint).toBe('Double tap to switch to Z to A');
+  });
+});

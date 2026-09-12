@@ -59,17 +59,40 @@ export function SortControl({ sortKey, sortDirection, onChange }: SortControlPro
 
   const accessibilityLabel = `Sort by ${KeyLabels[sortKey]}, ${directionLabel(sortKey, sortDirection)}`;
 
+  // Story 4.7 (FR42): flips direction for the currently active key —
+  // the same computation handleSelect's re-tap-active-option branch
+  // already performs, so both entry points can never drift apart.
+  const flippedDirection: SortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+
   return (
     <View>
-      <Pressable
-        testID="segment-sort-control"
-        style={styles.trigger}
-        onPress={() => setMenuVisible(true)}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-      >
-        <ThemedText type="small">Sort: {KeyLabels[sortKey]} ▾</ThemedText>
-      </Pressable>
+      <View style={styles.row}>
+        <Pressable
+          testID="segment-sort-control"
+          style={styles.trigger}
+          onPress={() => setMenuVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+        >
+          <ThemedText type="small">Sort: {KeyLabels[sortKey]} ▾</ThemedText>
+        </Pressable>
+        <Pressable
+          testID="segment-sort-direction-toggle"
+          style={styles.directionToggle}
+          onPress={() => onChange(sortKey, flippedDirection)}
+          accessibilityRole="button"
+          // AC #4: names both the current direction and what a tap would
+          // produce. Split across label (state) and hint (action) rather
+          // than one concatenated string — same convention as
+          // SegmentListItem.tsx's accessibilityHint="Press and hold to
+          // rename" naming an action separately from a label naming the
+          // current thing.
+          accessibilityLabel={`Sort direction, currently ${directionLabel(sortKey, sortDirection)}`}
+          accessibilityHint={`Double tap to switch to ${directionLabel(sortKey, flippedDirection)}`}
+        >
+          <ThemedText type="small">{sortDirection === 'asc' ? '↑' : '↓'}</ThemedText>
+        </Pressable>
+      </View>
 
       <Modal
         visible={menuVisible}
@@ -109,10 +132,23 @@ export function SortControl({ sortKey, sortDirection, onChange }: SortControlPro
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   trigger: {
     minHeight: 44,
     justifyContent: 'center',
     paddingVertical: Spacing.two,
+  },
+  // Story 4.7 (FR42): matches the 44x44 minimum-target convention every
+  // other row control in this codebase already uses (SegmentListItem's
+  // menuButton, SettingsButton).
+  directionToggle: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backdrop: {
     flex: 1,
