@@ -783,15 +783,19 @@ type SegmentListItemProps = {
 // Inside SortControl's return, alongside the existing trigger Pressable:
 <Pressable
   testID="segment-sort-direction-toggle"
-  onPress={() => onChange(sortKey, sortDirection === 'asc' ? 'desc' : 'asc')}
+  onPress={() => onChange(sortKey, flip(sortDirection))}
   accessibilityRole="button"
-  accessibilityLabel={`Sort direction, currently ${directionLabel(sortKey, sortDirection)}`}
+  // Decision (2026-09-12 code review): a single accessibilityLabel naming
+  // the key, current direction, and resulting direction — no
+  // accessibilityHint (a hint is dropped when "Speak Hints" is off on iOS,
+  // and merged into contentDescription on Android).
+  accessibilityLabel={`Sort by ${KeyLabels[sortKey]}, currently ${directionLabel(sortKey, sortDirection)}, switches to ${directionLabel(sortKey, flip(sortDirection))}`}
 >
-  <ThemedText type="small">{sortDirection === 'asc' ? '↑' : '↓'}</ThemedText>
+  <ThemedText type="small">{DirectionGlyph[sortDirection]}</ThemedText>
 </Pressable>
 ```
 
-Reuses the existing `directionLabel()` helper (already defined in `SortControl.tsx` for the menu's accessibility labels) rather than a second direction-to-prose mapping — one function, two call sites, same discipline as `calculateTargetStreak`. The menu's re-tap-active-option flip path (`handleSelect`) is unchanged and untouched; both paths call the same `onChange`, so no risk of the two diverging.
+Reuses the existing `directionLabel()` helper (already defined in `SortControl.tsx` for the menu's accessibility labels) rather than a second direction-to-prose mapping — one function, two call sites, same discipline as `calculateTargetStreak`. A `flip()` helper is the single formula for the asc/desc opposite, called by both the menu's re-tap-active-option branch (`handleSelect`) and the toggle's `onPress` — they cannot diverge because they call the same function, not because they happen to be independently identical.
 
 ## Project Structure Additions (v1.1.1)
 
@@ -823,7 +827,7 @@ src/
 **All AI Agents MUST additionally:**
 - Never reimplement `buildSortAggregates()`'s per-segment last-practiced/Solidification % computation for FR41's row display — call it once, via `useSegments()`'s exposed `aggregates`, same rule the v1.1 Enforcement Guidelines already state for `calculateTargetStreak`/`calculateSolidificationPercent`.
 - Route every mid-session Settings navigation through the shared `SettingsButton` component — a fourth inline gear-icon `Pressable` (beyond the three call sites this extension establishes) is exactly the drift `SettingsButton`'s extraction exists to prevent.
-- Reuse `SortControl.tsx`'s existing `directionLabel()` helper for the new toggle's accessibility label — never write a second direction-to-prose mapping.
+- Reuse `SortControl.tsx`'s existing `directionLabel()` helper for the toggle's and the trigger's accessibility labels — never write a second direction-to-prose mapping. The toggle's label is a single string naming the key, current direction, and resulting direction — no `accessibilityHint`.
 
 ## v1.1.1 Gap Analysis
 

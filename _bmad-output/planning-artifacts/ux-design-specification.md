@@ -752,7 +752,7 @@ The gear icon, being icon-only, carries `accessibilityLabel="Settings"` — the 
 
 **Two additions specific to FR41–FR43 (added 2026-09-12):**
 
-- **Sort direction toggle (FR42)** carries `accessibilityLabel` naming both the key and the resulting direction after the tap (e.g. "Sort direction, currently most recent first, double-tap to switch to oldest first") — never the bare `↑`/`↓` glyph alone, same rule as the sort control itself.
+- **Sort direction toggle (FR42)** carries a single `accessibilityLabel` naming the sort key, the current direction, and the direction the tap will produce (e.g. "Sort by Last practiced, currently most recent first, switches to oldest first") — no `accessibilityHint` (Resolved 2026-09-12: a hint is dropped when "Speak Hints" is off on iOS and merged into the Android `contentDescription`, so the "direction a tap would produce" clause must live in the label to be heard unconditionally). Never the bare `↑`/`↓` glyph alone, same rule as the sort control itself.
 - **Row summary data (FR41)** — the added lines are read as part of the row's existing accessibility label (segment name), appended in order: name, last-practice date, Solidification %, creation date. Not exposed as separate focusable elements — this matches how the row already reads as one unit for navigation to Segment Detail.
 
 ## Resolved Questions (2026-09-06)

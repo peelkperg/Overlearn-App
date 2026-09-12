@@ -315,6 +315,29 @@ describe('HomeScreen sort control [Story 4.3]', () => {
     ]);
   });
 
+  // [Review][Patch] Story 4.7 (FR42): no test at any level previously
+  // exercised the toggle through handleSortChange -> setSortOption ->
+  // re-render; SortControl.test.tsx asserts only that onChange fires.
+  it('re-orders the rendered rows when the direction toggle is tapped (Story 4.7, FR42)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name')); // name/asc
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Alpha',
+      'Zebra',
+    ]);
+
+    await fireEvent.press(view.getByTestId('segment-sort-direction-toggle'));
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Zebra',
+      'Alpha',
+    ]);
+  });
+
   it('flips the order when the already-active option is tapped again (AC #3)', async () => {
     // [Review][Patch] found via code review 2026-09-08: the original version
     // of this test only asserted the post-flip order, which happened to be
@@ -470,28 +493,29 @@ describe('HomeScreen sort control [Story 4.3]', () => {
     await view.unmount();
     const relaunched = await render(<HomeScreen />);
 
-    expect(relaunched.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Name, A to Z');
+    // Story 4.7 code review decision: the trigger's label no longer names
+    // direction (the toggle button owns that announcement now).
+    expect(relaunched.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Name');
     expect(relaunched.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
       'Alpha',
       'Zebra',
     ]);
   });
 
-  it('announces both the sort key and direction, and updates when they change (AC #8)', async () => {
+  // Story 4.7 code review decision: the trigger names only the sort key;
+  // the direction-toggle button (SortControl.test.tsx) now owns announcing
+  // direction, so this AC #8 coverage moves there.
+  it('announces the sort key, and updates when it changes (AC #8)', async () => {
     createSegment('Zebra');
     createSegment('Alpha');
     const view = await render(<HomeScreen />);
 
-    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe(
-      'Sort by Date created, oldest first',
-    );
+    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Date created');
 
     await fireEvent.press(view.getByTestId('segment-sort-control'));
     await fireEvent.press(view.getByTestId('segment-sort-option-lastPracticed'));
 
-    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe(
-      'Sort by Last practiced, most recent first',
-    );
+    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Last practiced');
   });
 
   // [Review][Patch] found via code review 2026-09-08: this test's own name

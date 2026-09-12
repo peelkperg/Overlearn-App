@@ -322,7 +322,7 @@ None added.
 
 UX-DR26: Settings gear icon, fixed top corner, 44×44 minimum target, added to Active Session (both in-progress and Completion states) and Segment Detail — same icon/placement/`accessibilityLabel="Settings"` treatment as the existing Home instance
 UX-DR27: Segment list row grows to three lines — name, "Last practice: {dd Mmm yyyy} · {Solidification %}", "Created {dd Mmm yyyy}"; secondary/small label type, not competing with the name for visual weight; em-dash convention for a never-practiced segment
-UX-DR28: Sort-direction toggle — a `↑`/`↓` icon button immediately right of the `Sort: X ▾` trigger, same row, 44×44 minimum target, showing current direction; the menu's re-tap-active-option flip path is kept, not replaced; accessibility label names the key and resulting direction, never the bare glyph
+UX-DR28: Sort-direction toggle — a `↑`/`↓` icon button immediately right of the `Sort: X ▾` trigger, same row, 44×44 minimum target, showing current direction; the menu's re-tap-active-option flip path is kept, not replaced; a single accessibility label names the key, current direction, and resulting direction, never the bare glyph — no accessibilityHint (Resolved 2026-09-12: a hint is dropped when iOS's "Speak Hints" is off and merged into Android's contentDescription)
 
 ### v1.1.1 FR Coverage Map
 
@@ -841,7 +841,7 @@ So that I don't have to re-open the sort menu and re-tap the already-active opti
 
 **Given** the direction toggle button
 **When** a screen reader reaches it
-**Then** it announces the sort key and the direction a tap would produce (e.g. "Sort direction, currently most recent first, double-tap to switch to oldest first"), reusing `SortControl.tsx`'s existing `directionLabel()` helper — never the bare glyph alone (FR42, UX-DR28)
+**Then** it announces the sort key, the current direction, and the direction a tap would produce, in a single accessibility label with no hint (e.g. "Sort by Last practiced, currently most recent first, switches to oldest first"), reusing `SortControl.tsx`'s existing `directionLabel()` helper — never the bare glyph alone (FR42, UX-DR28)
 
 ## Epic 5: Configurable Overlearning Target (v1.1, added 2026-09-06)
 
