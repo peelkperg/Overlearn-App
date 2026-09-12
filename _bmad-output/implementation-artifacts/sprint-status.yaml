@@ -1,0 +1,101 @@
+# generated: 2026-09-12
+# last_updated: 2026-09-12
+# project: Overlearn
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+#
+# GENERATION NOTE (2026-09-12, first-ever generation of this file):
+# ===================================================================
+# Epic 1-3 (v1.0, FR1-FR29) have no story files under implementation-artifacts/
+# — this project's early stories predate this workflow's adoption. Status was
+# NOT left at the mechanical "backlog" default: git tag v1.0.0 and the
+# shipped app confirm all of Epic 1-3 is implemented and released, so it is
+# recorded as 'done' here to reflect actual project state rather than
+# under-report it. Story 1.5 (Archive a Segment) is REMOVED per FR5's
+# removal (epics.md, prd.md) — excluded from this file entirely, not carried
+# as a phantom backlog/done entry.
+# Epic 4-5 (v1.1) status was read from each story file's own `Status:` field
+# rather than floored at 'ready-for-dev' by mere file existence, since the
+# real value was already recorded and more informative.
+# Epic 5's Story 5.2 is 'review', not 'done' — its story file's Status
+# field says review; not auto-advanced here.
+
+generated: '2026-09-12'
+last_updated: '2026-09-12'
+project: Overlearn
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: done
+  1-1-project-initialization: done
+  1-2-create-a-named-practice-segment: done
+  1-3-view-the-segment-list: done
+  1-4-select-a-segment-to-practice-or-review: done
+  1-6-delete-a-segment: done
+  epic-1-retrospective: optional
+
+  epic-2: done
+  2-1-start-a-practice-session-immediately: done
+  2-2-log-a-correct-repetition: done
+  2-3-log-an-incorrect-repetition-with-live-target-recalculation: done
+  2-4-restart-an-in-progress-session: done
+  2-5-automatic-session-completion: done
+  2-6-view-session-completion-summary: done
+  2-7-end-session-and-write-history: done
+  2-8-repeat-session-immediately: done
+  2-9-verify-interruption-survival-on-background-or-kill: done
+  2-10-resume-or-discard-an-interrupted-session-on-relaunch: done
+  epic-2-retrospective: optional
+
+  epic-3: done
+  3-1-view-completed-session-history-for-a-segment: done
+  epic-3-retrospective: optional
+
+  epic-4: in-progress
+  4-1-rename-a-segment: done
+  4-2-duplicate-a-segment: done
+  4-3-sort-the-segment-list: done
+  4-4-view-a-segments-solidification-percent: done
+  4-5-rename-a-segment-inline: done
+  4-6-view-segment-list-row-summary-data: backlog
+  4-7-flip-sort-direction-via-toggle: backlog
+  epic-4-retrospective: optional
+
+  epic-5: in-progress
+  5-1-configure-the-overlearning-target: done
+  5-2-apply-a-changed-target-to-an-in-progress-session: review
+  5-3-see-a-warning-before-changing-settings-mid-session: done
+  5-4-reach-settings-from-any-screen: backlog
+  epic-5-retrospective: optional
