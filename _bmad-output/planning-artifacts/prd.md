@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2, step-e-01-discovery-3, step-e-02-review-3, step-e-03-edit-3]
+stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2, step-e-01-discovery-3, step-e-02-review-3, step-e-03-edit-3, step-e-01-discovery-4, step-e-02-review-4, step-e-03-edit-4]
 validationReports:
   - _bmad-output/planning-artifacts/validation-report-2026-09-06.md
 releaseMode: phased
@@ -15,6 +15,21 @@ classification:
   projectContext: greenfield
 lastEdited: '2026-09-12'
 editHistory:
+  - date: '2026-09-12'
+    changes: >-
+      Added FR43: manual UAT of UAT-38 through UAT-41 (2026-09-12) found the
+      active-session screen (src/app/session/[id].tsx) has no navigation
+      control at all - no way to reach Settings or even Home while a session
+      is in progress or interrupted, only Correct/Incorrect/Restart. FR37
+      and FR39 both assume a user can "navigate to Settings" mid-session;
+      nothing in the PRD or ux-design-specification.md specified how. FR43
+      requires Settings be reachable from every screen, session state left
+      untouched by the navigation. Considered and rejected a narrower
+      "back-to-Home" affordance in favor of direct Settings access from any
+      screen, per user decision. ux-design-specification.md and
+      architecture.md still need the actual control design (placement,
+      icon) before implementation; this PRD edit specifies the requirement
+      only.
   - date: '2026-09-12'
     changes: >-
       Added FR41 and FR42 during v1.1 UAT: manual testing of UAT-32 through
@@ -363,6 +378,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR20: User can reset an in-progress session, returning all four session fields to their starting values per the Mechanic Specification
 - FR21: System requires user confirmation before executing a session reset
 - FR22: System stops accepting repetition input once session completion has triggered — reachable either by a Correct tap or, from v1.1, by the Settings-driven completion transition (FR37) with no tap at all
+- FR43: **(v1.1)** User can access the Settings screen from any screen in the app, including the active-session screen while a session is in progress or interrupted, via a consistently-placed control. Navigating to Settings this way does not end, reset, or otherwise mutate the session in progress — it remains exactly as left, resumable the same way FR25 already describes. This closes the gap FR37 and FR39 assume (a change applying live, or being warned about, requires actually being able to reach Settings mid-session), found unreachable during manual UAT of UAT-38–UAT-41 (2026-09-12): the shipped active-session screen exposed only Correct/Incorrect/Restart, with no path to Settings or Home at all. (added 2026-09-12)
 
 ### Session Interruption & Recovery
 
