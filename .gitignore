@@ -46,3 +46,7 @@ credentials.json
 
 # BMad personal overrides (team overrides in _bmad/custom/*.toml are committed)
 _bmad/custom/*.user.toml
+_bmad/config.user.toml
+
+# BMad installer-generated manifests (regenerated per-install, timestamped)
+_bmad/_config/
