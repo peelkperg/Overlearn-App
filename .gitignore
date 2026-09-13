@@ -50,3 +50,9 @@ _bmad/config.user.toml
 
 # BMad installer-generated manifests (regenerated per-install, timestamped)
 _bmad/_config/
+*.bak
+
+# Claude Code: skills are project-local BMAD content (committed); these two
+# files are per-machine/session state, not project config.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
