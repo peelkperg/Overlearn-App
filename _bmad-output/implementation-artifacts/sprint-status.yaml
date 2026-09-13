@@ -1,5 +1,5 @@
 # generated: 2026-09-12
-# last_updated: 2026-09-12
+# last_updated: 2026-09-13
 # project: Overlearn
 # project_key: NOKEY
 # tracking_system: file-system
@@ -50,10 +50,26 @@
 # Epic 5's Story 5.2 is 'done' — its story file's Status field was flipped
 # to 'done' 2026-09-12 once the last pending patch (the commit-time git
 # split) was resolved; see that file's Round 1 Patch section.
+#
+# REFRESH NOTE (2026-09-13, sprint_plan.py generate re-run):
+# ============================================================
+# Stories 4.4, 4.6, 4.7, 5.4 reappeared as new entries under slugs that
+# don't match their prior keys — epics.md's headings carry punctuation
+# (4.4: "Segment's") or a "(v1.1.1, added 2026-09-12)" suffix (4.6/4.7/5.4)
+# that the original keys lacked. Same stories, not renames in substance;
+# reconciled via `--set <new-key>=done` rather than editing epics.md.
+# Story 1.5 (REMOVED — Archive a Segment) reappeared as a new entry too,
+# since its heading still exists in epics.md for documentation purposes;
+# stripped back out per this file's own original generation note (line
+# 44-46 above) — it is not a trackable unit, not phantom-tracked.
+# epic-4 flipped 'in-progress' → 'done': all 7 of its stories are 'done'
+# and epic status is a manual transition (see WORKFLOW NOTES above), not
+# derived automatically by the script — this had gone unset since 4.6/4.7
+# shipped.
 
 generated: '2026-09-12'
-last_updated: '2026-09-12' # Story 5.2 moved to done (commit split resolved); epic-5 moved to done
-project: Overlearn
+last_updated: '09-13-2026 11:34' # Refresh: reconciled 4.4/4.6/4.7/5.4 slug drift, dropped phantom 1-5, epic-4 → done
+project: Overlearn-App
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
@@ -84,19 +100,19 @@ development_status:
   3-1-view-completed-session-history-for-a-segment: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-rename-a-segment: done
   4-2-duplicate-a-segment: done
   4-3-sort-the-segment-list: done
-  4-4-view-a-segments-solidification-percent: done
+  4-4-view-a-segment-s-solidification: done
   4-5-rename-a-segment-inline: done
-  4-6-view-segment-list-row-summary-data: done
-  4-7-flip-sort-direction-via-toggle: done
+  4-6-view-segment-list-row-summary-data-v1-1-1-added-2026-09-12: done
+  4-7-flip-sort-direction-via-toggle-v1-1-1-added-2026-09-12: done
   epic-4-retrospective: optional
 
   epic-5: done
   5-1-configure-the-overlearning-target: done
   5-2-apply-a-changed-target-to-an-in-progress-session: done
   5-3-see-a-warning-before-changing-settings-mid-session: done
-  5-4-reach-settings-from-any-screen: done
+  5-4-reach-settings-from-any-screen-v1-1-1-added-2026-09-12: done
   epic-5-retrospective: optional
