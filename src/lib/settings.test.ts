@@ -29,6 +29,28 @@ describe('lib/settings [Story 4.3]', () => {
     const backup = storage.getAllKeys().find((key) => key.startsWith('settings.general.corrupt.'));
     expect(backup).toBeDefined();
   });
+
+  // [Review][Patch] found via code review of a deferred item logged against
+  // Story 4.7 (2026-09-12): setSortOption used to spread readSettings()'s
+  // DEFAULT_SETTINGS fallback over whatever the user had actually configured
+  // — a sort tap after any settings.general corruption silently reset
+  // overlearningPercent to 50 with no error surfaced. It must now refuse the
+  // write instead, distinguishing "quarantined" (raw data present, invalid)
+  // from "genuinely never configured" (no raw data at all — see the next
+  // test), since only the former is data loss in the making.
+  it('refuses to write a sort option over quarantined settings data instead of resetting it', () => {
+    storage.set('settings.general', '{"not":"valid"}');
+    expect(() => setSortOption('lastPracticed', 'desc')).toThrow();
+
+    // The corrupt payload itself must survive untouched — a refused write
+    // must not leave the key in some third, different-again shape.
+    expect(storage.getString('settings.general')).toBe('{"not":"valid"}');
+  });
+
+  it('writes normally when the key has never been touched at all (not quarantined, just absent)', () => {
+    expect(() => setSortOption('lastPracticed', 'desc')).not.toThrow();
+    expect(readSettings().sortKey).toBe('lastPracticed');
+  });
 });
 
 describe('lib/settings setOverlearningPercent [Story 5.1]', () => {
@@ -95,5 +117,15 @@ describe('lib/settings setOverlearningPercent [Story 5.1]', () => {
     setSortOption('lastPracticed', 'desc');
     setOverlearningPercent(200);
     expect(readSettings()).toEqual({ overlearningPercent: 200, sortKey: 'lastPracticed', sortDirection: 'desc' });
+  });
+
+  // [Review][Patch] found via code review of a deferred item logged against
+  // Story 4.7 (2026-09-12): same refuse-on-quarantine guarantee as
+  // setSortOption's, verified for this writer too — both share
+  // readSettingsForWrite().
+  it('refuses to write a target change over quarantined settings data instead of resetting other fields', () => {
+    storage.set('settings.general', '{"not":"valid"}');
+    expect(() => setOverlearningPercent(150)).toThrow();
+    expect(storage.getString('settings.general')).toBe('{"not":"valid"}');
   });
 });

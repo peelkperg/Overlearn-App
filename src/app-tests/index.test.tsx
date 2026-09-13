@@ -11,7 +11,7 @@ import { useActiveSession } from '@/hooks/useActiveSession';
 import { writeHistoryEntry } from '@/lib/history';
 import * as segmentsLib from '@/lib/segments';
 import { createSegment, renameSegment } from '@/lib/segments';
-import { getObject } from '@/lib/storage';
+import { getObject, storage } from '@/lib/storage';
 import type { SessionState } from '@/lib/types';
 
 import HomeScreen from '@/app/index';
@@ -359,6 +359,28 @@ describe('HomeScreen sort control [Story 4.3]', () => {
       'Zebra',
       'Alpha',
     ]);
+  });
+
+  // [Review][Patch] found via code review of a deferred item logged against
+  // Story 4.7 (2026-09-12): setSortOption used to spread readSettings()'s
+  // DEFAULT_SETTINGS fallback over quarantined data, silently resetting
+  // overlearningPercent to 50 on a plain sort tap. It now refuses the write
+  // and this screen's existing runAction surfaces the resulting error —
+  // verified end-to-end here rather than only at lib/settings.test.ts's
+  // unit level.
+  it('surfaces an error and does not resort when settings data is quarantined (deferred item, Story 4.7 review)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    storage.set('settings.general', '{"not":"valid"}');
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name'));
+
+    expect(view.getByTestId('segment-list-error')).toHaveTextContent('Could not save sort option.');
+    // Storage-refused: the corrupt payload survives, and the sortKey the
+    // press attempted to set is never persisted.
+    expect(storage.getString('settings.general')).toBe('{"not":"valid"}');
   });
 
   it('flips the order when the already-active option is tapped again (AC #3)', async () => {

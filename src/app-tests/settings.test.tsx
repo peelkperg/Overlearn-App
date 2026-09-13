@@ -41,6 +41,26 @@ describe('SettingsScreen [Story 5.1]', () => {
     expect(readSettings().overlearningPercent).toBe(90);
   });
 
+  // [Review][Patch] found via code review of a deferred item logged against
+  // Story 4.7 (2026-09-12): setOverlearningPercent now refuses to write over
+  // quarantined settings data rather than silently resetting it to defaults
+  // (see lib/settings.test.ts). This screen must surface that refusal as a
+  // visible error rather than let the thrown exception take the app down —
+  // same runAction pattern as index.tsx and session/[id].tsx.
+  it('surfaces an error and leaves the value unchanged when a stepper tap hits quarantined settings data', async () => {
+    setOverlearningPercent(100);
+    const view = await render(<SettingsScreen />);
+
+    storage.set('settings.general', '{"not":"valid"}');
+    await fireEvent.press(view.getByTestId('settings-decrease'));
+
+    expect(view.getByTestId('settings-error')).toHaveTextContent(
+      'Could not save the overlearning target. Check that the device has free storage.',
+    );
+    // The corrupt payload survives untouched — no silent reset to 50.
+    expect(storage.getString('settings.general')).toBe('{"not":"valid"}');
+  });
+
   it('at 50% (the default), the − button carries accessibilityState disabled: true', async () => {
     const view = await render(<SettingsScreen />);
     expect(view.getByTestId('settings-decrease').props.accessibilityState).toEqual({ disabled: true });
