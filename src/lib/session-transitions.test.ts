@@ -1,5 +1,6 @@
 import { calculateTargetStreak } from './mechanic';
 import { logCorrect, logIncorrect, reconcileCompletion, restartSession, startSession } from './session-transitions';
+import type { SessionState } from './types';
 
 describe('lib/session-transitions startSession [Story 2.1]', () => {
   it('initializes current_streak, total_correct_this_session, and total_incorrect_this_session to 0', () => {
@@ -151,6 +152,66 @@ describe('lib/session-transitions logCorrect completedTarget [Review][Patch]', (
   });
 });
 
+// [Review][Decision] resolved 2026-09-12 (Story 5.2 code review round 2,
+// option 1): logCorrect now delegates its completion check to
+// reconcileCompletion instead of keeping its own copy of the >= rule — the
+// round-1 review's claim that they were "shared" was false at the time
+// (verified: they disagreed on completedTarget in the overshoot case,
+// unreachable from logCorrect alone but reachable after a settings
+// decrease).
+//
+// [Review][Patch] found via code review 2026-09-12 (round 3): the first
+// test below was a tautology — it built `advanced` with the exact same
+// `currentStreak + 1` / `totalCorrectThisSession + 1` expression logCorrect
+// itself uses, so it passed for any implementation of reconcileCompletion,
+// correct or broken; it verified only that the delegation line exists. The
+// second test never called logCorrect at all, despite its describe block's
+// name claiming agreement. Replaced with a black-box comparison that calls
+// only the two public functions under test and computes the expected
+// `advanced` state independently (by hand, not by importing logCorrect's
+// arithmetic), so a broken delegation or a broken reconcileCompletion could
+// each make it fail.
+describe('lib/session-transitions logCorrect / reconcileCompletion agreement [Review][Decision] 2026-09-12, corrected round 3', () => {
+  it('logCorrect produces the same result reconcileCompletion would, given the streak already advanced', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 6 at level 0.5
+    for (let i = 0; i < 5; i++) session = logCorrect(session); // currentStreak 5, still incomplete
+
+    const viaLogCorrect = logCorrect(session, 0.5); // 6th correct: completes
+    expect(viaLogCorrect.sessionComplete).toBe(true);
+    expect(viaLogCorrect.currentStreak).toBe(6);
+    expect(viaLogCorrect.completedTarget).toBe(6); // reconcileCompletion's own rule: currentStreak, not targetStreak
+
+    // Cross-check against reconcileCompletion called directly on the state
+    // logCorrect is documented to produce (streak advanced, not yet
+    // reconciled) — independent arithmetic, not logCorrect's own.
+    const preReconcile: SessionState = { ...session, currentStreak: 6, totalCorrectThisSession: session.totalCorrectThisSession + 1 };
+    expect(reconcileCompletion(preReconcile, 0.5)).toEqual(viaLogCorrect);
+  });
+
+  it('logCorrect records the achieved streak, not the recalculated target, in the overshoot case a settings decrease leaves behind', () => {
+    // logCorrect itself can never produce an overshoot (each call advances
+    // currentStreak by exactly 1, landing on === targetStreak) — this test
+    // constructs the shape a settings decrease leaves behind directly (not
+    // via logCorrect) and confirms logCorrect's delegated completion path
+    // agrees with reconcileCompletion's documented "record currentStreak"
+    // rule when called on it.
+    const overshotSession: SessionState = {
+      segmentId: 'segment-1',
+      segmentName: 'Bar 24 arpeggio',
+      currentStreak: 20,
+      totalCorrectThisSession: 20,
+      totalIncorrectThisSession: 11,
+      sessionComplete: false,
+      sessionStartTimestamp: new Date().toISOString(),
+      completedTarget: null,
+    };
+    const result = reconcileCompletion(overshotSession, 0.5); // target drops to 6; 20 >= 6
+    expect(result.sessionComplete).toBe(true);
+    expect(result.completedTarget).toBe(20); // not 6 — matches logCorrect's own documented rule
+  });
+});
+
 describe('lib/session-transitions reconcileCompletion [Story 5.2 Task 3, Review][Patch] 2026-09-11', () => {
   it('returns the same session reference, unchanged, when the target is not yet met', () => {
     let session = startSession('segment-1', 'Bar 24 arpeggio');
@@ -227,6 +288,68 @@ describe('lib/session-transitions logIncorrect [Story 2.3]', () => {
   it('resets current_streak to 0', () => {
     const session = logCorrect(logCorrect(startSession('segment-1', 'Bar 24 arpeggio'))); // currentStreak = 2
     expect(logIncorrect(session).currentStreak).toBe(0);
+  });
+
+  // [Review][Decision] resolved 2026-09-12 (Story 5.2 code review round 2,
+  // option 2): logIncorrect now reconciles a missed settings-driven
+  // completion before zeroing the streak. Without this, a session left
+  // un-reconciled by a failed settings-driven write (useActiveSession.ts's
+  // effect swallows a writeSession throw) would have this tap silently
+  // discard an already-achieved run instead of completing it.
+  it('completes the session instead of zeroing the streak, when the streak already meets the live target', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 11; i++) session = logIncorrect(session); // target -> 33 at level 3.0
+    for (let i = 0; i < 20; i++) session = logCorrect(session, 3.0); // currentStreak 20, still below 33
+
+    // Simulates the un-reconciled state: currentStreak (20) already meets
+    // the live target at level 0.5 (6), but sessionComplete is still false
+    // because the settings-driven effect's write failed silently.
+    const next = logIncorrect(session, 0.5);
+    expect(next.sessionComplete).toBe(true);
+    expect(next.completedTarget).toBe(20); // the achieved streak, not zeroed
+    expect(next.currentStreak).toBe(20); // NOT reset to 0
+    // [Review][Patch] found via code review 2026-09-12 (round 3): round 2's
+    // reconcile-before-zero fix returned early on completion, before
+    // total_incorrect_this_session += 1 ran — the tap the user made was
+    // never counted. Round 3 (Decision 1, option 1) counts it first: the
+    // miss that triggered this tap is on record even though it also
+    // completed the session.
+    expect(next.totalIncorrectThisSession).toBe(12); // the tap that completed it was still counted
+  });
+
+  it('zeroes the streak as normal when the live target genuinely is not yet met', () => {
+    let session = startSession('segment-1', 'Bar 24 arpeggio');
+    for (let i = 0; i < 4; i++) session = logCorrect(session); // currentStreak 4, target 5 — genuinely incomplete
+    const next = logIncorrect(session, 0.5);
+    expect(next.sessionComplete).toBe(false);
+    expect(next.currentStreak).toBe(0);
+    expect(next.totalIncorrectThisSession).toBe(1);
+  });
+
+  // [Review][Decision] resolved 2026-09-12 (round 3, option 1: count, then
+  // reconcile): a session left un-reconciled at currentStreak=5,
+  // total_incorrect_this_session=10 (target 5, already met — the shape a
+  // failed settings-driven write could leave behind) must NOT complete on
+  // this tap, because counting this tap's own miss first raises the target
+  // past the floor boundary (10 -> 11 mistakes, target 5 -> 6) before
+  // currentStreak=5 is compared against it. Round 2's first cut of this
+  // fix reconciled against the un-incremented session and would have
+  // completed here, silently discarding the miss to do it.
+  it('does not complete when the counted miss itself raises the target back above the streak', () => {
+    const session: SessionState = {
+      segmentId: 'segment-1',
+      segmentName: 'Bar 24 arpeggio',
+      currentStreak: 5,
+      totalCorrectThisSession: 5,
+      totalIncorrectThisSession: 10,
+      sessionComplete: false,
+      sessionStartTimestamp: new Date().toISOString(),
+      completedTarget: null,
+    };
+    const next = logIncorrect(session, 0.5);
+    expect(next.sessionComplete).toBe(false);
+    expect(next.currentStreak).toBe(0);
+    expect(next.totalIncorrectThisSession).toBe(11);
   });
 
   it('increments total_incorrect_this_session by 1', () => {

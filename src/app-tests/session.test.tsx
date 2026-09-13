@@ -242,3 +242,109 @@ describe('ActiveSessionScreen mid-session settings change [Story 5.2]', () => {
     expect(view.getByTestId('completion-stats')).toHaveTextContent(/Target reached: 20/); // achieved streak, not the lowered target of 6
   });
 });
+
+// Story 5.4 (FR43): Settings gear icon visible on active session screen,
+// navigates to Settings without ending/resetting the session.
+describe('ActiveSessionScreen Settings button [Story 5.4]', () => {
+  // [Review][Patch] found via code review 2026-09-12 (round 3): this
+  // describe had no mockClear, unlike segment-detail's equivalent suite —
+  // toHaveBeenCalledWith matches any recorded call for the mock's lifetime,
+  // so the navigation assertion below could pass on a stale call from an
+  // earlier describe in this file.
+  beforeEach(() => {
+    (router.push as jest.Mock).mockClear();
+  });
+
+  it('shows the Settings gear icon on the active session screen (AC #1)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    expect(view.getByTestId('session-settings')).toBeTruthy();
+  });
+
+  it('Settings icon has correct accessibility label (AC #1)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    const button = view.getByTestId('session-settings');
+    expect(button.props.accessibilityLabel).toBe('Settings');
+  });
+
+  it('Settings icon is 44×44+ minimum tap target (AC #1)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    const button = view.getByTestId('session-settings');
+    expect(button.props.style.minWidth).toBeGreaterThanOrEqual(44);
+    expect(button.props.style.minHeight).toBeGreaterThanOrEqual(44);
+  });
+
+  // [Review][Patch] found via code review 2026-09-12 (round 3, Decision 1):
+  // the gear used to be a position: 'absolute' overlay rendered before
+  // CorrectButton — a later sibling wins paint/hit-testing in React Native,
+  // and CorrectButton's full-width top-40% band covered exactly that
+  // region, so the gear was unreachable in the real app even though this
+  // suite was green (fireEvent.press dispatches straight at the node,
+  // bypassing layout and hit-testing). Fixed by moving it into a real
+  // SafeAreaView header row above CorrectButton (no absolute positioning).
+  // This is a regression guard against reintroducing that overlay: no
+  // style on this control may declare position: 'absolute' again.
+  it('is not an absolutely-positioned overlay that a later sibling can cover (AC #1 reachability)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    const button = view.getByTestId('session-settings');
+    expect(button.props.style.position).not.toBe('absolute');
+  });
+
+  it('tapping Settings navigates to Settings screen (AC #2)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    await fireEvent.press(view.getByTestId('session-settings'));
+
+    expect(router.push as jest.Mock).toHaveBeenCalledWith('/settings');
+  });
+
+  // [Review][Patch] found via code review 2026-09-12 (round 3): this
+  // previously pressed a mocked router.push and compared streak-readout's
+  // props.children[0] before/after — since nothing unmounts under a mock,
+  // the only failure mode it could catch was the press synchronously
+  // mutating state, not state surviving a real navigation/unmount/remount
+  // cycle, and it never asserted the streak's actual value, so an index
+  // pointing at a static label would have passed regardless. Tightened to
+  // assert the concrete value and to combine it with a genuine mid-session
+  // settings change — the actual mechanism AC #3 depends on (Story 5.2's
+  // reconciliation), exercised through this screen rather than only through
+  // the hook.
+  it('session state is unaffected by pressing Settings, and a mid-session settings change still applies correctly afterward (AC #2, AC #3)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<ActiveSessionScreen />);
+
+    await pressTimes(view, 'incorrect-button', 11); // target -> 6 at the 50% default
+    await pressTimes(view, 'correct-button', 3);
+    expect(view.getByTestId('streak-readout').props.children[0]).toBe(3);
+
+    await fireEvent.press(view.getByTestId('session-settings'));
+
+    // Pressing the gear itself must not mutate session state.
+    expect(view.getByTestId('streak-readout').props.children[0]).toBe(3);
+    expect(view.getByTestId('correct-button')).toBeTruthy();
+
+    // A settings change made while "on" Settings (simulated the same way
+    // Story 5.2's own tests do, since expo-router is mocked here) must still
+    // reach this screen correctly on return — same mechanism AC #3 relies on.
+    // calculateTargetStreak(11, 3.0) = 33, distinct from the 50%-default 6,
+    // so this actually distinguishes a level change from a no-op.
+    await act(async () => {
+      setOverlearningPercent(300); // level 3.0
+    });
+    expect(view.getByTestId('streak-readout').props.children[2]).toBe(33);
+  });
+});

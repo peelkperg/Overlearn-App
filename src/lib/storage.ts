@@ -59,8 +59,12 @@ function quarantine(key: string, raw: string): void {
 // release that renames/restructures a persisted shape would have no way to
 // migrate existing data — the type guards would just discard it. Bumping
 // SCHEMA_VERSION and adding a migrations[oldVersion] entry is the intended
-// upgrade path; there is nothing in the registry yet because v1 is the only
-// version that has ever shipped.
+// upgrade path — see migrations[0] and migrations[1] below for the two
+// bumps this has gone through so far.
+// [Review][Patch] found via code review 2026-09-12 (round 2): this comment
+// used to claim "there is nothing in the registry yet because v1 is the
+// only version that has ever shipped" in the same commit that populated
+// migrations[1] — falsified by its own diff.
 export const SCHEMA_VERSION = 2;
 
 type VersionedEnvelope<T> = { __v: number; data: T };
@@ -86,15 +90,38 @@ function isVersionedEnvelope(value: unknown): value is VersionedEnvelope<unknown
 // every in-progress session persisted by a build before this change has no
 // completedTarget key, so isSessionState would reject it and quarantine
 // the user's session on first read after upgrade. v1 -> v2 defaults a
-// missing completedTarget to null on session-shaped data only (detected by
-// the presence of sessionComplete, a field unique to SessionState among
-// this app's persisted shapes); every other shape (segments, history,
-// settings) has no sessionComplete field and passes through unchanged.
-const migrations: Record<number, (data: unknown) => unknown> = {
+// missing completedTarget on session-shaped data only (detected by the
+// presence of sessionComplete, a field unique to SessionState among this
+// app's persisted shapes); every other shape (segments, history, settings)
+// has no sessionComplete field and passes through unchanged.
+//
+// [Review][Patch] found via code review 2026-09-12 (round 2, two layers
+// independently): the original version of this migration keyed only on
+// the *presence* of completedTarget, so a session that was already
+// sessionComplete: true on a pre-Story-5.2 build was defaulted to
+// completedTarget: null exactly like an in-progress one — and nothing
+// ever backfills it afterward, since reconcileCompletion (the only writer
+// of completedTarget on an already-complete session) early-returns when
+// sessionComplete is already true. Both of useActiveSession.ts's
+// `?? targetStreak`/`?? calculateTargetStreak(...)` fallbacks then fire,
+// recording a live-recomputed target the user never practiced under —
+// the exact display/history divergence Story 5.2's Task 2 exists to
+// prevent, reintroduced through the migration path. Fixed by backfilling
+// from currentStreak when the session was already complete: every build
+// before this migration existed had exactly one completion path
+// (logCorrect), which always completed with currentStreak === the target
+// in force at that moment — so the achieved streak IS the target that was
+// met, with no need to recompute anything.
+// Exported only for storage.test.ts's registry-coverage assertion (that
+// every version in 0..SCHEMA_VERSION-1 has an entry) — no production
+// caller outside this module.
+export const migrations: Record<number, (data: unknown) => unknown> = {
   0: (data) => data,
   1: (data) => {
     if (typeof data === 'object' && data !== null && !Array.isArray(data) && 'sessionComplete' in data && !('completedTarget' in data)) {
-      return { ...data, completedTarget: null };
+      const record = data as Record<string, unknown>;
+      const completedTarget = record.sessionComplete ? (record.currentStreak as number) : null;
+      return { ...data, completedTarget };
     }
     return data;
   },

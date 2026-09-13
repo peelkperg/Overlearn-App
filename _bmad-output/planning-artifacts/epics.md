@@ -132,13 +132,13 @@ FR16: User can log a repetition as correct
 FR17: User can log a repetition as incorrect
 FR18: System applies the Correct and Incorrect state transitions defined in the Mechanic Specification
 FR19: User cannot undo an individual correct/incorrect log entry (constraint on FR16–FR17, not a standalone capability)
-FR20: User can reset an in-progress session, returning all four session fields to their starting values per the Mechanic Specification
-FR21: System requires user confirmation before executing a session reset
-FR22: System stops accepting repetition input once session completion has triggered
+FR20: User can reset an in-progress session, returning all four session fields to their starting values per the Mechanic Specification — unavailable, with no Restart tap needed, from the moment a settings-driven completion (FR37) triggers FR22's lockout (annotated 2026-09-12, code review of Story 5.2 round 2)
+FR21: System requires user confirmation before executing a session reset — moot once FR22's lockout has already disabled Restart via a settings-driven completion
+FR22: System stops accepting repetition input once session completion has triggered — reachable either by a Correct tap or, from v1.1, by the Settings-driven completion transition (FR37) with no tap at all
 
 **Session Interruption & Recovery**
 FR23: System preserves an in-progress session's full state if the app is backgrounded or closed
-FR24: User is prompted to resume or discard an interrupted session on relaunch
+FR24: User is prompted to resume or discard an interrupted session on relaunch — unless the Settings-driven completion transition (FR37) has already completed it (e.g. the overlearning-% was lowered while the session sat interrupted), in which case relaunch shows its completion summary directly, matching the existing behavior for a session that completed normally before being interrupted
 FR25: User can resume an interrupted session with all prior progress intact
 FR26: User can discard an interrupted session, leaving no history record
 
@@ -155,7 +155,7 @@ NFR2: The NFR1 latency budget must hold even with an asynchronous persistence wr
 
 **Reliability**
 NFR3: Full in-progress session state must survive app backgrounding or process kill, with no data loss beyond, at most, the single most recent tap if killed in the narrowest window. (Persisted fields per architecture.md: `segment_name`, `current_streak`, `total_incorrect_this_session`, `session_complete`, `session_start_timestamp`; `target_streak` is derived on read, not persisted, but is losslessly reconstructable — see architecture.md Gap Analysis.)
-NFR4: On relaunch with an interrupted session present, the user must always be prompted resume vs. discard — the app must never silently resume or silently discard.
+NFR4: On relaunch with an interrupted session present, the user must always be prompted resume vs. discard — the app must never silently resume or silently discard. **(Amended 2026-09-12, code review of Story 5.2 round 2):** this guarantee holds for a session still incomplete at relaunch. From v1.1, FR24's accepted exception means a session can complete via the Settings-driven transition before relaunch is even reached (e.g. while sitting interrupted) — that is not a silent resume or a silent discard of an *interrupted* session; it is a completion, shown via the ordinary Completion screen, the same as any session that completed before being interrupted. NFR4 governs the resume/discard choice for sessions that remain incomplete, not this class of prior completion.
 NFR5: Completed-session history entries, once written, must be durable across app restarts, reinstalls-with-data-intact, and OS-level backgrounding — the only acceptable data loss is a full app uninstall or device loss.
 
 **Accessibility**
@@ -175,7 +175,7 @@ NFR9: No account creation, authentication, or any form of user identification �
 - State management: React Context + hooks; custom `useActiveSession` hook wraps MMKV's `useMMKVObject` binding. No Redux/Zustand.
 - `target_streak` is derived on every read via `calculateTargetStreak()` in `lib/mechanic.ts` — never persisted, never reimplemented inline elsewhere.
 - Active-session state writes are synchronous MMKV writes on every tap (Correct/Incorrect/Restart) — no async write queue.
-- `session_complete` is written synchronously in the same write as the triggering `current_streak` update — on relaunch, `session_complete = true` routes directly to the Completion screen, bypassing the resume/discard prompt.
+- `session_complete` is written synchronously in the same write as the triggering `current_streak` update — on relaunch, `session_complete = true` routes directly to the Completion screen, bypassing the resume/discard prompt. **(Corrected 2026-09-12, code review of Story 5.2 round 2):** from v1.1, `session_complete` can also be written by a settings-driven reconciliation effect keyed on the overlearning-% alone, with `current_streak` untouched — it is no longer only ever written in the same MMKV write as the triggering streak update. See the Mechanic Specification's Settings-driven completion transition.
 - No API layer, no backend, no networking library anywhere in the dependency tree (enforces NFR8 by omission).
 - No auth/account system of any kind (enforces NFR9 by omission).
 - Testing framework: not yet pinned (Jest presumed) — flagged in architecture.md as an important, non-blocking gap; should be resolved before the first test-bearing story.
@@ -184,11 +184,11 @@ NFR9: No account creation, authentication, or any form of user identification �
 
 ### UX Design Requirements
 
-UX-DR1: Active Session screen layout — Correct button anchored top (~40% of screen height, green, checkmark icon, no text), Incorrect button anchored bottom (~40%, red, X icon, no text), streak/target readout (`current/target`, e.g. "4/6") centered between them (~20%), with segment name label.
+UX-DR1: Active Session screen layout — Correct button anchored top (~40% of screen height, green, checkmark icon, no text), Incorrect button anchored bottom (~40%, red, X icon, no text), streak/target readout (`current/target`, e.g. "4/6") centered between them (~20%), with segment name label. **(Amended 2026-09-12, code review of Story 5.4):** these proportions govern the space below the screen's Settings header row (FR43), not the full screen height — the 40/20/40 split was locked before FR43 existed, and Story 5.4's gear icon needs its own row (matching Home's and segment detail's placement convention) rather than an absolute overlay, which a full-width Correct button covered and made unreachable.
 UX-DR2: Restart control — small, low-contrast, text-labeled ("Restart"), bottom-edge-anchored, visually subordinate to Correct/Incorrect; opens a confirm dialog ("Restart session? Progress will be lost.") before executing.
 UX-DR3: Four-tier Feedback Signal System, implemented as one shared/central mechanism (not per-screen logic): (1) ordinary Correct tap — minimal, readout increment + light haptic tick; (2) Incorrect tap without target change — mild acknowledgment, visual pulse + light haptic; (3) Incorrect tap causing target-raise — screen flash + sound + vibration, plus a screen-reader announcement (not purely visual/auditory); (4) session completion — haptic pulse + short confirmation sound + visual settle, plus a screen-reader announcement, before transitioning to the Completion screen.
-UX-DR4: Completion screen — segment name, final target achieved, total correct, total incorrect, total attempts; Done and Repeat actions. Not a modal overlay — it is the next screen state (so a kill-while-showing can be resumed directly via the persisted `session_complete` flag, per UX-DR9/architecture.md).
-UX-DR5: Resume/discard prompt on relaunch when an interrupted session is present — standard dialog component, binary choice, never silently skipped (NFR4).
+UX-DR4: Completion screen — segment name, the streak achieved when the session completed (`completed_target` — from v1.1 can exceed the target in force at completion time, per FR13's annotation), total correct, total incorrect, total attempts; Done and Repeat actions. Not a modal overlay — it is the next screen state (so a kill-while-showing can be resumed directly via the persisted `session_complete` flag, per UX-DR9/architecture.md).
+UX-DR5: Resume/discard prompt on relaunch when an interrupted session is present — standard dialog component, binary choice, never silently skipped (NFR4). **(Amended 2026-09-12, code review of Story 5.2 round 2):** "present" means still incomplete at relaunch; from v1.1 a session can complete via the Settings-driven transition (FR37) before relaunch, in which case the Completion screen shows directly instead of this prompt, per NFR4's amendment.
 UX-DR6: Visual design tokens — near-black dark background as primary theme (light/system-following as secondary); green (Correct), red (Incorrect), and a third distinct accent (proposed amber/yellow) reserved exclusively for the target-raise flash so the three signals never visually overlap; desaturated neutral gray for text/UI; all pairings must meet WCAG AA contrast.
 UX-DR7: Typography — plain system default typeface; large numeral display for the streak/target readout (must remain legible at larger OS dynamic-type sizes); minimal text volume throughout the app.
 UX-DR8: Accessibility — 44×44pt minimum touch targets on all interactive controls (NFR6); no color-alone signaling anywhere (NFR7) — Correct/Incorrect already redundant via position + icon shape + color; target-raise/completion signals redundant via multi-channel (visual + haptic + audio + screen-reader announcement).
@@ -247,8 +247,8 @@ FR40: User can rename a segment via 1-second press-and-hold at the list row or d
 **Settings (new capability group)**
 FR35: User can access a Settings screen to configure the overlearning-% target
 FR36: System accepts any overlearning-% value from 50% to 300% in 10-percentage-point increments; no other value is selectable
-FR37: System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress
-FR39: When an in-progress session exists, the Settings screen shows a standing notice that a change applies to it immediately
+FR37: System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change. If the recalculated target is now met or exceeded by the session's existing streak, the session completes immediately as a result of the setting change alone — this can end an in-progress session with no further user action, including from Home if the session is interrupted (clarified 2026-09-11, code review of Story 5.2).
+FR39: When an in-progress session exists, the Settings screen shows a standing notice that a change applies to it immediately — including the possibility that it completes the session and, via Home's existing redirect, ejects the user from Settings to the Completion screen mid-adjustment (annotated 2026-09-12, code review of Story 5.2 round 2)
 
 ### v1.1 NonFunctional Requirements
 
@@ -258,7 +258,7 @@ None added in v1.1.
 
 - New `lib/settings.ts` storage boundary — single MMKV key `settings.general`, same envelope/type-guard pattern as `lib/segments.ts`; default `{ overlearningPercent: 50, sortKey: 'createdAt', sortDirection: 'asc' }` reproduces v1.0 behavior exactly until a user opens Settings.
 - `calculateTargetStreak`, `session-transitions.ts`'s `logCorrect`/`logIncorrect` each gain an **optional** second parameter (`overlearningLevel`) defaulting to the v1.0 constant — non-breaking; every v1.0 call site and test is unmodified.
-- FR37 (live mid-session apply) needs no new mechanism — `target_streak` was already derived-on-read, never stored, in v1.0.
+- FR37 (live mid-session apply, the *displayed target number*) needs no new mechanism — `target_streak` was already derived-on-read, never stored, in v1.0. **(Corrected 2026-09-12, code review of Story 5.2 round 2):** this "no new mechanism" framing does not extend to FR37's completion consequence — a settings change that brings the recalculated target down to an already-met streak requires the settings-driven reconciliation effect Story 5.2's Task 3 added, a genuinely new mechanism.
 - FR39 (in-progress-session detection) needs no new mechanism — `session.active` is a single MMKV key app-wide, so `useActiveSession()` already answers the question.
 - New `calculateSolidificationPercent` in `lib/history.ts`, shared by FR33's sort and FR38's display; returns `null` (not `0`) for "no completed sessions yet" so the UI can render an em dash rather than a misleading 0%.
 - `useSegments()` gains a `subscribeToHistory` subscription it didn't need in v1.0, so the list re-renders on session completion when sorted by last-practiced or Solidification %.
@@ -623,6 +623,10 @@ So that I'm never confused about what state my practice is in.
 **When** the app opens
 **Then** the user is always prompted resume vs. discard — never silently resumed or silently discarded (FR24, NFR4)
 
+**Given** an interrupted session whose settings-driven completion transition (FR37) fires at app open, bringing `session_complete` to `true` before this check runs
+**When** the app opens
+**Then** the Completion screen shows directly, the same as any session that completed before being interrupted — this is not a silent resume or discard of an interrupted session under NFR4, since the session is no longer interrupted by the time relaunch evaluates it (added 2026-09-12, code review of Story 5.2 round 2)
+
 **Given** the resume/discard prompt is showing
 **When** the user chooses Resume
 **Then** the Active Session screen restores with `current_streak`, `total_incorrect_this_session`, and the recalculated target exactly as left (FR25)
@@ -881,7 +885,7 @@ So that the app never operates on two different rules at once.
 
 **Given** a session is in progress with `current_streak` already meeting or exceeding what the recalculated target would be
 **When** the user lowers the overlearning-% in Settings
-**Then** the session completes immediately as a result of the setting change alone — `session_complete` flips true, `completed_target` captures the achieved streak (not the newly-lowered target, if the streak exceeds it), the FR22 lockout applies, and the same completion feedback (haptic, screen-reader announcement) fires as a Correct-triggered completion (FR37, FR22, FR12, UX-DR3) (added 2026-09-11, code review of Story 5.2)
+**Then** the session completes immediately as a result of the setting change alone — `session_complete` flips true, `completed_target` captures the achieved streak, not the newly-lowered target (the streak always exceeds or equals it, by this AC's own precondition), the FR22 lockout applies, and the same completion feedback (haptic, screen-reader announcement) fires as a Correct-triggered completion (FR37, FR22, FR12, UX-DR3) (added 2026-09-11, code review of Story 5.2; "if the streak exceeds it" corrected to unconditional phrasing 2026-09-12, code review of Story 5.2 round 3 — the guard above only ever fires this AC when the streak already meets or exceeds the target, so "if" described a branch that cannot be false)
 
 *(Note: per `architecture.md`, this requires no new mechanism for the displayed target number — it verifies the behavior Story 5.1's plumbing already produces, since `target_streak` is derived on every read. Same shape as v1.0's Story 2.9, which verified an already-built guarantee rather than building a new one. The second AC above is not covered by that note: it is new behavior, deferred from Story 5.1's code review and requiring the reconciliation mechanism Story 5.2's Task 3 implements.)*
 

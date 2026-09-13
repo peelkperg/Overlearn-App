@@ -350,7 +350,7 @@ flowchart TD
     G -->|Ignored indefinitely| J
 ```
 
-Per NFR4, the app must never silently resume or silently discard — step `E→G` is mandatory whenever an interrupted session exists, with no timeout-based auto-decision.
+Per NFR4, the app must never silently resume or silently discard — step `E→G` is mandatory whenever an interrupted session is still incomplete, with no timeout-based auto-decision. **(Amended 2026-09-12, code review of Story 5.2 round 2):** from v1.1, the Settings-driven completion transition (FR37) can complete an interrupted session before this check runs (step `E`'s own read of `session_complete` sees `true`), routing to the Completion screen instead of `E→G` — that is a completion, not a silent resume or discard, so NFR4 is unaffected.
 
 ### Restart Flow (Journey 4)
 
@@ -583,7 +583,7 @@ Settings remains a leaf screen with a single back exit from every entry point. N
    >
    > (Corrected 2026-09-11, code review of Story 5.2: the original wording described only a recalculation, not the completion Story 5.2's Task 3 reconciliation effect can also trigger from a single tap, with no confirmation gate to carry that warning per-tap instead.)
 
-   **Standing notice, not a confirmation gate.** It is present the whole time Settings is open with an active session elsewhere — it does not interrupt the stepper, does not require dismissal, and does not repeat per tap. Ten taps in a row show the same one line the whole time, not ten dialogs. This follows the app's existing rule that friction is reserved for destructive, hard-to-reverse actions (Restart, Delete) — changing a target is neither; the user can step back to the previous value just as easily. Absent when no session is in progress: the row simply isn't rendered, rather than showing an empty or negated state.
+   **Standing notice, not a confirmation gate.** It is present the whole time Settings is open with an active session elsewhere — it does not interrupt the stepper, does not require dismissal, and does not repeat per tap. Ten taps in a row show the same one line the whole time, not ten dialogs. This follows the app's existing rule that friction is reserved for destructive, hard-to-reverse actions (Restart, Delete). **(Corrected 2026-09-12, code review of Story 5.2 round 2):** the "changing a target is neither [destructive nor hard-to-reverse]; the user can step back to the previous value just as easily" reasoning above no longer holds without qualification — see the correction at "No confirmation on change" below. Absent when no session is in progress: the row simply isn't rendered, rather than showing an empty or negated state.
 
 **Stepper behavior:**
 
@@ -596,7 +596,7 @@ Settings remains a leaf screen with a single back exit from every entry point. N
 
 Disabled-at-bounds is chosen over a silent no-op so the range is discoverable by feel — a button that does nothing when tapped reads as a bug, not a limit.
 
-**No confirmation on change.** Consistent with the app's existing posture: confirmation is reserved for destructive actions (Restart, Delete). Changing a target is reversible by stepping back.
+**No confirmation on change.** Consistent with the app's existing posture: confirmation is reserved for destructive actions (Restart, Delete). **(Corrected 2026-09-12, code review of Story 5.2 round 2):** this previously read "Changing a target is reversible by stepping back," which is false with an in-progress session present — if the change completes the session (FR37's Settings-driven completion transition), FR22's lockout takes effect immediately and irreversibly; stepping the value back afterward does not undo the completion. The step-back-is-easy reasoning holds only when no in-progress session exists, or when the change does not cross into completion.
 
 **Mid-session change.** FR37 requires an in-progress session's target to recalculate immediately, and can complete the session outright (see the Mechanic Specification's Settings-driven completion transition). A UI **is** specified for this on the Settings screen: the standing in-progress-session notice (FR39, see item 5 in "Layout, top to bottom" above), which warns of both consequences before the user changes the value. (Corrected 2026-09-11, Story 5.3's implementation: this paragraph previously read "No UI is specified for this on the Settings screen" and "Deliberately not designed: a warning or confirmation" — true when first written (2026-09-06, before FR39 existed), but left uncorrected when FR39 and the notice were added later the same day, and again when Story 5.2's code review amended the completion consequence. `_bmad-output/implementation-artifacts/5-2-...md` cited the old wording as authority for adding no UI; that citation is now stale too.)
 

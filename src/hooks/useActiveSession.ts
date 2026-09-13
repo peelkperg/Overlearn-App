@@ -70,13 +70,17 @@ export function useActiveSession() {
   // Story 5.3's notice copy).
   //
   // reconcileCompletion (lib/session-transitions.ts) is the single source
-  // of the completion rule shared with logCorrect — this effect no longer
-  // hand-builds the next SessionState itself ([Review][Patch] found via
-  // code review 2026-09-11: doing so here duplicated logCorrect's `>=
-  // target` / capture-completedTarget logic as a second, driftable copy
-  // outside the transitions module every other mutator routes through).
-  // reconcileCompletion returns the same object reference when nothing
-  // changes, so `next === current` is the write-needed check.
+  // of the completion rule, shared with logCorrect and logIncorrect —
+  // this effect no longer hand-builds the next SessionState itself
+  // ([Review][Patch] found via code review 2026-09-11: doing so here
+  // duplicated logCorrect's `>= target` / capture-completedTarget logic as
+  // a second, driftable copy outside the transitions module every other
+  // mutator routes through — [Review][Decision] resolved 2026-09-12,
+  // round 2, option 1: logCorrect itself was found to still carry that
+  // duplicate at review time despite this comment's claim, and now
+  // delegates here too). reconcileCompletion returns the same object
+  // reference when nothing changes, so `next === current` is the
+  // write-needed check.
   //
   // Reads fresh via sessionStore.readSession() rather than closing over the
   // `session` above, matching every mutator's own stale-closure guard: a
@@ -99,9 +103,16 @@ export function useActiveSession() {
       // crash the app, unlike every other write site in this codebase
       // (screens' runAction wraps start/logCorrect/logIncorrect/restart).
       // This effect has no screen to report an error through, so it
-      // swallows and leaves the on-disk value as source of truth — the
-      // next tap (via its own screen-level runAction) or settings change
-      // will retry the same reconciliation.
+      // swallows and leaves the on-disk value as source of truth.
+      // [Review][Patch] found via code review 2026-09-12 (round 2):
+      // corrected — this used to claim "the next tap ... or settings
+      // change will retry the same reconciliation" unconditionally. A
+      // Correct tap does retry it (logCorrect delegates to
+      // reconcileCompletion), and an Incorrect tap now does too (Decision
+      // 2, resolved this round: logIncorrect reconciles before zeroing the
+      // streak) — but if no further tap or settings change ever happens,
+      // this session is left silently un-reconciled indefinitely. That
+      // degradation is accepted, not fixed, by this round's decision.
       return;
     }
     // Parity with logCorrect's own completion tier (FR12, UX-DR3): a
@@ -144,18 +155,40 @@ export function useActiveSession() {
   // not total_incorrect_this_session against 10 directly, so the tier
   // follows the same formula as the target itself. No-op once complete
   // (FR22).
+  //
+  // [Review][Decision] resolved 2026-09-12 (Story 5.2 code review round 2,
+  // option 2): transitions.logIncorrect now reconciles a missed
+  // settings-driven completion before zeroing the streak (see its own
+  // comment), so this tap can itself complete the session instead of
+  // silently discarding an already-achieved run left un-reconciled by a
+  // failed write in the effect below. That case gets the same completion
+  // feedback tier as every other completion path, not the mild/alert
+  // tiers below (which only apply when the tap genuinely didn't complete
+  // the session).
+  // [Review][Patch] found via code review 2026-09-12 (round 3): previousTarget
+  // used to be computed unconditionally but read only in the else branch —
+  // moved inside it, alongside nextTarget, so it isn't computed on the
+  // completion path that never uses it. The completion message also now
+  // reads next.completedTarget rather than next.currentStreak: the two are
+  // equal only because of reconcileCompletion's current body (it assigns
+  // completedTarget := currentStreak), so reading currentStreak here coupled
+  // this message to an implementation detail of a module one hop away.
   const logIncorrect = (): SessionState | null => {
     const current = sessionStore.readSession();
     if (!current || current.sessionComplete) return null;
-    const previousTarget = calculateTargetStreak(current.totalIncorrectThisSession, overlearningLevel);
-    const next = transitions.logIncorrect(current);
-    const nextTarget = calculateTargetStreak(next.totalIncorrectThisSession, overlearningLevel);
+    const next = transitions.logIncorrect(current, overlearningLevel);
     sessionStore.writeSession(next);
 
-    if (nextTarget > previousTarget) {
-      feedback.alert(`Target raised to ${nextTarget}`);
+    if (next.sessionComplete) {
+      feedback.completion(`Session complete. Target of ${next.completedTarget} reached.`);
     } else {
-      feedback.mild();
+      const previousTarget = calculateTargetStreak(current.totalIncorrectThisSession, overlearningLevel);
+      const nextTarget = calculateTargetStreak(next.totalIncorrectThisSession, overlearningLevel);
+      if (nextTarget > previousTarget) {
+        feedback.alert(`Target raised to ${nextTarget}`);
+      } else {
+        feedback.mild();
+      }
     }
 
     return next;

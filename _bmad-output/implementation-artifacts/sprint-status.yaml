@@ -47,11 +47,12 @@
 # Epic 4-5 (v1.1) status was read from each story file's own `Status:` field
 # rather than floored at 'ready-for-dev' by mere file existence, since the
 # real value was already recorded and more informative.
-# Epic 5's Story 5.2 is 'review', not 'done' — its story file's Status
-# field says review; not auto-advanced here.
+# Epic 5's Story 5.2 is 'done' — its story file's Status field was flipped
+# to 'done' 2026-09-12 once the last pending patch (the commit-time git
+# split) was resolved; see that file's Round 1 Patch section.
 
 generated: '2026-09-12'
-last_updated: '2026-09-12' # Story 4-7 code review patches applied, moved to done
+last_updated: '2026-09-12' # Story 5.2 moved to done (commit split resolved); epic-5 moved to done
 project: Overlearn
 project_key: NOKEY
 tracking_system: file-system
@@ -93,9 +94,9 @@ development_status:
   4-7-flip-sort-direction-via-toggle: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
+  epic-5: done
   5-1-configure-the-overlearning-target: done
-  5-2-apply-a-changed-target-to-an-in-progress-session: review
+  5-2-apply-a-changed-target-to-an-in-progress-session: done
   5-3-see-a-warning-before-changing-settings-mid-session: done
-  5-4-reach-settings-from-any-screen: backlog
+  5-4-reach-settings-from-any-screen: done
   epic-5-retrospective: optional

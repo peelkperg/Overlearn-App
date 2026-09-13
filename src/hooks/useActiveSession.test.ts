@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-native';
 
 import { readHistory } from '@/lib/history';
+import * as sessionStore from '@/lib/session';
 import { setOverlearningPercent } from '@/lib/settings';
 import { storage } from '@/lib/storage';
 
@@ -725,5 +726,88 @@ describe('useActiveSession mid-session target decrease reconciliation [Story 5.2
 
     expect(result.current.session?.sessionComplete).toBe(true);
     expect(result.current.settled).toBe(true); // useFeedbackSignal's completion tier fired
+  });
+
+  // [Review][Patch] found via code review 2026-09-12 (round 2): the
+  // reconciliation effect's dependency array is [overlearningLevel] alone,
+  // so its first run fires on mount for whatever session is already on
+  // disk — the accepted consequence that an interrupted session can
+  // auto-complete at app open, bypassing FR24's Resume/Discard prompt. No
+  // test exercised this; every other Task 3 test changes the level *after*
+  // mounting, none mounts over a pre-existing session the effect itself
+  // completes on first run.
+  it('completes an already-on-disk session at mount, with no settings change and no tap', async () => {
+    setOverlearningPercent(50); // level 0.5: calculateTargetStreak(11, 0.5) = 6
+    sessionStore.writeSession({
+      segmentId: 'segment-1',
+      segmentName: 'Bar 24 arpeggio',
+      currentStreak: 6,
+      totalCorrectThisSession: 6,
+      totalIncorrectThisSession: 11,
+      sessionComplete: false,
+      sessionStartTimestamp: new Date().toISOString(),
+      completedTarget: null,
+    });
+
+    const { result } = await renderHook(() => useActiveSession());
+
+    expect(result.current.session?.sessionComplete).toBe(true);
+    expect(result.current.session?.completedTarget).toBe(6);
+    expect(result.current.settled).toBe(true); // completion feedback fires on this path too
+  });
+});
+
+// [Review][Patch] found via code review 2026-09-12 (round 2): CLAUDE.md
+// §11.1 requires an error-condition test for new logic — the reconciliation
+// effect's writeSession try/catch (useActiveSession.ts) had none; the catch
+// branch could be deleted with the suite green.
+describe('useActiveSession reconciliation write failure [Review][Patch] 2026-09-12', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  // [Review][Patch] found via code review 2026-09-12 (round 3): mockRestore()
+  // used to be the last line of the test body, after two `expect` calls — if
+  // either threw, the throwing writeSession spy leaked into every later test
+  // sharing the sessionStore module namespace, producing a cascade of
+  // unrelated "disk full" failures. Restoring in afterEach runs regardless of
+  // how the test body exits. The settings level is also reset to the default,
+  // since setOverlearningPercent(300)/(50) here mutate global settings state
+  // with no restoration of their own.
+  afterEach(() => {
+    jest.restoreAllMocks();
+    setOverlearningPercent(50);
+  });
+
+  it('swallows a writeSession throw without crashing, leaving the session unreconciled', async () => {
+    setOverlearningPercent(300); // level 3.0: calculateTargetStreak(11, 3.0) = 33
+    const { result } = await renderHook(() => useActiveSession());
+    await act(() => {
+      result.current.start('segment-1', 'Bar 24 arpeggio');
+    });
+    for (let i = 0; i < 11; i++) {
+      await act(() => {
+        result.current.logIncorrect();
+      });
+    }
+    for (let i = 0; i < 6; i++) {
+      await act(() => {
+        result.current.logCorrect();
+      });
+    }
+    expect(result.current.session?.currentStreak).toBe(6);
+
+    jest.spyOn(sessionStore, 'writeSession').mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    // target(11, 0.5) = 6, already met — this fires the reconciliation
+    // effect's write, which this test forces to throw.
+    await act(() => {
+      setOverlearningPercent(50);
+    });
+
+    expect(result.current.session?.sessionComplete).toBe(false); // swallowed, not applied
+    expect(result.current.settled).toBe(false); // no completion feedback on a failed write
   });
 });
