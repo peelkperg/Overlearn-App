@@ -262,6 +262,29 @@ describe('HomeScreen resume/discard prompt [Story 2.10]', () => {
     expect(view.queryByTestId('resume-discard-resume')).toBeNull();
   });
 
+  // Story 5.4 (FR43, AC #5): the resume/discard prompt must not block the
+  // one other reason a user might open Settings first — e.g. lowering the
+  // overlearning-% before deciding whether the interrupted run still meets
+  // it. [Review][Patch] found via code review 2026-09-12 (round 3): Task 6
+  // claimed this was "verified by existing tests", but no test asserted the
+  // gear and the prompt are both present and independently actionable at
+  // once — only that each exists in isolation.
+  it('the Settings gear remains present and reachable while the resume/discard prompt is showing (AC #5)', async () => {
+    await startInterruptedSession();
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByTestId('resume-discard-resume')).toBeTruthy();
+    expect(view.getByTestId('segment-list-settings')).toBeTruthy();
+
+    await fireEvent.press(view.getByTestId('segment-list-settings'));
+
+    expect(pushed).toHaveBeenCalledWith('/settings');
+    // Navigating to Settings does not resolve the prompt — it is still
+    // showing, exactly as left, for when the user returns.
+    expect(view.getByTestId('resume-discard-resume')).toBeTruthy();
+    expect(view.getByTestId('resume-discard-discard')).toBeTruthy();
+  });
+
   it('Discard clears the session and writes no history entry (FR26)', async () => {
     await startInterruptedSession();
     const view = await render(<HomeScreen />);

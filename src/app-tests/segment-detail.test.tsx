@@ -411,3 +411,48 @@ describe('SegmentDetailScreen inline rename on heading [Story 4.5, FR40, UX-DR25
     expect(stored?.name).toBe('Bar 24 arpeggio');
   });
 });
+
+// Story 5.4 (FR43): Settings gear icon visible on segment detail screen,
+// navigates to Settings without ending/resetting the session.
+describe('SegmentDetailScreen Settings button [Story 5.4]', () => {
+  beforeEach(() => {
+    pushed.mockClear();
+  });
+
+  it('shows the Settings gear icon on the segment detail screen (AC #4)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<SegmentDetailScreen />);
+
+    expect(view.getByTestId('segment-detail-settings')).toBeTruthy();
+  });
+
+  it('Settings icon has correct accessibility label (AC #4)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<SegmentDetailScreen />);
+
+    const button = view.getByTestId('segment-detail-settings');
+    expect(button.props.accessibilityLabel).toBe('Settings');
+  });
+
+  it('Settings icon is 44×44+ minimum tap target (AC #4)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<SegmentDetailScreen />);
+
+    const button = view.getByTestId('segment-detail-settings');
+    expect(button.props.style.minWidth).toBeGreaterThanOrEqual(44);
+    expect(button.props.style.minHeight).toBeGreaterThanOrEqual(44);
+  });
+
+  it('tapping Settings navigates to Settings screen (AC #4)', async () => {
+    const segment = createSegment('Bar 24 arpeggio');
+    useLocalSearchParams.mockReturnValue({ id: segment.id });
+    const view = await render(<SegmentDetailScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-detail-settings'));
+
+    expect(pushed).toHaveBeenCalledWith('/settings');
+  });
+});

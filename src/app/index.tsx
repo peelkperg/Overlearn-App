@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResumeDiscardDialog } from '@/components/ResumeDiscardDialog';
 import { SegmentListItem } from '@/components/SegmentListItem';
+import { SettingsButton } from '@/components/SettingsButton';
 import { SortControl } from '@/components/SortControl';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -171,15 +172,13 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable
-          testID="segment-list-settings"
-          style={styles.settingsButton}
-          onPress={() => router.push('/settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-        >
-          <ThemedText themeColor="textSecondary">⚙</ThemedText>
-        </Pressable>
+        {/* No platform header (headerShown: false app-wide) — same in-screen
+            -control pattern SortControl establishes for its own conceptual
+            header position. Unconditional (a direct child of SafeAreaView,
+            not inside the empty-state/non-empty branches): Settings has no
+            other entry point, so it must stay reachable with zero segments
+            too. */}
+        <SettingsButton testID="segment-list-settings" />
         {error && (
           <ThemedText
             testID="segment-list-error"
@@ -282,18 +281,6 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-  },
-  // No platform header (headerShown: false app-wide) — same in-screen-control
-  // pattern SortControl already establishes for its own conceptual header
-  // position. Right-aligned, unconditional (a direct child of SafeAreaView,
-  // not inside the empty-state/non-empty branches): Settings has no other
-  // entry point, so it must stay reachable with zero segments too.
-  settingsButton: {
-    alignSelf: 'flex-end',
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyState: {
     flex: 1,
