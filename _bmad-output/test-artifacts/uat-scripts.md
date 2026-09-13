@@ -7,7 +7,7 @@ inputDocuments:
   - _bmad-output/test-artifacts/traceability-matrix.md
   - _bmad-output/test-artifacts/test-design-qa.md
   - _bmad-output/test-artifacts/test-design-architecture.md
-build: EAS Android preview 47808a93 (main @ 27fc77d); full re-run and all 31 active scripts passing on build 5a47a7a5 (main @ 2cd9fa2), 2026-09-02
+build: EAS Android preview 47808a93 (main @ 27fc77d); full re-run and all 31 active scripts passing on build 5a47a7a5 (main @ 2cd9fa2), 2026-09-02; v1.1 UAT-32–37 on that same build, 2026-09-12; UAT-38/39/40/41 on build c944e760 (main @ 5ffd7c2), 2026-09-12
 ---
 
 # UAT Scripts: Overlearn
@@ -516,7 +516,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Settings screen shows the stepper, worked example, and floor note. The buttons visibly disable at 50%/300%. The new session's target streak reflects the changed percentage, not the old one.
 
-- [ ] Pass — **Unblocked 2026-09-12 (Story 5.4, FR43):** `session/[id].tsx` now carries its own `SettingsButton` (`testID="session-settings"`), so step 1's gear icon is reachable from the Active Session screen too, not only `index.tsx`. Not yet re-run on-device — needs a build containing Story 5.4.
+- [x] Pass — Notes: 2026-09-12, build `c944e760` (`main` @ `5ffd7c2`).
 
 ### UAT-39: Change the target mid-session — display update and outright completion
 
@@ -531,7 +531,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 3 — the target streak reflects the new percentage immediately, no restart or re-navigation trick required. Step 5 — the session **completes outright from the settings change alone**: the app moves to the Completion screen (or, if you backed out to Home first, Home redirects there) with no Correct/Incorrect tap and no confirmation step, the same haptic/announcement as a tap-driven completion fires, and "Target reached: N" shows the streak you actually achieved (not the lower recalculated target). Step 6 — Restart is locked out with no tap having been made (FR22), same as any other completed session.
 
-- [ ] Pass — **Unblocked 2026-09-12 (Story 5.4, FR43):** step 2 now has a UI path — `session/[id].tsx`'s `SettingsButton` navigates to Settings directly, no OS back gesture needed. Not yet re-run on-device — needs a build containing Story 5.4.
+- [x] Pass — Notes: 2026-09-12, build `c944e760` (`main` @ `5ffd7c2`).
 
 ### UAT-40: In-progress-session notice
 
@@ -544,7 +544,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 1 shows no notice. Step 2 shows a standing notice naming the segment, worded as a warning that the change may complete the session. Step 3 leaves the same single notice in place the whole time — no per-tap popup or dialog interrupts the stepper. Step 4 — the notice disappears the instant the session completes (it is no longer "in progress"), coinciding with the same redirect-to-Completion behavior UAT-39 describes.
 
-- [ ] Pass — **Unblocked 2026-09-12 (Story 5.4, FR43):** same navigation fix as UAT-38/UAT-39. Not yet re-run on-device.
+- [x] Pass — Notes: 2026-09-12, build `c944e760` (`main` @ `5ffd7c2`).
 
 ### UAT-41: Settings change completes an *interrupted* session, bypassing Resume/Discard
 
@@ -557,7 +557,7 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Expected:** Step 4 — Home shows the session's **completion summary directly**, not the Resume/Discard prompt — the settings change completed the session while it sat interrupted, and FR24 specifies this bypasses the prompt entirely (matching how a normally-completed-then-interrupted session already behaves). This is the one v1.1 scenario most likely to surprise a user with no tap of their own; note anything that reads as confusing, not just anything that's outright broken.
 
-- [ ] Pass — **Unblocked 2026-09-12 (Story 5.4, FR43, AC #5):** step 3's gear on Home is reachable and independently actionable while the Resume/Discard dialog is showing — verified in automated tests (`app-tests/index.test.tsx`) that navigating to Settings does not dismiss or resolve the dialog. Not yet re-run on-device.
+- [x] Pass — Notes: 2026-09-12, build `c944e760` (`main` @ `5ffd7c2`).
 
 ## v1.1 Summary
 
@@ -569,6 +569,8 @@ Two things this checklist does not cover and remain open regardless of this resu
 
 **Minimum bar before calling v1.1 release-ready:** all 7 P0 scripts pass. Run in this order of priority: UAT-32 first (direct on-device confirmation of R8, the one HIGH risk in `test-design-epic-4-5.md`), then UAT-39/UAT-41 (the settings-driven completion behavior — the single most consequential addition since this section was first written, capable of ending a session or bypassing Resume/Discard with no tap at all).
 
-**Result — 2026-09-12:** UAT-32 through UAT-37 pass. UAT-38, UAT-39, UAT-40, UAT-41 (all P0/P1 Settings-navigation scripts) were **blocked, not failed** — no build defect was exercised because no UI path existed from an active/interrupted session to the Settings screen.
+**Result — 2026-09-12:** UAT-32 through UAT-37 pass (build `5a47a7a5`). UAT-38, UAT-39, UAT-40, UAT-41 (all P0/P1 Settings-navigation scripts) were **blocked, not failed** — no build defect was exercised because no UI path existed from an active/interrupted session to the Settings screen.
 
-**Unblocked — 2026-09-12 (Story 5.4, FR43):** the missing navigation was added (`SettingsButton` on `session/[id].tsx` and `segment/[id].tsx`, reachable alongside the Resume/Discard dialog per AC #5). All four scripts are re-runnable but have **not yet been executed on-device** — the last on-device build (`5a47a7a5`) predates both Story 5.2 (completion-reconciliation fixes) and Story 5.4 (this navigation). A new preview build is required before re-running. The v1.1 release bar (all 7 P0 scripts pass) remains unmet until UAT-38, 39, 40, 41 are actually executed and pass on that build — run UAT-39 and UAT-41 first (the no-tap-required completion behavior), then UAT-38, then UAT-40.
+**Unblocked and re-run — 2026-09-12 (Story 5.4, FR43):** the missing navigation was added (`SettingsButton` on `session/[id].tsx` and `segment/[id].tsx`, reachable alongside the Resume/Discard dialog per AC #5). A new preview build (`c944e760`, `main` @ `5ffd7c2`, containing Story 5.2's completion-reconciliation fixes and Story 5.4's navigation) was cut and all four scripts **passed** on it.
+
+**All 41 active v1.0 + v1.1 scripts now pass.** The v1.1 release bar (all 7 P0 scripts pass) is met.
