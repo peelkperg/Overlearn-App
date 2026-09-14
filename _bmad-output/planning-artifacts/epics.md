@@ -1,15 +1,38 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories, v1.1-step-04-final-validation, v1.1.1-extension]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories, v1.1-step-04-final-validation, v1.1.1-extension, web-platform-step-01-validate-prerequisites, web-platform-step-02-design-epics, web-platform-step-03-create-stories]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/architecture.md
-lastUpdated: '2026-09-12'
+  - _bmad-output/specs/spec-web-platform-support/SPEC.md
+lastUpdated: '2026-09-14'
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Requirements Inventory" heading, and Epic 1-3 below "## Epic List". Shipped, frozen at git tag v1.0.0.'
   v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40, UX-DR13-25), and 8 stories (4.1-4.5, 5.1-5.3) below "## Epic List". Fully specified, not yet implemented.'
   v1.1.1: 'The "v1.1.1 Requirements Inventory" section (FR41-FR43, UX-DR26-28), and 3 stories (4.6, 4.7, 5.4) below "## Epic List". Targeted addition (2026-09-12), driven by gaps manual UAT found in the shipped v1.1 build. Fully specified, not yet implemented.'
+  web-platform: 'The "Web Platform Requirements Inventory" section (no new FRs; NFR10 + NFR8/9 addendum, 8 architecture-derived additional requirements), Epic 6: Web Platform Access below "## Epic List", and its 4 stories (6.1-6.4) below "## Epic 6". Fully specified (2026-09-14), not yet implemented.'
 editHistory:
+  - date: '2026-09-14'
+    changes: >-
+      Extended in place (same destructive-template-copy declined again, per
+      the 2026-09-06 precedent). Added a "Web Platform Requirements
+      Inventory" section: no new FRs (platform parity, not new user-facing
+      behavior), NFR10 (offline/installable) plus an NFR8/9 durability
+      addendum, and 8 architecture-derived additional requirements (AD-1
+      through AD-8) covering the storage port/adapter boundary, base-path
+      single-source-of-truth, dynamic-route SPA fallback, Workbox precache
+      generation, manual-trigger GitHub Pages deploy, and no backend/
+      accounts/telemetry. No new UX-DRs -- no new UI surface. Specified
+      first through a separate bmad-spec/bmad-architecture chain
+      (SPEC.md + ARCHITECTURE-SPINE.md), then folded into prd.md and
+      architecture.md per the established PRD-first convention before this
+      extraction. Added Epic 6: Web Platform Access to the Epic List --
+      one epic, not three, since the storage/PWA/hosting capability groups
+      are strictly sequential and none delivers independent user value
+      alone. Wrote and appended 4 stories (6.1 storage layer, 6.2 base
+      path/manifest, 6.3 installable offline shell, 6.4 deploy workflow),
+      ordered so none depends on a later one. Final validation deferred to
+      the next step.
   - date: '2026-09-12'
     changes: >-
       Extended in place (destructive template-copy step declined again, per
@@ -330,6 +353,39 @@ FR41: Epic 4 - Row summary data (creation/last-practice date, Solidification %)
 FR42: Epic 4 - Sort direction toggle button
 FR43: Epic 5 - Settings reachable from any screen
 
+## Web Platform Requirements Inventory (added 2026-09-14)
+
+Everything above this heading is designed and specified, not yet implemented. This section covers reaching users the native iOS build currently excludes (iOS on hold, Android-only native) via an installable web build — hosted free, ad-free, on GitHub Pages. Specified first through a separate bmad-spec/bmad-architecture chain (`_bmad-output/specs/spec-web-platform-support/SPEC.md` + `ARCHITECTURE-SPINE.md`), then folded into `prd.md` and `architecture.md` in that order per this project's established PRD-first convention, same as every prior extension.
+
+### Web Platform Functional Requirements
+
+None. Web reuses every existing FR (FR1–FR43) unmodified — this is platform parity (storage, hosting, installability), not new user-facing behavior.
+
+### Web Platform NonFunctional Requirements
+
+NFR10: The web build must remain fully functional offline after the first successful load — installable as a standalone app (PWA), not merely a hosted page requiring constant connectivity — so it serves as a genuine alternative for the users the native iOS build currently excludes.
+
+Addendum to NFR8/9 (not a new NFR): web's storage durability is weaker than native's (no OS sandbox, no backup mechanism; lost on cleared browser data, private mode, or a browser/profile switch) — NFR8/9's own guarantees ("zero data leaves the device", no accounts) are unchanged.
+
+### Web Platform Additional Requirements (from architecture.md's Web Platform section)
+
+- `storage.ts` stays one port with platform-selected adapters (MMKV native / `localStorage` web) — construction itself, not only the calls made on it, is gated by `Platform.OS` (AD-1).
+- `subscribeToKeys` fan-out is synchronous, per-listener error-isolated, and cleanly unsubscribable on web, matching MMKV's semantics (AD-2).
+- One named config key (`app.json#expo.extra.basePath`) is the single source of truth for the router base, PWA manifest `start_url`/`scope`, and service-worker scope (AD-3).
+- Deep links past the root (`segment/[id]`, `segment/[id]/rename`, `session/[id]`) are client-rendered, not statically prerenderable — a pinned `404.html`-copy SPA fallback, generated in the same postbuild step as the service worker, is required (AD-4).
+- Service worker precache generated by Workbox (`workbox-build`, pinned `7.4.1`) from the real static-export output, covering 100% of `dist/`; conservative update lifecycle (no `skipWaiting`/`clientsClaim`) so an in-progress session is never swapped under itself; one canonical `build:web` script for local + CI (AD-5).
+- Deploy via GitHub's native Pages Actions (`actions/upload-pages-artifact` + `actions/deploy-pages`), triggered manually (`workflow_dispatch`) — never automatically on push to `main` (AD-6).
+- No backend, accounts, or telemetry introduced to support hosting or installability (AD-7).
+- Service-worker registration has one named call site (the web entry point), no explicit `scope` passed (AD-8).
+
+### Web Platform UX Design Requirements
+
+None — no new UI surface; existing screens render unmodified on web via `react-native-web`. `ux-design-specification.md` was not extended for this work.
+
+### Web Platform FR Coverage Map
+
+N/A — no new FRs. NFR10, the NFR8/9 addendum, and AD-1–AD-8 all map to Epic 6 below, not to any FR.
+
 ## Epic List
 
 ### Epic 1: Segment Management
@@ -356,6 +412,11 @@ Users can rename, duplicate, and sort their segments, and see at a glance how so
 Users can adjust how strict the overlearning target is — from the fixed 50% to anywhere between 50% and 300% — globally, with a change taking effect immediately, including for a session already underway.
 **FRs covered:** FR35, FR36, FR37, FR39, FR43
 **Implementation notes:** A distinct core-file set from Epic 4 — new `lib/settings.ts` boundary, new `app/settings.tsx` screen, and the optional-parameter threading through `lib/mechanic.ts` → `lib/session-transitions.ts` → `hooks/useActiveSession.ts` that `architecture.md` already resolved as non-breaking. No dependency on Epic 4; sequenced after it as the higher-risk of the two (it touches the core mechanic layer, even though the threading is designed to be non-breaking). **v1.1.1 addition (FR43):** new shared `components/SettingsButton.tsx`, mounted on `app/session/[id].tsx` and `app/segment/[id].tsx` in addition to `app/index.tsx` — closes the gap that left Story 5.2/5.3's live-apply and standing-notice behavior unreachable/untestable mid-session in the shipped build (UAT-38-41).
+
+### Epic 6: Web Platform Access (added 2026-09-14)
+Musicians without iOS access — or anyone preferring a browser — can install and use Overlearn as an offline-capable web app, matching native functionality exactly, hosted free with no ads and no new accounts.
+**FRs covered:** None (platform parity, not new functionality — covers NFR10, the NFR8/9 durability addendum, and architecture-derived additional requirements AD-1–AD-8)
+**Implementation notes:** One epic, not three, because the three capability groups are strictly sequential and none is independently meaningful without the others — a web-compatible `storage.ts` with nowhere to deploy it, or a deployed build that can't persist data, both fail the epic's own goal. Stories ordered: storage web-parity first (`src/lib/storage.ts`, blocking prerequisite — AD-1, AD-2), then installability (`app.json`, `public/service-worker.js` — AD-3, AD-5, AD-8), then hosting/deploy (`public/404.html`, `.github/workflows/deploy-pages.yml` — AD-4, AD-6, AD-7). Full contract: `_bmad-output/specs/spec-web-platform-support/SPEC.md` + `ARCHITECTURE-SPINE.md` companion. No dependency on Epics 1–5; touches no file any of them touch.
 
 ## Epic 1: Segment Management
 
@@ -936,3 +997,107 @@ So that a target change I need (FR37) or the warning about one (FR39) is actuall
 **Given** an interrupted session (backgrounded or killed, not yet resumed/discarded)
 **When** the app relaunches and shows the resume/discard prompt
 **Then** the user can still navigate to Settings directly rather than acting on the prompt first, since Home already carries the gear icon — verified end-to-end together with Story 5.2's interrupted-session completion path (FR43, FR24, FR37)
+
+## Epic 6: Web Platform Access (added 2026-09-14)
+
+Musicians without iOS access — or anyone preferring a browser — can install and use Overlearn as an offline-capable web app, matching native functionality exactly, hosted free with no ads and no new accounts. Full contract: `_bmad-output/specs/spec-web-platform-support/SPEC.md` + its `ARCHITECTURE-SPINE.md` companion.
+
+### Story 6.1: Web-Compatible Storage Layer
+
+As a developer,
+I want `storage.ts` to back its existing public API with a `localStorage` adapter when running on web,
+So that every layer above the storage boundary works unmodified and a user's data persists identically to native.
+
+**Acceptance Criteria:**
+
+**Given** the app runs on web (`Platform.OS === 'web'`)
+**When** any storage function (`getObject`/`setObject`/`getString`/`setString`/`getNumber`/`setNumber`/`deleteKey`) is called
+**Then** it reads/writes through `localStorage` via the same public API and signatures as native, with the raw store's construction itself — not only the calls made on it — gated by `Platform.OS` (AD-1)
+
+**Given** a component subscribes via `subscribeToKeys`
+**When** another component writes via `setObject`/`setString`
+**Then** the subscriber's listener fires synchronously in the same tick, matching MMKV's same-process semantics (AD-2)
+
+**Given** a subscriber unsubscribes, or its owning component unmounts
+**When** a subsequent `set`/`remove` occurs
+**Then** that listener is not invoked and no reference to it remains
+
+**Given** one of several listeners on the same write throws
+**When** the write completes
+**Then** every other listener still fires and the write itself does not raise
+
+**Given** `localStorage` throws (private mode, quota exceeded)
+**When** any storage read/write is attempted
+**Then** it degrades to `undefined`/no-op, caught not crashed, same as a native MMKV failure
+
+**Given** `localStorage` holds a previously-written (or corrupted) value
+**When** `getObject` reads it
+**Then** it parses/validates/migrates exactly as native, quarantining under the same `{key}.corrupt.{timestamp}` convention on failure
+
+### Story 6.2: Base Path & PWA Manifest Configuration
+
+As a developer,
+I want a single named config key defining the app's base path, consumed by the router and the PWA manifest,
+So that the app resolves correctly when served from a GitHub Pages subpath, with nothing to independently drift.
+
+**Acceptance Criteria:**
+
+**Given** `app.json#expo.extra.basePath` is set to the GitHub Pages subpath (e.g. `/Overlearn-App/`)
+**When** the app is built for web
+**Then** the router's base URL resolves assets and routes correctly at that subpath, and no other file hardcodes or re-derives the path (AD-3)
+
+**Given** `app.json`'s web manifest fields (name, short_name, icons, `display: "standalone"`, background/theme color)
+**When** the manifest is generated
+**Then** `start_url` and `scope` match the same `basePath` value
+
+### Story 6.3: Installable Offline App Shell
+
+As a user reaching Overlearn via a browser,
+I want the app to install and keep working after the network drops,
+So that it's a genuine substitute for the native app I can't install.
+
+**Acceptance Criteria:**
+
+**Given** the static export output (`dist/`)
+**When** the `build:web` postbuild step runs
+**Then** Workbox's `generateSW` produces `public/service-worker.js` precaching 100% of `dist/`'s files (a file-count assertion fails the build on mismatch), and `public/404.html` is generated as a byte-identical copy of `index.html`, in the same step (AD-4, AD-5)
+
+**Given** the app has loaded once successfully
+**When** the network is then disabled and the page reloaded
+**Then** the app shell still loads and functions (storage remains local, unaffected)
+
+**Given** the service worker registration lives in exactly one file (the web entry point), with no explicit `scope` passed
+**When** a new version is deployed
+**Then** a tab already open keeps running the old version until closed and reopened — no in-progress session is interrupted (AD-8)
+
+**Given** the deployed app meets install criteria
+**When** the browser's install affordance is used
+**Then** the app installs and the installed/standalone launch opens successfully at the correct base path
+
+**Given** a direct reload or deep link to a non-root route (e.g. `/segment/abc`)
+**When** the request reaches GitHub Pages
+**Then** `public/404.html` serves the app shell, which then client-side-renders the correct route from local data (AD-4)
+
+### Story 6.4: GitHub Pages Deploy Workflow
+
+As a maintainer,
+I want a manually-triggered GitHub Actions workflow that builds and publishes the web app to GitHub Pages,
+So that releasing the web build is a deliberate choice, decoupled from every commit, matching Android's own manual release cadence.
+
+**Acceptance Criteria:**
+
+**Given** `.github/workflows/deploy-pages.yml` is configured with a `workflow_dispatch` trigger only
+**When** it is manually run against `main`
+**Then** it executes the single canonical `build:web` script (`expo export --platform web` → Workbox postbuild → `404.html` copy) and publishes the result via `actions/upload-pages-artifact` + `actions/deploy-pages` (AD-6)
+
+**Given** a successful run
+**When** the deployment completes
+**Then** the app is live and reachable at the GitHub Pages URL, and a segment created plus a session run to completion there persists across a reload, identically to the local-dev-server check
+
+**Given** the workflow has no push trigger
+**When** a commit is pushed to `main`
+**Then** no deploy is triggered (AD-6)
+
+**Given** the whole epic
+**When** any story in it is implemented
+**Then** no backend, account system, or telemetry is introduced anywhere in the web-delivery surface (AD-7)

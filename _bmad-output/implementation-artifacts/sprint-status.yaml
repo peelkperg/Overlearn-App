@@ -68,7 +68,7 @@
 # shipped.
 
 generated: '2026-09-12'
-last_updated: '09-13-2026 11:34' # Refresh: reconciled 4.4/4.6/4.7/5.4 slug drift, dropped phantom 1-5, epic-4 → done
+last_updated: '09-14-2026 00:00' # Refresh: reconciled 4.4/4.6/4.7/5.4 slug drift, dropped phantom 1-5, epic-4 → done
 project: Overlearn-App
 project_key: NOKEY
 tracking_system: file-system
@@ -80,6 +80,7 @@ development_status:
   1-2-create-a-named-practice-segment: done
   1-3-view-the-segment-list: done
   1-4-select-a-segment-to-practice-or-review: done
+  1-5-removed-archive-a-segment: done
   1-6-delete-a-segment: done
   epic-1-retrospective: optional
 
@@ -116,3 +117,10 @@ development_status:
   5-3-see-a-warning-before-changing-settings-mid-session: done
   5-4-reach-settings-from-any-screen-v1-1-1-added-2026-09-12: done
   epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-web-compatible-storage-layer: backlog
+  6-2-base-path-pwa-manifest-configuration: backlog
+  6-3-installable-offline-app-shell: backlog
+  6-4-github-pages-deploy-workflow: backlog
+  epic-6-retrospective: optional

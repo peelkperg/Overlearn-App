@@ -13,8 +13,24 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
-lastEdited: '2026-09-12'
+lastEdited: '2026-09-14'
 editHistory:
+  - date: '2026-09-14'
+    changes: >-
+      Added web as a platform target (extended the Platform line under
+      Technical Architecture Considerations): an installable PWA hosted
+      free on GitHub Pages, added to reach the users iOS's on-hold status
+      currently excludes -- not a replacement for iOS, a stopgap for it.
+      Added a Web Platform Availability addendum after NFR8/9 documenting
+      the web build's weaker storage durability (no OS sandbox, no backup
+      mechanism -- lost on cleared browser data, private mode, or a
+      browser/profile switch) while NFR8/9's own text is unchanged. Added
+      NFR10 (offline-after-first-load, installable). Specified first
+      through a separate bmad-spec/bmad-architecture chain
+      (`_bmad-output/specs/spec-web-platform-support/SPEC.md` +
+      `ARCHITECTURE-SPINE.md`) rather than this project's usual
+      PRD-first path, then folded back here per the established
+      PRD-first-source-of-truth convention before epics.md extraction.
   - date: '2026-09-12'
     changes: >-
       Amended FR41 following Story 4.6's code review: the one-decimal
@@ -286,7 +302,7 @@ Overlearn is a single-user, fully offline mobile app with no backend, no account
 
 ### Technical Architecture Considerations
 
-- **Platform:** iOS and Android, cross-platform framework (React Native or Flutter) — undecided, left to the architecture stage since both are equally capable here. **(Resolved 2026-08-31 — see `architecture.md`: React Native via Expo SDK 57, chosen for existing familiarity and managed-workflow maintenance cost. Only Android has been built and verified to date; iOS is on hold — see `backlog.md`.)**
+- **Platform:** iOS and Android, cross-platform framework (React Native or Flutter) — undecided, left to the architecture stage since both are equally capable here. **(Resolved 2026-08-31 — see `architecture.md`: React Native via Expo SDK 57, chosen for existing familiarity and managed-workflow maintenance cost. Only Android has been built and verified to date; iOS is on hold — see `backlog.md`.)** **(Extended 2026-09-14: a web build (installable PWA, hosted free on GitHub Pages) added as a platform to reach the users iOS's on-hold status currently excludes — not a replacement for iOS, a stopgap for it. Full technical detail in `_bmad-output/specs/spec-web-platform-support/SPEC.md` and its `ARCHITECTURE-SPINE.md` companion, not restated here.)**
 - **Offline mode:** Required and total — the entire app must function with no network connectivity, at all times, not as a degraded fallback mode.
 - **Device permissions:** None required. No camera, microphone, location, contacts, or notification permissions requested.
 - **Push notifications:** Explicitly excluded — no notification infrastructure needed.
@@ -435,3 +451,9 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 
 - NFR8: Zero data leaves the device: no network calls, no analytics, no crash reporting, no usage tracking of any kind — verifiable by code inspection (no networking library/permission should be present in the shipped app at all, not just unused).
 - NFR9: No account creation, authentication, or any form of user identification — the app must have zero concept of "a user" beyond the single local device installation.
+
+**Web platform addendum (2026-09-14):** NFR8/9 hold identically on the web build — nothing about what leaves the device, or what accounts exist, changes. What differs is durability, not privacy: the web build's storage has no OS-level app sandbox and no backup mechanism, so data is lost if the user clears browser data, uses a private/incognito window, or switches browsers/profiles — a real platform-capability difference from native, not a relaxation of NFR8/9.
+
+### Web Platform Availability
+
+- NFR10 (added 2026-09-14): The web build must remain fully functional offline after the first successful load — installable as a standalone app (PWA), not merely a hosted page requiring constant connectivity — so it serves as a genuine alternative for the users the native iOS build currently excludes.

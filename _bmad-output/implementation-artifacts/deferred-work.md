@@ -2,6 +2,13 @@
 
 Items surfaced by review workflows that were real but not actionable at the time they were found.
 
+## Deferred from: bmad-build spec-web-platform-support, multi-goal split (2026-09-13)
+
+- ~~source_spec: `_bmad-output/implementation-artifacts/spec-web-platform-support.md`~~
+  ~~summary: Add a PWA layer (manifest + service worker) so the web build installs and loads its app shell with zero connectivity, matching native's offline parity.~~
+  ~~evidence: Decided in scope (not deferred as a decision) during spec-02 planning, but pushed the spec past the 1600-token target and constitutes a second, independently-shippable deliverable — it touches no file the storage-swap goal touches (`app.json`'s PWA manifest fields, a new `public/sw.js`, boot-time registration) and can ship, be tested, and merge entirely on its own once the storage swap is live. Pick up as its own `bmad-build` run.~~
+  **Promoted back into scope, 2026-09-13.** The human clarified the web build's actual purpose — reaching users the native builds currently exclude (no iOS build right now, Android-only) — which a bare hosted URL under-serves compared to an installable app. Folded back into `spec-web-platform-support.md` alongside a GitHub Pages hosting decision. See that spec's Spec Change Log for the renegotiation.
+
 ## Deferred from: code review of 4-7-flip-sort-direction-via-toggle (2026-09-12)
 
 - **The segment list does not scroll to top after the sort direction flips.** With enough segments to have scrolled (~6+), reversing the order leaves the `FlatList`'s `contentOffset` untouched (`src/app/index.tsx:167-169`, `206-222`), so the viewport shows an arbitrary mid-list slice rather than the new first item — the one signal that would confirm the direction actually changed. The user reads this as "nothing happened" or "the list scrambled itself." Pre-existing from Story 4.3's menu gesture, but Story 4.7's one-tap toggle makes it the primary way this is reached. Deferred because adding scroll-to-top is new behavior that no AC or FR specifies (No-Invention rule), and because it should be decided once for both entry points rather than bolted onto the new one — a `ref` + `scrollToOffset({ offset: 0 })` in `handleSortChange`'s success branch would cover both.
