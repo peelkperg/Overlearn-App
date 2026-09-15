@@ -9,6 +9,16 @@ Items surfaced by review workflows that were real but not actionable at the time
   ~~evidence: Decided in scope (not deferred as a decision) during spec-02 planning, but pushed the spec past the 1600-token target and constitutes a second, independently-shippable deliverable — it touches no file the storage-swap goal touches (`app.json`'s PWA manifest fields, a new `public/sw.js`, boot-time registration) and can ship, be tested, and merge entirely on its own once the storage swap is live. Pick up as its own `bmad-build` run.~~
   **Promoted back into scope, 2026-09-13.** The human clarified the web build's actual purpose — reaching users the native builds currently exclude (no iOS build right now, Android-only) — which a bare hosted URL under-serves compared to an installable app. Folded back into `spec-web-platform-support.md` alongside a GitHub Pages hosting decision. See that spec's Spec Change Log for the renegotiation.
 
+## Deferred from: bmad-build 6-3-installable-offline-app-shell, review (2026-09-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-3-installable-offline-app-shell.md`
+  summary: No test renders `src/app/_layout.tsx` (or otherwise verifies the `useEffect(() => { registerServiceWorker(); }, [])` wiring), so a regression that silently removes the app's single AD-8 registration call site would ship with all existing tests green.
+  evidence: Confirmed by the verification-gap review layer: `service-worker.test.ts` calls `registerServiceWorker()` directly and covers all four of its branches, but nothing imports or renders `RootLayout`; deleting the `useEffect` block compiles clean and passes every existing test. Deferred rather than patched because this codebase has no established pattern for testing `_layout.tsx`'s wiring at all (e.g. `STACK_SCREENS`'s own wiring into the `Stack` component isn't render-tested either) — closing this gap here would be inconsistent with the file's existing verification posture rather than filling a story-specific hole.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-3-installable-offline-app-shell.md`
+  summary: No automated test exercises `scripts/postbuild-web.js`'s `countFiles()` exclusion logic or its precached-count-vs-real-file-count assertion — the sole safety net for AD-5's "100% of `dist/` precached" invariant.
+  evidence: Confirmed by the verification-gap review layer: no `*.test.js`/`*.test.ts` file references `postbuild-web.js`; `npm test`'s default `testMatch` never picks up files under `scripts/`. A regression that incorrectly widens the exclusion list (or weakens the comparison) would let an incomplete offline cache ship with `npm test` reporting green — only a human reading `npm run build:web`'s console output would catch it. Deferred because this matches the established repo convention: the pre-existing `generate-web-manifest.js`/`reset-project.js` build scripts are likewise untested, and closing it (a Jest test invoking `main()` against a fixture `dist/`) is a meaningfully larger addition than this story's scope.
+
 ## Deferred from: bmad-build 6-2-base-path-pwa-manifest-configuration, review loop 2 (2026-09-14)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-base-path-pwa-manifest-configuration.md`

@@ -47,7 +47,7 @@ graph LR
 
 ### AD-3 — One base path threads router, manifest, and service worker scope [amended 2026-09-14]
 
-- **Binds:** Expo Router base URL config, `app.json`'s PWA `start_url`/`scope`, `public/service-worker.js` registration scope.
+- **Binds:** Expo Router base URL config, `app.json`'s PWA `start_url`/`scope`, `dist/service-worker.js` registration scope.
 - **Prevents:** the three configuring the deploy path independently and drifting apart (e.g. router resolves assets at `/`, manifest expects `/Overlearn-App/`) — including each being implemented via a *different mechanism* (a literal string in one, an env var under a different name in another) while each individually looks AD-compliant.
 - **Rule:** exactly one named config key is the source of truth: `app.json`'s `expo.experiments.baseUrl`. The router config, the PWA manifest fields, and the service worker's registration (AD-8) all read this same key directly — none re-derives or hardcodes the path independently. Set to the GitHub Pages subpath (e.g. `/Overlearn-App/`) for now. Revisit as one coordinated change to this single key, not three separate ones, if a custom domain is attached later (value becomes `/`). (Originally specified as `expo.extra.basePath` — amended once build investigation (Story 6.2) found `@expo/cli`'s static-export pipeline never reads that key; `experiments.baseUrl` is the key `getBaseUrlFromExpoConfig` actually applies to routing and asset URLs.)
 
@@ -55,11 +55,11 @@ graph LR
 
 - **Binds:** `segment/[id]`, `segment/[id]/rename`, `session/[id]`; the GitHub Pages SPA-routing fallback (e.g. `404.html` → app shell).
 - **Prevents:** treating the fallback rewrite as optional/conditional (confirmed non-optional: these routes' ids are created locally by the user at runtime and are unknowable at build time, so no static HTML can exist for them ahead of time — they resolve client-side against `localStorage` after the shell loads), and two incompatible fallback mechanisms being built by different implementers (a plain-copy `404.html` vs. a query-string-redirect trick are not interchangeable and only one is the standard GitHub Pages pattern).
-- **Rule:** the fallback mechanism is pinned to GitHub Pages' standard plain-copy pattern — `public/404.html` is a byte-identical copy of the built `index.html` — generated in the *same* postbuild step that generates the service worker (AD-5), never hand-committed. That step is `404.html`'s sole owner; nothing else writes or maintains it.
+- **Rule:** the fallback mechanism is pinned to GitHub Pages' standard plain-copy pattern — `dist/404.html` is a byte-identical copy of the built `dist/index.html` — generated in the *same* postbuild step that generates the service worker (AD-5), never hand-committed. That step is `404.html`'s sole owner; nothing else writes or maintains it.
 
 ### AD-5 — Service worker precache is generated, not hand-maintained, via Workbox
 
-- **Binds:** `public/service-worker.js`, a new `workbox-build` devDependency, the `expo export` → service-worker postbuild step.
+- **Binds:** `dist/service-worker.js`, a new `workbox-build` devDependency, the `expo export` → service-worker postbuild step.
 - **Prevents:** hand-rolled cache-versioning/activate-eviction bugs — a stale `index.html` referencing a since-removed hashed bundle after a redeploy.
 - **Rule:** `workbox-build`'s `generateSW` runs as a postbuild step against the real static-export output (`dist/`); the precache manifest is never hand-maintained. Its `globPatterns` must match 100% of `dist/`'s real output (icons and `manifest.json` included, not just JS/CSS) — the postbuild step asserts the precached file count equals the `dist/` file count (minus an explicit, named ignore list) and fails the build on mismatch, so a silently-excluded asset (e.g. a manifest icon) can't ship undetected. Pin the exact installed version in `package.json` (verified current: `7.4.1`, Google-maintained, MIT, active release cadence — see sources). Update lifecycle uses Workbox's own default (no `skipWaiting`/`clientsClaim`): a newly deployed worker activates only once every tab running the old version has closed, so an in-progress practice session is never swapped under itself. The whole pipeline (`expo export --platform web` → 404.html copy → `generateSW`) is one canonical `package.json` script (e.g. `build:web`), run identically for local verification and by CI (AD-6) — never two separately-maintained invocations that can silently diverge.
 
@@ -85,7 +85,7 @@ graph LR
 
 | Concern | Convention |
 | --- | --- |
-| Naming | Service worker at `public/service-worker.js`; SPA-routing fallback at `public/404.html`; deploy workflow at `.github/workflows/deploy-pages.yml` |
+| Naming | Service worker at `dist/service-worker.js`; SPA-routing fallback at `dist/404.html` (both computed from the real post-export `dist/` output by the postbuild step — corrected 2026-09-14 during Story 6.3; see AD-4/AD-5); deploy workflow at `.github/workflows/deploy-pages.yml` |
 | Data & formats | Storage envelope/quarantine format unchanged, shared across platforms (AD-1). Base path is one config value referenced by router, manifest, and service worker registration (AD-3) — never a literal repeated in three places |
 | State & cross-cutting | Listener fan-out: synchronous, per-listener error isolation, explicit unsubscribe (AD-2). Service worker updates: conservative, no forced takeover mid-session (AD-5) |
 
@@ -102,9 +102,9 @@ graph LR
 ## Structural Seed
 
 ```text
-public/
-  service-worker.js   # Workbox-generated, postbuild
-  404.html            # SPA-routing fallback -> app shell
+dist/
+  service-worker.js   # Workbox-generated, postbuild (not committed -- build output)
+  404.html            # SPA-routing fallback -> app shell (not committed -- build output)
 .github/
   workflows/
     deploy-pages.yml  # expo export --platform web -> Workbox postbuild -> Pages deploy
@@ -121,8 +121,8 @@ src/
 | --- | --- | --- |
 | Web storage parity | `src/lib/storage.ts` | AD-1, AD-2 |
 | Durability doc addendum | `prd.md` NFR8/9 | (doc-only, no AD) |
-| Installability / offline shell | `app.json`, `public/service-worker.js`, web entry point (SW registration) | AD-3, AD-5, AD-8 |
-| Deep-link routing on a static host | `public/404.html`, GitHub Pages config | AD-3, AD-4 |
+| Installability / offline shell | `app.json`, `dist/service-worker.js`, web entry point (SW registration) | AD-3, AD-5, AD-8 |
+| Deep-link routing on a static host | `dist/404.html`, GitHub Pages config | AD-3, AD-4 |
 | Hosting & deploy | `.github/workflows/deploy-pages.yml` | AD-6 |
 
 ## Deferred
