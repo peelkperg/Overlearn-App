@@ -9,6 +9,12 @@ Items surfaced by review workflows that were real but not actionable at the time
   ~~evidence: Decided in scope (not deferred as a decision) during spec-02 planning, but pushed the spec past the 1600-token target and constitutes a second, independently-shippable deliverable — it touches no file the storage-swap goal touches (`app.json`'s PWA manifest fields, a new `public/sw.js`, boot-time registration) and can ship, be tested, and merge entirely on its own once the storage swap is live. Pick up as its own `bmad-build` run.~~
   **Promoted back into scope, 2026-09-13.** The human clarified the web build's actual purpose — reaching users the native builds currently exclude (no iOS build right now, Android-only) — which a bare hosted URL under-serves compared to an installable app. Folded back into `spec-web-platform-support.md` alongside a GitHub Pages hosting decision. See that spec's Spec Change Log for the renegotiation.
 
+## Deferred from: bmad-build 6-2-base-path-pwa-manifest-configuration, review loop 2 (2026-09-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-base-path-pwa-manifest-configuration.md`
+  summary: No automated test exercises `scripts/generate-web-manifest.js`'s `start_url`/`scope`/icon-path derivation or `src/app/+html.tsx`'s manifest-link construction — a regression in either (e.g. the `baseUrl` guard silently disabled, `scope`/`start_url` swapped) would ship a broken PWA manifest with no test failing.
+  evidence: Confirmed by the verification-gap review layer across two consecutive review loops: grepped every `*.test.*` file for `generate-web-manifest`, `baseUrl`, `manifest.json` — no match, no test imports or executes either file. Deferred rather than patched because real verification here is an export/e2e check (build for web, inspect `dist/manifest.json` and the rendered `<link rel="manifest">` href) that belongs with Story 6.4's GitHub Pages deploy pipeline, not a unit test invented ahead of that infrastructure existing.
+
 ## Deferred from: bmad-build 6-1-web-compatible-storage-layer, Blind Hunter review (2026-09-14)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-web-compatible-storage-layer.md`

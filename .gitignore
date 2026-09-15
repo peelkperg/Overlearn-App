@@ -6,6 +6,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Generated from app.json's baseUrl (AD-3) -- never hand-committed
+public/manifest.json
+
 # Native
 .kotlin/
 *.orig.*
