@@ -33,17 +33,17 @@ graph LR
 
 ## Invariants & Rules
 
-### AD-1 — Storage stays a single port with platform-selected adapters [ADOPTED]
+### AD-1 — Storage stays a single port; `react-native-mmkv`'s own web build is the web adapter [ADOPTED, amended 2026-09-14]
 
 - **Binds:** `src/lib/storage.ts`, and by extension every consumer above it (unchanged).
-- **Prevents:** a parallel/divergent storage implementation for web; any call site needing to branch on platform itself.
-- **Rule:** the `Platform.OS === 'web'` branch is scoped to constructing the raw store and its two MMKV-specific calls. `getObject`/`setObject`, `migrate`, `quarantine`, and the versioned-envelope/quarantine conventions are reused unmodified for both platforms. Critically, **construction itself is gated, not only the calls made on it**: `src/lib/storage.ts` currently constructs MMKV unconditionally at module-load time (`export const storage = createMMKV()`, no `Platform.OS` guard today) — that eager construction must move behind the same branch, or the web build still crashes on import regardless of what the helper-call branch does.
+- **Prevents:** a parallel/divergent storage implementation for web; any call site needing to branch on platform itself; hand-rolling an adapter that duplicates what the pinned dependency already provides.
+- **Rule:** `src/lib/storage.ts` needs **no** `Platform.OS` branch and **no** hand-rolled adapter. `react-native-mmkv@4.3.2` (pinned, unchanged) ships `createMMKV.web.ts`, which Metro's platform-file resolution substitutes automatically for web bundles — a complete `localStorage`-backed implementation covering construction and every raw-store method `storage.ts` uses. Verified empirically (2026-09-14): `npx expo export --platform web` against the real, unmodified `storage.ts` built clean; the bundle contains the web module's `mmkv.default` key prefix and `getLocalStorage`, proving Metro picked the real web implementation. `getObject`/`setObject`, `migrate`, `quarantine`, and the versioned-envelope/quarantine conventions are reused unmodified for both platforms, unaffected by this. (Originally specified as a hand-rolled `Platform.OS`-gated adapter with construction-timing gating — amended once build investigation found that duplicates existing, already-correct dependency behavior.)
 
-### AD-2 — `subscribeToKeys` fan-out is synchronous, isolated, and cleanly unsubscribable [ADOPTED]
+### AD-2 — `subscribeToKeys` fan-out is synchronous, isolated, and cleanly unsubscribable [ADOPTED, amended 2026-09-14]
 
-- **Binds:** `src/lib/storage.ts` web branch.
+- **Binds:** `src/lib/storage.ts`'s web behavior (via the dependency, not this codebase).
 - **Prevents:** listener leaks across test runs / component lifecycles, and one throwing subscriber breaking sibling notifications or the write path.
-- **Rule:** an in-module listener `Set`, fired synchronously on every `set`/`remove` (matching MMKV's same-process semantics). Each callback invoked in its own try/catch. Registration returns a handle with `.remove()`, mirroring MMKV's subscription-object shape.
+- **Rule:** `react-native-mmkv@4.3.2`'s web build already provides this: an in-module listener `Set`, fired synchronously on every `set`/`remove` from `callListeners()`, with `addOnValueChangedListener` returning a `.remove()`-bearing handle — read directly from the dependency's source (`createMMKV.web.ts`). No code in this repo needs to implement fan-out. **Not yet verified:** per-listener error isolation (one throwing subscriber blocking siblings) — the dependency's `listeners.forEach((l) => l(key))` has no per-callback try/catch, so this may not hold as originally specified; confirm with a test before relying on it, and treat as a `deferred-work.md` entry against the dependency if it doesn't. (Originally specified as an in-module `Set` this codebase would build; amended once build investigation found the dependency already implements it.)
 
 ### AD-3 — One base path threads router, manifest, and service worker scope
 
