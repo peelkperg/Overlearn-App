@@ -18,8 +18,17 @@ export function getString(key: string): string | undefined {
   }
 }
 
+// [Story 6.1] A write can genuinely throw on web (localStorage.setItem on
+// quota-exceeded) even though it essentially never does on native — proven
+// by storage.test.ts's web-path suite. Degrades to no-op rather than crash,
+// matching getString's existing pattern (both platforms; harmless on
+// native, where this path was already effectively unreachable).
 export function setString(key: string, value: string): void {
-  storage.set(key, value);
+  try {
+    storage.set(key, value);
+  } catch {
+    // See comment above.
+  }
 }
 
 export function getNumber(key: string): number | undefined {
@@ -27,19 +36,44 @@ export function getNumber(key: string): number | undefined {
 }
 
 export function setNumber(key: string, value: number): void {
-  storage.set(key, value);
+  try {
+    storage.set(key, value);
+  } catch {
+    // See setString's comment above.
+  }
 }
 
 export function deleteKey(key: string): void {
-  storage.remove(key);
+  try {
+    storage.remove(key);
+  } catch {
+    // See setString's comment above.
+  }
 }
 
 // Change notification for the data modules above the storage layer. Without
 // it, two mounted copies of the same hook hold independent snapshots and
 // silently diverge — a write made on one screen is invisible to another that
 // is already mounted. Keeps the MMKV API itself behind this module.
+//
+// [Story 6.1] onChange is wrapped before registration: neither the native
+// nor the web MMKV implementation isolates listeners from each other
+// (confirmed for web via storage.test.ts's web-path suite — the underlying
+// `Set.forEach` has no per-callback try/catch) — one throwing subscriber
+// aborts the fan-out entirely, silently skipping every listener registered
+// after it AND propagating out through the `set`/`remove` call that
+// triggered notification, crashing the write itself. Wrapping here, once,
+// fixes both for every subscriber on both platforms without touching the
+// raw store.
 export function subscribeToKeys(onChange: (key: string) => void): () => void {
-  const listener = storage.addOnValueChangedListener(onChange);
+  const listener = storage.addOnValueChangedListener((key) => {
+    try {
+      onChange(key);
+    } catch {
+      // A subscriber's own failure must not block sibling notifications or
+      // the write that triggered them.
+    }
+  });
   return () => listener.remove();
 }
 
@@ -181,7 +215,11 @@ export function getObject<T>(key: string, isValid?: (value: unknown) => value is
   return data as T;
 }
 
+// [Review][Patch] found via Story 6.1 review: setObject is the busiest write
+// path (every segment/history/session write goes through it) but called
+// storage.set directly, bypassing setString's degrade-to-no-op protection —
+// the exact web quota-exceeded crash this story exists to prevent.
 export function setObject<T>(key: string, value: T): void {
   const envelope: VersionedEnvelope<T> = { __v: SCHEMA_VERSION, data: value };
-  storage.set(key, JSON.stringify(envelope));
+  setString(key, JSON.stringify(envelope));
 }

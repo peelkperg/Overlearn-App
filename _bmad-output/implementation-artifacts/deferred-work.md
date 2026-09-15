@@ -9,6 +9,24 @@ Items surfaced by review workflows that were real but not actionable at the time
   ~~evidence: Decided in scope (not deferred as a decision) during spec-02 planning, but pushed the spec past the 1600-token target and constitutes a second, independently-shippable deliverable — it touches no file the storage-swap goal touches (`app.json`'s PWA manifest fields, a new `public/sw.js`, boot-time registration) and can ship, be tested, and merge entirely on its own once the storage swap is live. Pick up as its own `bmad-build` run.~~
   **Promoted back into scope, 2026-09-13.** The human clarified the web build's actual purpose — reaching users the native builds currently exclude (no iOS build right now, Android-only) — which a bare hosted URL under-serves compared to an installable app. Folded back into `spec-web-platform-support.md` alongside a GitHub Pages hosting decision. See that spec's Spec Change Log for the renegotiation.
 
+## Deferred from: bmad-build 6-1-web-compatible-storage-layer, Blind Hunter review (2026-09-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-web-compatible-storage-layer.md`
+  summary: `getNumber` (src/lib/storage.ts:34-36) has no try/catch, unlike every other accessor (`getString`, `setString`, `setNumber`, `deleteKey`).
+  evidence: A native or web read failure here propagates as an uncaught throw, contradicting the module's stated "corrupted local data must degrade gracefully" invariant. Pre-existing (untouched by this story's diff). Low current impact — `getNumber` has no production caller today (only `storage.test.ts`'s smoke test), so deferred rather than patched; the moment a real caller is added, it should get the same guard as its siblings.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-web-compatible-storage-layer.md`
+  summary: `quarantine()` (src/lib/storage.ts:85-89) calls `storage.getAllKeys()`/`storage.set()` unguarded, so a throw there (e.g. quota already exceeded when writing the corrupt backup) propagates out through `getObject`, defeating `getObject`'s documented "never throws" contract.
+  evidence: Realistic edge case — quarantine is itself triggered by an error condition (corrupt/unreadable data), and a device already near its web storage quota is a plausible time for that to coincide with a write failure. Pre-existing (untouched by this story's diff), so deferred rather than patched here.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-web-compatible-storage-layer.md`
+  summary: `isVersionedEnvelope` (src/lib/storage.ts:106-108) doesn't exclude arrays — `typeof [] === 'object'` and non-null, so an array carrying own properties named `__v` (number) and `data` would be misidentified as an envelope.
+  evidence: Reviewer's own assessment: "Extremely unlikely in practice" — this codebase never persists a bare array with those exact property names. Pre-existing (untouched by this story's diff); real but negligible-probability, deferred rather than patched.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-web-compatible-storage-layer.md`
+  summary: `subscribeToKeys`'s returned unsubscribe closure (`() => listener.remove()`, src/lib/storage.ts:77) is unguarded — if the underlying listener's `remove()` throws, a caller's cleanup (e.g. a `useEffect` teardown) gets an uncaught exception, unlike the `onChange` callback one line above which this story's diff did wrap.
+  evidence: Adjacent to this story's change (the same function got try/catch around `onChange`) but the unsubscribe line itself was not touched by the diff and no evidence found that either the native or the in-memory web `Set`-backed listener's `.remove()` can actually throw — theoretical rather than demonstrated. Deferred pending a concrete failure case.
+
 ## Deferred from: code review of 4-7-flip-sort-direction-via-toggle (2026-09-12)
 
 - **The segment list does not scroll to top after the sort direction flips.** With enough segments to have scrolled (~6+), reversing the order leaves the `FlatList`'s `contentOffset` untouched (`src/app/index.tsx:167-169`, `206-222`), so the viewport shows an arbitrary mid-list slice rather than the new first item — the one signal that would confirm the direction actually changed. The user reads this as "nothing happened" or "the list scrambled itself." Pre-existing from Story 4.3's menu gesture, but Story 4.7's one-tap toggle makes it the primary way this is reached. Deferred because adding scroll-to-top is new behavior that no AC or FR specifies (No-Invention rule), and because it should be decided once for both entry points rather than bolted onto the new one — a `ref` + `scrollToOffset({ offset: 0 })` in `handleSortChange`'s success branch would cover both.

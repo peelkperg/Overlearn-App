@@ -241,3 +241,181 @@ describe('lib/storage schema-version envelope [NFR assessment 2026-09-05]', () =
     expect(corruptBackups()).toHaveLength(0);
   });
 });
+
+// [Story 6.1] Investigation before writing any web-specific code found
+// react-native-mmkv@4.3.2 already ships createMMKV.web.ts — a complete
+// localStorage-backed implementation Metro substitutes automatically for
+// real web bundles (confirmed: `npx expo export --platform web` against the
+// unmodified storage.ts built clean and its bundle contains the web
+// module's `mmkv.default` prefix). storage.ts itself needs no Platform.OS
+// branch. This suite instead proves storage.ts's own logic (getObject's
+// parse/validate/migrate/quarantine chain, subscribeToKeys) holds when the
+// raw store IS that web implementation — by mocking the `react-native-mmkv`
+// package import directly to the library's own web module, not by trying to
+// make Jest's platform-file resolution (a Metro-bundler-time mechanism,
+// inactive under this project's plain `jest-expo` preset) pick it.
+// Minimal in-memory Storage shim. The dependency's getLocalStorage() checks
+// `typeof window !== 'undefined' && window.document?.createElement != null`
+// before trusting `window.localStorage` — this project's default Jest
+// preset runs under Node (no DOM), so without a global.window at all, every
+// call throws "Tried to access storage on the server" rather than
+// exercising the real localStorage-backed code path. No jsdom pulled in
+// (a `jest.config.js`/preset change is out of scope for this story) — a
+// plain object satisfying the Storage shape is enough for storage.ts's own
+// logic to be exercised the same way a real browser would drive it.
+function createLocalStorageStub(): Storage {
+  // Real `localStorage` exposes each stored entry as an own enumerable
+  // property (that's what lets `Object.keys(localStorage)` enumerate stored
+  // keys) — the dependency's web adapter relies on exactly that for
+  // getAllKeys()/clearAll(). Methods live on a prototype via Object.create
+  // so they stay off the instance's own-property list and don't pollute
+  // that enumeration; `this[key] = value` on the instance is what makes a
+  // stored entry show up in Object.keys() the same way a real browser does.
+  const proto = {
+    getItem(this: Record<string, string>, key: string): string | null {
+      return Object.prototype.hasOwnProperty.call(this, key) ? this[key] : null;
+    },
+    setItem(this: Record<string, string>, key: string, value: string): void {
+      this[key] = value;
+    },
+    removeItem(this: Record<string, string>, key: string): void {
+      delete this[key];
+    },
+    clear(this: Record<string, string>): void {
+      for (const key of Object.keys(this)) delete this[key];
+    },
+    key(this: Record<string, string>, index: number): string | null {
+      return Object.keys(this)[index] ?? null;
+    },
+    get length(): number {
+      return Object.keys(this).length;
+    },
+  };
+  return Object.create(proto) as Storage;
+}
+
+describe('lib/storage web-path [Story 6.1]', () => {
+  // A fresh module instance per describe block, isolated from the
+  // already-imported native `storage` at the top of this file (that binding
+  // was captured before any mocking here and is unaffected by
+  // jest.resetModules(), which only changes what a *future* require()
+  // returns).
+  let web: typeof import('./storage');
+  let webRawStore: { getAllKeys(): string[]; clearAll(): void };
+  let localStorageStub: Storage;
+
+  beforeAll(() => {
+    localStorageStub = createLocalStorageStub();
+    (globalThis as unknown as { window: unknown }).window = {
+      document: { createElement: () => ({}) },
+      localStorage: localStorageStub,
+    };
+
+    jest.resetModules();
+    // Dynamic require is the point here, not an oversight: a fresh module
+    // instance under a mock can only be obtained at runtime, after
+    // resetModules(), never via a static top-of-file import.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    jest.doMock('react-native-mmkv', () => require('react-native-mmkv/lib/createMMKV/createMMKV.web'));
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    web = require('./storage');
+    webRawStore = web.storage as unknown as { getAllKeys(): string[]; clearAll(): void };
+  });
+
+  afterAll(() => {
+    delete (globalThis as unknown as { window?: unknown }).window;
+    jest.dontMock('react-native-mmkv');
+    jest.resetModules();
+  });
+
+  beforeEach(() => {
+    webRawStore.clearAll();
+  });
+
+  it('round-trips an object through getObject/setObject on the web store', () => {
+    const segments = [{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }];
+    web.setObject('web-test.list', segments);
+
+    expect(web.getObject('web-test.list', isSegmentArray)).toEqual(segments);
+  });
+
+  it('quarantines corrupt JSON under the same {key}.corrupt.{timestamp} convention as native', () => {
+    web.setString('web-test.corrupt', '[{"id":"a","na');
+
+    expect(web.getObject('web-test.corrupt', isSegmentArray)).toBeUndefined();
+    const backups = webRawStore.getAllKeys().filter((key) => key.startsWith('web-test.corrupt.corrupt.'));
+    expect(backups).toHaveLength(1);
+  });
+
+  it('migrates a pre-versioning payload through the same chain as native', () => {
+    const segments = [{ id: 'a', name: 'Bar 24', createdAt: '2026-01-01T00:00:00.000Z' }];
+    web.setString('web-test.migrate', JSON.stringify(segments));
+
+    expect(web.getObject('web-test.migrate', isSegmentArray)).toEqual(segments);
+  });
+
+  it("fires subscribeToKeys' listener synchronously on the same tick as a write", () => {
+    const onChange = jest.fn();
+    web.subscribeToKeys(onChange);
+
+    web.setString('web-test.notify', 'value');
+
+    expect(onChange).toHaveBeenCalledWith('web-test.notify');
+  });
+
+  it('stops notifying after unsubscribe', () => {
+    const onChange = jest.fn();
+    const unsubscribe = web.subscribeToKeys(onChange);
+    unsubscribe();
+
+    web.setString('web-test.unsub', 'value');
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // [Story 6.1] ARCHITECTURE-SPINE.md AD-2 requires that one throwing
+  // listener not block sibling notification or the write itself. The
+  // dependency's own fan-out (`listeners.forEach((l) => l(key))`) has no
+  // per-callback try/catch, so this is a genuine open question the plan
+  // could not settle by reading source alone — resolved here by test.
+  it('does not let one throwing listener block sibling notification or the write', () => {
+    const good = jest.fn();
+    web.subscribeToKeys(() => {
+      throw new Error('listener boom');
+    });
+    web.subscribeToKeys(good);
+
+    expect(() => web.setString('web-test.isolation', 'value')).not.toThrow();
+    expect(good).toHaveBeenCalledWith('web-test.isolation');
+    expect(web.getString('web-test.isolation')).toBe('value');
+  });
+
+  it('degrades a write to no-op rather than crashing when the underlying store throws (quota exceeded)', () => {
+    // Override the shared prototype method, not an own property on the
+    // instance — assigning directly onto the instance would itself become
+    // a spurious enumerable "stored key" named `setItem`, corrupting
+    // getAllKeys()/clearAll() for the same reason a real stub needs the
+    // Object.create(proto) split in the first place.
+    const proto = Object.getPrototypeOf(localStorageStub) as { setItem: Storage['setItem'] };
+    const originalSetItem = proto.setItem;
+    proto.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+
+    expect(() => web.setString('web-test.quota', 'value')).not.toThrow();
+
+    proto.setItem = originalSetItem;
+  });
+
+  it('degrades setObject to no-op rather than crashing when the underlying store throws (quota exceeded)', () => {
+    const proto = Object.getPrototypeOf(localStorageStub) as { setItem: Storage['setItem'] };
+    const originalSetItem = proto.setItem;
+    proto.setItem = () => {
+      throw new Error('QuotaExceededError');
+    };
+
+    expect(() => web.setObject('web-test.quota-object', { a: 1 })).not.toThrow();
+
+    proto.setItem = originalSetItem;
+  });
+});
