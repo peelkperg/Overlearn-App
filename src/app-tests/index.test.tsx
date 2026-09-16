@@ -11,7 +11,7 @@ import { useActiveSession } from '@/hooks/useActiveSession';
 import { writeHistoryEntry } from '@/lib/history';
 import * as segmentsLib from '@/lib/segments';
 import { createSegment, renameSegment } from '@/lib/segments';
-import { getObject } from '@/lib/storage';
+import { getObject, storage } from '@/lib/storage';
 import type { SessionState } from '@/lib/types';
 
 import HomeScreen from '@/app/index';
@@ -262,6 +262,29 @@ describe('HomeScreen resume/discard prompt [Story 2.10]', () => {
     expect(view.queryByTestId('resume-discard-resume')).toBeNull();
   });
 
+  // Story 5.4 (FR43, AC #5): the resume/discard prompt must not block the
+  // one other reason a user might open Settings first — e.g. lowering the
+  // overlearning-% before deciding whether the interrupted run still meets
+  // it. [Review][Patch] found via code review 2026-09-12 (round 3): Task 6
+  // claimed this was "verified by existing tests", but no test asserted the
+  // gear and the prompt are both present and independently actionable at
+  // once — only that each exists in isolation.
+  it('the Settings gear remains present and reachable while the resume/discard prompt is showing (AC #5)', async () => {
+    await startInterruptedSession();
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByTestId('resume-discard-resume')).toBeTruthy();
+    expect(view.getByTestId('segment-list-settings')).toBeTruthy();
+
+    await fireEvent.press(view.getByTestId('segment-list-settings'));
+
+    expect(pushed).toHaveBeenCalledWith('/settings');
+    // Navigating to Settings does not resolve the prompt — it is still
+    // showing, exactly as left, for when the user returns.
+    expect(view.getByTestId('resume-discard-resume')).toBeTruthy();
+    expect(view.getByTestId('resume-discard-discard')).toBeTruthy();
+  });
+
   it('Discard clears the session and writes no history entry (FR26)', async () => {
     await startInterruptedSession();
     const view = await render(<HomeScreen />);
@@ -313,6 +336,51 @@ describe('HomeScreen sort control [Story 4.3]', () => {
       'Alpha',
       'Zebra',
     ]);
+  });
+
+  // [Review][Patch] Story 4.7 (FR42): no test at any level previously
+  // exercised the toggle through handleSortChange -> setSortOption ->
+  // re-render; SortControl.test.tsx asserts only that onChange fires.
+  it('re-orders the rendered rows when the direction toggle is tapped (Story 4.7, FR42)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name')); // name/asc
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Alpha',
+      'Zebra',
+    ]);
+
+    await fireEvent.press(view.getByTestId('segment-sort-direction-toggle'));
+
+    expect(view.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
+      'Zebra',
+      'Alpha',
+    ]);
+  });
+
+  // [Review][Patch] found via code review of a deferred item logged against
+  // Story 4.7 (2026-09-12): setSortOption used to spread readSettings()'s
+  // DEFAULT_SETTINGS fallback over quarantined data, silently resetting
+  // overlearningPercent to 50 on a plain sort tap. It now refuses the write
+  // and this screen's existing runAction surfaces the resulting error —
+  // verified end-to-end here rather than only at lib/settings.test.ts's
+  // unit level.
+  it('surfaces an error and does not resort when settings data is quarantined (deferred item, Story 4.7 review)', async () => {
+    createSegment('Zebra');
+    createSegment('Alpha');
+    const view = await render(<HomeScreen />);
+
+    storage.set('settings.general', '{"not":"valid"}');
+    await fireEvent.press(view.getByTestId('segment-sort-control'));
+    await fireEvent.press(view.getByTestId('segment-sort-option-name'));
+
+    expect(view.getByTestId('segment-list-error')).toHaveTextContent('Could not save sort option.');
+    // Storage-refused: the corrupt payload survives, and the sortKey the
+    // press attempted to set is never persisted.
+    expect(storage.getString('settings.general')).toBe('{"not":"valid"}');
   });
 
   it('flips the order when the already-active option is tapped again (AC #3)', async () => {
@@ -383,16 +451,17 @@ describe('HomeScreen sort control [Story 4.3]', () => {
     ]);
   });
 
-  // [Review][Patch] found via code review 2026-09-08: the previous version
-  // of this test asserted "order is unchanged," but order cannot change
-  // under createdAt sort on a history write regardless of whether the
-  // conditional-subscription gate (Task 6) works — it would pass even with
-  // the gate deleted entirely (mutation-verified). A spy on
-  // buildSortAggregates is a real regression guard: that function is only
-  // ever called when the active sort key needs history data (Task 6's
-  // gate), so a history write must not trigger a second call while sorted
-  // by name/createdAt.
-  it('does not recompute sort aggregates when sorted by name/createdAt and a history entry is written (R9 regression guard)', async () => {
+  // Story 4.6 (FR41) supersedes this test's original R9 guarantee. Story
+  // 4.3's code review (2026-09-08) established that buildSortAggregates
+  // must NOT run when sorted by name/createdAt on a history write, since
+  // nothing outside the sort consulted its output for those two keys.
+  // FR41 changes that premise: every row now displays last-practiced
+  // date/Solidification % regardless of the active sort key, so the
+  // aggregates are needed on every history write, always — the opposite
+  // of what this test originally asserted. Rewritten rather than deleted:
+  // it now guards the new contract (recomputed exactly once per relevant
+  // render, not skipped, and not double-invoked).
+  it('recomputes sort aggregates on a history write even when sorted by name/createdAt, for row summary data (FR41; supersedes Story 4.3\'s R9 guard)', async () => {
     const buildSpy = jest.spyOn(segmentsLib, 'buildSortAggregates');
     const first = createSegment('Alpha');
     createSegment('Beta');
@@ -409,8 +478,53 @@ describe('HomeScreen sort control [Story 4.3]', () => {
       });
     });
 
-    expect(buildSpy).not.toHaveBeenCalled();
+    expect(buildSpy).toHaveBeenCalledTimes(1);
     buildSpy.mockRestore();
+  });
+
+  // Story 4.6 (FR41), Task 0 regression guard: the row's last-practiced
+  // date/Solidification % must render correctly under the default v1.0
+  // sort (createdAt), not only when explicitly sorted by lastPracticed or
+  // solidification — the bug this guards against would leave `aggregates`
+  // an empty Map for any other sort key.
+  it('shows a segment\'s Solidification % and last-practice date in the row when sorted by createdAt (FR41 regression guard)', async () => {
+    const segment = createSegment('Bar 24');
+    writeHistoryEntry(segment.id, {
+      date: '2026-09-10T12:00:00.000Z',
+      finalTarget: 5,
+      totalMistakes: 1,
+      totalAttempts: 5,
+      sessionStartTimestamp: '2026-09-10T11:00:00.000Z',
+    });
+    const view = await render(<HomeScreen />);
+
+    // Default sort is createdAt/asc (Story 4.3) — not lastPracticed or
+    // solidification, which is exactly the case the pre-fix code left
+    // unpopulated.
+    expect(view.getByText(/Last practice: 10 Sep 2026/)).toBeTruthy();
+    expect(view.getByText(/80\.0%/)).toBeTruthy();
+  });
+
+  // Story 4.6 (FR41), Task 0 regression guard: the row must update live
+  // when a history entry is written, even sorted by name/createdAt — this
+  // is the live-update half of the same bug Task 0 fixes.
+  it('updates a segment\'s row summary data live when a history entry is written, sorted by createdAt (FR41 regression guard)', async () => {
+    const segment = createSegment('Bar 24');
+    const view = await render(<HomeScreen />);
+
+    expect(view.getByText(/Last practice: — · —/)).toBeTruthy();
+
+    await act(async () => {
+      writeHistoryEntry(segment.id, {
+        date: '2026-09-10T12:00:00.000Z',
+        finalTarget: 5,
+        totalMistakes: 0,
+        totalAttempts: 5,
+        sessionStartTimestamp: '2026-09-10T11:00:00.000Z',
+      });
+    });
+
+    expect(view.getByText(/Last practice: 10 Sep 2026 · 100\.0%/)).toBeTruthy();
   });
 
   it('persists the selected sort option and direction across a relaunch (AC #6)', async () => {
@@ -424,28 +538,29 @@ describe('HomeScreen sort control [Story 4.3]', () => {
     await view.unmount();
     const relaunched = await render(<HomeScreen />);
 
-    expect(relaunched.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Name, A to Z');
+    // Story 4.7 code review decision: the trigger's label no longer names
+    // direction (the toggle button owns that announcement now).
+    expect(relaunched.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Name');
     expect(relaunched.getByTestId('segment-list').props.data.map((s: { name: string }) => s.name)).toEqual([
       'Alpha',
       'Zebra',
     ]);
   });
 
-  it('announces both the sort key and direction, and updates when they change (AC #8)', async () => {
+  // Story 4.7 code review decision: the trigger names only the sort key;
+  // the direction-toggle button (SortControl.test.tsx) now owns announcing
+  // direction, so this AC #8 coverage moves there.
+  it('announces the sort key, and updates when it changes (AC #8)', async () => {
     createSegment('Zebra');
     createSegment('Alpha');
     const view = await render(<HomeScreen />);
 
-    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe(
-      'Sort by Date created, oldest first',
-    );
+    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Date created');
 
     await fireEvent.press(view.getByTestId('segment-sort-control'));
     await fireEvent.press(view.getByTestId('segment-sort-option-lastPracticed'));
 
-    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe(
-      'Sort by Last practiced, most recent first',
-    );
+    expect(view.getByTestId('segment-sort-control').props.accessibilityLabel).toBe('Sort by Last practiced');
   });
 
   // [Review][Patch] found via code review 2026-09-08: this test's own name

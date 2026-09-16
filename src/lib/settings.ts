@@ -36,10 +36,30 @@ export function subscribeToSettings(onChange: () => void): () => void {
   });
 }
 
+// Both writers below reconstruct the *entire* settings object from a read,
+// then spread one changed field over it — so a read that silently falls
+// back to DEFAULT_SETTINGS (readSettings()'s behavior for genuinely
+// unconfigured *and* quarantined data alike) would let an unrelated write
+// permanently discard every other field the user had configured. This
+// distinguishes the two cases the way readSettings() deliberately does not:
+// raw !== null but getObject returns undefined means the data was there and
+// failed validation, not that it was never set.
+// [Review][Patch] found via code review of deferred item logged against
+// Story 4.7 (2026-09-12): a corrupt settings.general read turned a sort tap
+// into a silent reset of the overlearning target.
+function readSettingsForWrite(): Settings {
+  const raw = getString(SETTINGS_KEY);
+  const current = getObject<Settings>(SETTINGS_KEY, isSettings);
+  if (raw != null && current === undefined) {
+    throw new Error('Settings data is corrupt; refusing to overwrite it.');
+  }
+  return current ?? DEFAULT_SETTINGS;
+}
+
 // FR33/FR34: the only writer this story needs. overlearningPercent's setter
 // is Epic 5's job, against this same file/key.
 export function setSortOption(sortKey: SortKey, sortDirection: SortDirection): void {
-  setObject(SETTINGS_KEY, { ...readSettings(), sortKey, sortDirection });
+  setObject(SETTINGS_KEY, { ...readSettingsForWrite(), sortKey, sortDirection });
 }
 
 // Story 5.1 (FR35, FR36): the stepper UI can only ever produce a valid
@@ -53,5 +73,5 @@ export function setSortOption(sortKey: SortKey, sortDirection: SortDirection): v
 export function setOverlearningPercent(value: number): void {
   const safe = Number.isFinite(value) ? value : DEFAULT_SETTINGS.overlearningPercent;
   const clamped = Math.min(300, Math.max(50, Math.round(safe / 10) * 10));
-  setObject(SETTINGS_KEY, { ...readSettings(), overlearningPercent: clamped });
+  setObject(SETTINGS_KEY, { ...readSettingsForWrite(), overlearningPercent: clamped });
 }

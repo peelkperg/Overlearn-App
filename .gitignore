@@ -6,6 +6,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Generated from app.json's baseUrl (AD-3) -- never hand-committed
+public/manifest.json
+
 # Native
 .kotlin/
 *.orig.*
@@ -46,3 +49,13 @@ credentials.json
 
 # BMad personal overrides (team overrides in _bmad/custom/*.toml are committed)
 _bmad/custom/*.user.toml
+_bmad/config.user.toml
+
+# BMad installer-generated manifests (regenerated per-install, timestamped)
+_bmad/_config/
+*.bak
+
+# Claude Code: skills are project-local BMAD content (committed); these two
+# files are per-machine/session state, not project config.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

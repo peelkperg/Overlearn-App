@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 
 import * as history from '@/lib/history';
 import * as segments from '@/lib/segments';
@@ -14,25 +14,23 @@ function useSegmentStore(): Segment[] {
   return useSyncExternalStore(segments.subscribeToSegments, segments.readSegments);
 }
 
-// Story 4.3: re-render on any history write, but only when the active sort
-// key actually depends on history data — sorting by name or creation date
-// must not re-render on every session completion (R9,
-// test-design-epic-4-5.md). getSnapshot reads history.ts's module-level
-// version counter rather than one scoped to this hook instance — [Review]
-// [Patch] found via code review 2026-09-08: a counter incremented only
-// inside this hook's own subscribe callback is blind to a write landing
-// between this hook's render and its subscribe effect attaching, since
-// useSyncExternalStore's post-subscribe consistency check compares against
-// the pre-subscribe snapshot, which a per-instance counter hadn't changed
-// yet either. The module-level counter (see lib/history.ts) is live from
-// import time, closing that window.
-function useHistoryVersion(needsHistory: boolean): number {
-  const subscribe = useCallback(
-    (onChange: () => void) => (needsHistory ? history.subscribeToAnyHistory(onChange) : () => {}),
-    [needsHistory],
-  );
-  const getSnapshot = useCallback(() => (needsHistory ? history.getHistoryVersion() : 0), [needsHistory]);
-  return useSyncExternalStore(subscribe, getSnapshot);
+// Story 4.3 originally gated this subscription to only the sort keys that
+// consulted history data ('lastPracticed'/'solidification'), since sorting
+// by name/createdAt never needed it (R9, test-design-epic-4-5.md).
+// Story 4.6 (FR41) removes that gate: every row now displays last-practiced
+// date and Solidification % regardless of the active sort key, so the list
+// must re-render on any history write unconditionally, not only when
+// sorted by one of the two keys that used to need it. getSnapshot reads
+// history.ts's module-level version counter rather than one scoped to this
+// hook instance — [Review][Patch] found via code review 2026-09-08: a
+// counter incremented only inside this hook's own subscribe callback is
+// blind to a write landing between this hook's render and its subscribe
+// effect attaching, since useSyncExternalStore's post-subscribe consistency
+// check compares against the pre-subscribe snapshot, which a per-instance
+// counter hadn't changed yet either. The module-level counter (see
+// lib/history.ts) is live from import time, closing that window.
+function useHistoryVersion(): number {
+  return useSyncExternalStore(history.subscribeToAnyHistory, history.getHistoryVersion);
 }
 
 export function useSegments() {
@@ -40,29 +38,38 @@ export function useSegments() {
   const { settings, setSortOption } = useSettings();
   const { sortKey, sortDirection } = settings;
 
-  const needsHistory = sortKey === 'lastPracticed' || sortKey === 'solidification';
-  const historyVersion = useHistoryVersion(needsHistory);
+  const historyVersion = useHistoryVersion();
 
   // A new sorted array every render is fine here: sortSegments' *input*
   // (rawSegments) is still the stable useSyncExternalStore snapshot, so this
   // doesn't reintroduce the infinite-loop hazard readSegments()'s own
-  // caching exists to prevent. Only the subscriptions above drive
+  // caching exists to prevent. Only the subscription above drives
   // re-renders, not this array's identity.
-  // [Review][Patch] found via code review 2026-09-08: buildSortAggregates
-  // ran unconditionally, doing N getString + JSON.parse + shape-guard reads
-  // per list mutation and discarding the whole result when sorting by
-  // name/createdAt, which never consult it — needsHistory (already computed
-  // above) is the exact gate this needs.
-  const sorted = useMemo(() => {
-    const aggregates = needsHistory
-      ? segments.buildSortAggregates(rawSegments)
-      : new Map<string, segments.SortAggregate>();
-    return segments.sortSegments(rawSegments, aggregates, sortKey, sortDirection);
+  //
+  // Story 4.6 (FR41): buildSortAggregates() now runs on every recompute,
+  // not only when the active sort key needs it. Story 4.3's code review
+  // ([Review][Patch] 2026-09-08) gated this specifically because nothing
+  // outside the sort itself ever read the aggregates it produced — sorting
+  // by name/createdAt truly never consulted them. FR41 changes that
+  // premise: the segment list row now displays last-practiced date and
+  // Solidification % for every segment regardless of sort key, so the
+  // aggregates are always needed by the caller even when the sort itself
+  // does not use them. The O(segments × history-entries) cost this
+  // reintroduces is inherent to FR41's requirement, not a regression to
+  // guard against.
+  const aggregates = useMemo(
+    () => segments.buildSortAggregates(rawSegments),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- historyVersion is a recompute trigger, not a value read in the body; buildSortAggregates re-reads history fresh each call
-  }, [rawSegments, sortKey, sortDirection, needsHistory, historyVersion]);
+    [rawSegments, historyVersion],
+  );
+  const sorted = useMemo(
+    () => segments.sortSegments(rawSegments, aggregates, sortKey, sortDirection),
+    [rawSegments, aggregates, sortKey, sortDirection],
+  );
 
   return {
     segments: sorted,
+    aggregates,
     sortKey,
     sortDirection,
     setSortOption,

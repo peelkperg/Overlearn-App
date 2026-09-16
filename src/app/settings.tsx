@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,10 +31,30 @@ export default function SettingsScreen() {
   const inProgressSegmentName = inProgressSegment?.name ?? session?.segmentName;
   const showInProgressNotice = Boolean(session && !session.sessionComplete);
 
+  // A write can still fail underneath a stepper tap (corrupt settings data
+  // that setOverlearningPercent refuses to overwrite, a full disk), and an
+  // exception thrown from a press handler is not caught by any boundary —
+  // it takes the app down instead of just this screen. Same pattern as
+  // index.tsx's and session/[id].tsx's runAction.
+  const [error, setError] = useState<string | null>(null);
+  const runAction = (action: () => void, failureMessage: string) => {
+    try {
+      setError(null);
+      action();
+    } catch {
+      setError(failureMessage);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText>Overlearning target</ThemedText>
+        {error && (
+          <ThemedText testID="settings-error" type="small" style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            {error}
+          </ThemedText>
+        )}
         {showInProgressNotice && (
           <ThemedText
             testID="in-progress-session-notice"
@@ -54,7 +75,12 @@ export default function SettingsScreen() {
             // Two taps dispatched before a re-render commits would otherwise
             // both compute from the same stale percent, netting one 10-point
             // step instead of two.
-            onPress={() => setOverlearningPercent(readSettings().overlearningPercent - 10)}
+            onPress={() =>
+              runAction(
+                () => setOverlearningPercent(readSettings().overlearningPercent - 10),
+                'Could not save the overlearning target. Check that the device has free storage.',
+              )
+            }
             disabled={settings.overlearningPercent <= 50}
             accessibilityRole="button"
             accessibilityLabel="Decrease overlearning target"
@@ -68,7 +94,12 @@ export default function SettingsScreen() {
           <Pressable
             testID="settings-increase"
             style={[styles.stepperButton, settings.overlearningPercent >= 300 && styles.stepperButtonDisabled]}
-            onPress={() => setOverlearningPercent(readSettings().overlearningPercent + 10)}
+            onPress={() =>
+              runAction(
+                () => setOverlearningPercent(readSettings().overlearningPercent + 10),
+                'Could not save the overlearning target. Check that the device has free storage.',
+              )
+            }
             disabled={settings.overlearningPercent >= 300}
             accessibilityRole="button"
             accessibilityLabel="Increase overlearning target"
@@ -108,6 +139,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  error: {
+    textAlign: 'center',
   },
   stepperButton: {
     minWidth: 44,

@@ -1,9 +1,11 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { STACK_SCREENS } from '@/app/stack-screens';
+import { registerServiceWorker } from '@/lib/service-worker';
 
 // Rejects if the splash is already hidden or the module is unavailable;
 // unhandled, that surfaces as a bootstrap-time promise rejection.
@@ -18,6 +20,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // AnimatedSplashOverlay's react-native-reanimated dependency.
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  // AD-8: single call site, guarded internally to web + production builds.
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />

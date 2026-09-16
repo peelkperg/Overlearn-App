@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CompletionScreen } from '@/components/session/CompletionScreen';
 import { CorrectButton } from '@/components/session/CorrectButton';
@@ -9,6 +10,7 @@ import { IncorrectButton } from '@/components/session/IncorrectButton';
 import { RestartConfirmDialog } from '@/components/session/RestartConfirmDialog';
 import { RestartControl } from '@/components/session/RestartControl';
 import { StreakReadout } from '@/components/session/StreakReadout';
+import { SettingsButton } from '@/components/SettingsButton';
 import { useActiveSession } from '@/hooks/useActiveSession';
 import { useRouteId } from '@/hooks/useRouteId';
 import { useSegment } from '@/hooks/useSegments';
@@ -169,12 +171,27 @@ export default function ActiveSessionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    // [Review][Decision] resolved 2026-09-12 (code review of Story 5.4,
+    // Decision 1, option 1: header row + SafeAreaView). This screen used to
+    // be a bare View with the Settings gear as a position: 'absolute' overlay
+    // rendered *before* CorrectButton — a later sibling wins paint and hit
+    // testing in React Native, and CorrectButton (flex: 0.4, alignSelf:
+    // 'stretch') is a full-width band covering exactly the region the
+    // overlay occupied, so the gear was unreachable in the real app (only
+    // the tests, which press the node directly and bypass layout, ever hit
+    // it). SafeAreaView + a real header row above CorrectButton fixes both
+    // that and the missing safe-area inset (top: 16 previously measured from
+    // the raw screen edge, under the status bar/notch). This spends a slice
+    // of UX-DR1's locked 40/20/40 proportions on the header — amended in the
+    // same review round to state the proportions govern the space below it,
+    // matching Home and segment-detail's own header-row convention.
+    <SafeAreaView style={styles.container}>
       {error && (
         <Text testID="session-error" style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="polite">
           {error}
         </Text>
       )}
+      <SettingsButton testID="session-settings" />
       <CorrectButton onPress={() => runAction(logCorrect, 'Could not record that. Check that the device has free storage.')} />
       <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={segment.name} />
       <IncorrectButton
@@ -188,7 +205,7 @@ export default function ActiveSessionScreen() {
         onCancel={() => setRestartDialogVisible(false)}
         onConfirm={handleRestartConfirm}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

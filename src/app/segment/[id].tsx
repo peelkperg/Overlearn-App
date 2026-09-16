@@ -4,6 +4,7 @@ import { AccessibilityInfo, FlatList, Pressable, StyleSheet, TextInput, View } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HistoryEntryRow } from '@/components/HistoryEntryRow';
+import { SettingsButton } from '@/components/SettingsButton';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -145,6 +146,7 @@ export default function SegmentDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
+        <SettingsButton testID="segment-detail-settings" />
         {segment ? (
           <>
             <Pressable

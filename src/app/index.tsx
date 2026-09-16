@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ResumeDiscardDialog } from '@/components/ResumeDiscardDialog';
 import { SegmentListItem } from '@/components/SegmentListItem';
+import { SettingsButton } from '@/components/SettingsButton';
 import { SortControl } from '@/components/SortControl';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -29,7 +30,8 @@ const DuplicateNoticeMs = 4000;
 // Story 5.1: gear icon to Settings (FR35) — unconditional, above the
 // segments.length === 0 ternary, since Settings has no other entry point.
 export default function HomeScreen() {
-  const { segments, deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption } = useSegments();
+  const { segments, aggregates, deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption } =
+    useSegments();
   const { session, endSession } = useActiveSession();
   // Story 4.1 (FR31): live lookup, not session.segmentName's frozen
   // snapshot — see architecture.md's Rename Propagation table. The `??`
@@ -170,15 +172,13 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable
-          testID="segment-list-settings"
-          style={styles.settingsButton}
-          onPress={() => router.push('/settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-        >
-          <ThemedText themeColor="textSecondary">⚙</ThemedText>
-        </Pressable>
+        {/* No platform header (headerShown: false app-wide) — same in-screen
+            -control pattern SortControl establishes for its own conceptual
+            header position. Unconditional (a direct child of SafeAreaView,
+            not inside the empty-state/non-empty branches): Settings has no
+            other entry point, so it must stay reachable with zero segments
+            too. */}
+        <SettingsButton testID="segment-list-settings" />
         {error && (
           <ThemedText
             testID="segment-list-error"
@@ -210,6 +210,7 @@ export default function HomeScreen() {
               renderItem={({ item }) => (
                 <SegmentListItem
                   segment={item}
+                  aggregate={aggregates.get(item.id)}
                   onOpen={() => router.push(`/segment/${item.id}`)}
                   onRename={() => router.push(`/segment/${item.id}/rename`)}
                   onInlineRename={(name) => handleInlineRename(item.id, name)}
@@ -280,18 +281,6 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
-  },
-  // No platform header (headerShown: false app-wide) — same in-screen-control
-  // pattern SortControl already establishes for its own conceptual header
-  // position. Right-aligned, unconditional (a direct child of SafeAreaView,
-  // not inside the empty-state/non-empty branches): Settings has no other
-  // entry point, so it must stay reachable with zero segments too.
-  settingsButton: {
-    alignSelf: 'flex-end',
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyState: {
     flex: 1,

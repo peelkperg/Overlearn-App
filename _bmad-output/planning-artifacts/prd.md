@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2]
+stepsCompleted: [step-01-init, step-02-discovery, step-02b-vision, step-02c-executive-summary, step-03-success, step-04-journeys, step-05-domain, step-06-innovation, step-07-project-type, step-08-scoping, step-09-functional, step-10-nonfunctional, step-11-polish, step-12-complete, step-e-01-discovery, step-e-02-review, step-e-03-edit, step-v-01-through-13-validation, step-e-01-discovery-2, step-e-02-review-2, step-e-03-edit-2, step-e-01-discovery-3, step-e-02-review-3, step-e-03-edit-3, step-e-01-discovery-4, step-e-02-review-4, step-e-03-edit-4]
 validationReports:
   - _bmad-output/planning-artifacts/validation-report-2026-09-06.md
 releaseMode: phased
@@ -13,8 +13,63 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
-lastEdited: '2026-09-11'
+lastEdited: '2026-09-14'
 editHistory:
+  - date: '2026-09-14'
+    changes: >-
+      Added web as a platform target (extended the Platform line under
+      Technical Architecture Considerations): an installable PWA hosted
+      free on GitHub Pages, added to reach the users iOS's on-hold status
+      currently excludes -- not a replacement for iOS, a stopgap for it.
+      Added a Web Platform Availability addendum after NFR8/9 documenting
+      the web build's weaker storage durability (no OS sandbox, no backup
+      mechanism -- lost on cleared browser data, private mode, or a
+      browser/profile switch) while NFR8/9's own text is unchanged. Added
+      NFR10 (offline-after-first-load, installable). Specified first
+      through a separate bmad-spec/bmad-architecture chain
+      (`_bmad-output/specs/spec-web-platform-support/SPEC.md` +
+      `ARCHITECTURE-SPINE.md`) rather than this project's usual
+      PRD-first path, then folded back here per the established
+      PRD-first-source-of-truth convention before epics.md extraction.
+  - date: '2026-09-12'
+    changes: >-
+      Amended FR41 following Story 4.6's code review: the one-decimal
+      Solidification % display clamps a true value strictly between 0 and
+      100 to [0.1%, 99.9%], reserving the exact boundary strings for the
+      true mathematical boundary only. This shipped as an implementation
+      default (formatRowSolidification) before being specified here -
+      resolved in favor of keeping the clamp, consistent with FR38's
+      whole-number precedent, rather than a literal unclamped
+      one-decimal reading.
+  - date: '2026-09-12'
+    changes: >-
+      Added FR43: manual UAT of UAT-38 through UAT-41 (2026-09-12) found the
+      active-session screen (src/app/session/[id].tsx) has no navigation
+      control at all - no way to reach Settings or even Home while a session
+      is in progress or interrupted, only Correct/Incorrect/Restart. FR37
+      and FR39 both assume a user can "navigate to Settings" mid-session;
+      nothing in the PRD or ux-design-specification.md specified how. FR43
+      requires Settings be reachable from every screen, session state left
+      untouched by the navigation. Considered and rejected a narrower
+      "back-to-Home" affordance in favor of direct Settings access from any
+      screen, per user decision. ux-design-specification.md and
+      architecture.md still need the actual control design (placement,
+      icon) before implementation; this PRD edit specifies the requirement
+      only.
+  - date: '2026-09-12'
+    changes: >-
+      Added FR41 and FR42 during v1.1 UAT: manual testing of UAT-32 through
+      UAT-37 found the segment list row showed only the name, with no way to
+      see a segment's creation date, last-practiced date, or Solidification %
+      without opening it, and that flipping sort direction required
+      re-selecting the already-active sort option from the menu rather than a
+      dedicated control. FR41 adds the three data points to each list row.
+      FR42 requires a dedicated, independently-operable sort-direction toggle
+      next to the Sort control; its exact visual form is deferred to
+      ux-design-specification.md, consistent with how FR33/FR34 were
+      written. Neither FR changes FR33's sort criteria or FR38's history-log
+      display; FR41's list-row Solidification % reuses FR33's aggregate
+      definition and FR38's em-dash-for-no-data convention.
   - date: '2026-09-11'
     changes: >-
       Code review of Story 5.2 surfaced that FR37's implementation (a
@@ -143,7 +198,8 @@ Scoped after v1.0 shipped; **not** part of the v1.0 MVP. Four independent capabi
 
 - **Segment rename** (FR30, FR31) — with the renamed name reflected everywhere it is displayed, including past history entries and any in-progress session.
 - **Segment duplicate** (FR32) — disambiguated name, no copied history.
-- **Segment list sorting** (FR33, FR34) — by name, creation date, last-practiced date, or Solidification %; selection persisted across launches.
+- **Segment list sorting** (FR33, FR34) — by name, creation date, last-practiced date, or Solidification %; selection persisted across launches. A dedicated direction toggle (FR42) flips ascending/descending independent of re-selecting the sort key.
+- **Segment list row summary data** (FR41) — creation date, last-practice date, and Solidification % shown inline per row.
 - **Settings screen with a configurable overlearning-%** (FR35–FR37) — 50–300% in 10% increments, applied live to in-progress sessions.
 
 ### Growth Features (Phase 2, Post-MVP)
@@ -246,7 +302,7 @@ Overlearn is a single-user, fully offline mobile app with no backend, no account
 
 ### Technical Architecture Considerations
 
-- **Platform:** iOS and Android, cross-platform framework (React Native or Flutter) — undecided, left to the architecture stage since both are equally capable here. **(Resolved 2026-08-31 — see `architecture.md`: React Native via Expo SDK 57, chosen for existing familiarity and managed-workflow maintenance cost. Only Android has been built and verified to date; iOS is on hold — see `backlog.md`.)**
+- **Platform:** iOS and Android, cross-platform framework (React Native or Flutter) — undecided, left to the architecture stage since both are equally capable here. **(Resolved 2026-08-31 — see `architecture.md`: React Native via Expo SDK 57, chosen for existing familiarity and managed-workflow maintenance cost. Only Android has been built and verified to date; iOS is on hold — see `backlog.md`.)** **(Extended 2026-09-14: a web build (installable PWA, hosted free on GitHub Pages) added as a platform to reach the users iOS's on-hold status currently excludes — not a replacement for iOS, a stopgap for it. Full technical detail in `_bmad-output/specs/spec-web-platform-support/SPEC.md` and its `ARCHITECTURE-SPINE.md` companion, not restated here.)**
 - **Offline mode:** Required and total — the entire app must function with no network connectivity, at all times, not as a degraded fallback mode.
 - **Device permissions:** None required. No camera, microphone, location, contacts, or notification permissions requested.
 - **Push notifications:** Explicitly excluded — no notification infrastructure needed.
@@ -275,6 +331,7 @@ This section is the authoritative definition of the target-streak mechanic. Func
 | `target_streak` | int | Consecutive correct repetitions required to complete the session |
 | `session_complete` | bool | Whether the target has been met |
 | `session_start_timestamp` | ISO8601 | When the session (or its most recent Restart) began |
+| `completed_target` | int \| null | **(v1.1, added by Story 5.1's code review, documented 2026-09-12 following Story 5.2 round 2)** The streak actually achieved at the moment `session_complete` flipped `true`; `null` while incomplete. Anchors the Completion screen and history entry to what was met at completion time, immune to a later settings change before Done is tapped. See the Settings-driven completion transition below for how this can exceed a since-lowered `target_streak`. |
 
 ### Constants
 
@@ -287,7 +344,7 @@ This section is the authoritative definition of the target-streak mechanic. Func
 target_streak = max(TARGET_FLOOR, ceil(total_incorrect_this_session * OVERLEARNING_LEVEL))
 ```
 
-Evaluated at session start and re-evaluated after every increment of `total_incorrect_this_session`.
+Evaluated at session start and re-evaluated after every increment of `total_incorrect_this_session`, and (v1.1) after every change to `OVERLEARNING_LEVEL` — the formula always reads the current value of both inputs, never one captured earlier in the session (corrected 2026-09-12, code review of Story 5.2 round 2).
 
 **Boundary behavior.** At the default `OVERLEARNING_LEVEL` = 0.5, the floor governs until `total_incorrect_this_session` **exceeds 10**. The first observable increase is at 11 (a higher configured `OVERLEARNING_LEVEL` shifts this boundary earlier — e.g. at 1.0, it shifts to `total_incorrect_this_session` = 6):
 
@@ -303,10 +360,11 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 
 ### Transitions
 
-- **Correct:** `current_streak += 1`. If `current_streak >= target_streak`, the session completes, capturing `completed_target = target_streak` at that instant.
-- **Incorrect:** applied in this order — `current_streak = 0`, then `total_incorrect_this_session += 1`, then recalculate `target_streak`.
+- **Correct:** `current_streak += 1`. If `current_streak >= target_streak`, the session completes, capturing `completed_target = current_streak` at that instant. **(Corrected 2026-09-12, code review of Story 5.2 round 3):** this previously read `completed_target = target_streak`; a tap-driven completion always lands with `current_streak === target_streak` exactly, so the two values coincided until the Correct transition began delegating its completion check to the shared rule below (round 2, Decision 1) — the shared rule always records `current_streak`, which is also what history must show for a session that overshoots its target after a settings decrease (see the Settings-driven completion transition).
+- **Incorrect:** `total_incorrect_this_session += 1` first, then reconcile completion against the recalculated `target_streak` (see the shared completion rule below), then `current_streak = 0` only if the session did not just complete. **(Corrected 2026-09-12, code review of Story 5.2 round 3):** this previously listed `current_streak = 0` before the increment. From v1.1, an Incorrect tap can itself surface a settings-driven completion left un-reconciled by a failed write (see Story 5.2's code review) — counting the miss before checking completion means that tap is never silently dropped from the mistake count merely because it also happened to complete the session, and lets a miss that raises `target_streak` past `current_streak` correctly withhold a completion it would otherwise have granted.
 - **Restart:** `current_streak = 0`, `total_incorrect_this_session = 0`, `target_streak = TARGET_FLOOR`, `session_start_timestamp` = now. All four fields, not a subset.
-- **Settings-driven completion (v1.1, FR37):** an `OVERLEARNING_LEVEL` change alone, with no Correct/Incorrect tap, re-evaluates `target_streak` for every in-progress session; if the newly-recalculated `target_streak` is now met or exceeded by the session's existing `current_streak`, the session completes exactly as the Correct transition above would, capturing `completed_target = max(target_streak, current_streak)` — the achieved streak, not the (possibly lower) recalculated target, so history never understates a run that exceeded the target it was originally being measured against. This is a real completion path, not merely a display update: it sets `session_complete = true` and is subject to the same FR22 lockout as any other completion. (added 2026-09-11, code review of Story 5.2 — Task 3's reconciliation effect is this transition's implementation.)
+- **The completion rule (shared by Correct, Incorrect, and the Settings-driven transition below):** if the (possibly just-recalculated) `target_streak` is met or exceeded by `current_streak`, the session completes: `session_complete = true`, capturing `completed_target = current_streak` — the achieved streak, not `target_streak` — so history never understates a run that exceeded the target it was originally being measured against. Given the guard that only fires this rule when `current_streak >= target_streak`, `current_streak` and `max(target_streak, current_streak)` are always the same value; the spec and the implementation both state it as `current_streak` directly rather than as a `max()` that cannot evaluate to anything else. **(Corrected 2026-09-12, code review of Story 5.2 round 2 then round 3):** round 2 recorded this as `completed_target = max(target_streak, current_streak)` and gave Correct and Incorrect their own separate completion checks; round 3 unifies all three transitions on this one rule, matching `lib/session-transitions.ts`'s `reconcileCompletion`.
+- **Settings-driven completion (v1.1, FR37):** an `OVERLEARNING_LEVEL` change alone, with no Correct/Incorrect tap, re-evaluates `target_streak` for every in-progress session; if the newly-recalculated `target_streak` is now met or exceeded by the session's existing `current_streak`, the session completes per the shared completion rule above. This is a real completion path, not merely a display update: it sets `session_complete = true` and is subject to the same FR22 lockout as any other completion. (added 2026-09-11, code review of Story 5.2 — Task 3's reconciliation effect is this transition's implementation.)
 
 ## Functional Requirements
 
@@ -325,6 +383,8 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR33: **(v1.1)** User can sort the segment list by name, creation date, most recent practice date, or Solidification %, where Solidification % = (sum of correct repetitions across every completed session for that segment) ÷ (sum of total repetitions across those same sessions) — one aggregate ratio per segment, not an average of per-session percentages; a segment with no completed sessions is treated as 0% / oldest-possible-date for sorting purposes regardless of sort direction (added 2026-09-06)
 - FR34: **(v1.1)** System persists the user's selected sort option and direction across app relaunches (added 2026-09-06)
 - FR40: **(v1.1)** User can rename a segment by pressing and holding its name for 1 second at the segment list row or the segment detail heading, which turns the name into an editable field in place; submitting via the keyboard's return/enter action saves the new name. This is an additional rename entry point alongside FR30's dedicated Rename screen — both exist; neither replaces the other. Applies only at these two sites, not at the active-session readout, completion summary, or resume/discard prompt, which remain read-only displays of the current name (per FR31). Uses the same name validation and disambiguation rule as FR30. (added 2026-09-06)
+- FR41: **(v1.1)** Each segment list row displays the segment's creation date, most recent practice date ("Last practice: dd Mmm yyyy"; an empty-state wording applies if the segment has never been practiced), and Solidification % (one decimal place, e.g. "42.3%"). Solidification % uses FR33's aggregate definition and FR38's em-dash-for-no-completed-sessions convention — never "0.0%" for a segment with no completed sessions. A true value strictly between 0 and 100 is clamped to the range [0.1%, 99.9%] for display — the boundary strings "100.0%" and "0.0%" are reserved for the true mathematical boundary only, the same reserve-the-boundary principle FR38's whole-number display already applies, scaled to one decimal place. (added 2026-09-12, following manual UAT of UAT-32–UAT-37; clamp rule specified 2026-09-12 following Story 4.6's code review, resolving what had shipped as an implementation default with no PRD backing)
+- FR42: **(v1.1)** User can flip the segment list's sort direction via a dedicated toggle control next to the Sort control, independent of re-selecting the currently-active sort option. Operates on whichever sort key is active per FR33 and persists per FR34; does not change FR33's per-key default direction on first selection. Exact visual/interaction form is a UX-design decision, not fixed by this requirement. (added 2026-09-12, following manual UAT of UAT-35)
 
 ### Practice Session Lifecycle
 
@@ -333,7 +393,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR10: System recalculates the required correct-streak target per the Mechanic Specification whenever a repetition is logged as incorrect
 - FR11: System never lets the required correct-streak target fall below `TARGET_FLOOR`
 - FR12: System completes a session automatically once the current correct-streak target is met
-- FR13: User can view a session-completion summary showing the segment, the final target achieved, total mistakes, and total attempts for that session
+- FR13: User can view a session-completion summary showing the segment, the streak achieved when the session completed (`completed_target` — from v1.1 this can exceed the target in force at completion time; see the Settings-driven completion transition and its "record the achieved streak" decision, code review of Story 5.2), total mistakes, and total attempts for that session
 - FR14: User can end a completed session (Done), which writes a history entry
 - FR15: User can immediately begin a new session for the same segment (Repeat). The just-completed session's history entry is written first, exactly as Done does per FR14 — reaching completion is what earns a history entry, not which of the two buttons is pressed afterward. (Corrected 2026-09-06: shipped v1.0 code discarded that entry on Repeat, recorded as a bug and fixed; FR29's exclusion covers *abandoned or reset* sessions, never a completed one.)
 
@@ -343,9 +403,10 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR17: User can log a repetition as incorrect
 - FR18: System applies the Correct and Incorrect state transitions defined in the Mechanic Specification
 - FR19: User cannot undo an individual correct/incorrect log entry (constraint on FR16–FR17, not a standalone capability)
-- FR20: User can reset an in-progress session, returning all four session fields to their starting values per the Mechanic Specification
-- FR21: System requires user confirmation before executing a session reset
+- FR20: User can reset an in-progress session, returning all four session fields to their starting values per the Mechanic Specification. **(Annotated 2026-09-12, code review of Story 5.2 round 2):** from v1.1, Restart also stops being available without any Restart tap, the moment the Settings-driven completion transition (FR37) fires — FR22's lockout applies to Restart the same as it does to Correct/Incorrect.
+- FR21: System requires user confirmation before executing a session reset — moot once FR22's lockout has already disabled Restart via a settings-driven completion (see FR20's annotation)
 - FR22: System stops accepting repetition input once session completion has triggered — reachable either by a Correct tap or, from v1.1, by the Settings-driven completion transition (FR37) with no tap at all
+- FR43: **(v1.1)** User can access the Settings screen from any screen in the app, including the active-session screen while a session is in progress or interrupted, via a consistently-placed control. Navigating to Settings this way does not end, reset, or otherwise mutate the session in progress — it remains exactly as left, resumable the same way FR25 already describes. This closes the gap FR37 and FR39 assume (a change applying live, or being warned about, requires actually being able to reach Settings mid-session), found unreachable during manual UAT of UAT-38–UAT-41 (2026-09-12): the shipped active-session screen exposed only Correct/Incorrect/Restart, with no path to Settings or Home at all. (added 2026-09-12)
 
 ### Session Interruption & Recovery
 
@@ -357,7 +418,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 ### Practice History
 
 - FR27: User can view a chronological list of completed sessions for a segment
-- FR28: Each history entry displays the date, the final target streak achieved, total mistakes for that session, and total attempts
+- FR28: Each history entry displays the date, the streak achieved when the session completed (`completed_target`, per FR13's annotation), total mistakes for that session, and total attempts
 - FR29: System excludes non-completed sessions (abandoned or reset) from the history log
 - FR38: **(v1.1)** User can view the segment's Solidification % (as defined in FR33) at the top of its history log, so the value it can be sorted by is also visible somewhere. Recomputed from the same completed-session data as FR33's sort; a segment with no completed sessions shows an em dash ("—"), not "0%" — the sort control's internal 0%-as-comparison-value is never read by the user directly, but on this summary line "0%" would misread as "scored zero" rather than "no data yet." (added 2026-09-06; em-dash wording corrected 2026-09-08 — [Review][Decision] found via Story 4.3's code review, this FR previously said "0%," contradicting architecture.md and ux-design-specification.md's reasoned em-dash decision — resolved in their favor.)
 
@@ -366,7 +427,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR35: **(v1.1)** User can access a Settings screen to configure the overlearning-% target used in the Mechanic Specification's `OVERLEARNING_LEVEL`
 - FR36: **(v1.1)** System accepts any overlearning-% value from 50% to 300% in 10-percentage-point increments; no other value is selectable
 - FR37: **(v1.1)** System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change (supersedes any assumption that `target_streak` is fixed for a session's duration once started). If the recalculated target is now met or exceeded by the session's existing streak, the session completes immediately as a result of the setting change alone (see Mechanic Specification's Settings-driven completion transition) — this can end an in-progress session with no further user action, including from Home if the session is interrupted. (clarified 2026-09-11, code review of Story 5.2 — the original text covered only the displayed target number, not the completion consequence Story 5.2's implementation also produces.)
-- FR39: **(v1.1)** When an in-progress session exists for any segment, the Settings screen warns the user that a change to the overlearning-% will apply to that session immediately (per FR37), before they change the value — not as a confirmation gate on every tap, but as a standing notice visible while the setting is open. (added 2026-09-06 — resolves the v1.1 design review's open question that a mid-session change had no warning designed)
+- FR39: **(v1.1)** When an in-progress session exists for any segment, the Settings screen warns the user that a change to the overlearning-% will apply to that session immediately (per FR37), before they change the value — not as a confirmation gate on every tap, but as a standing notice visible while the setting is open. (added 2026-09-06 — resolves the v1.1 design review's open question that a mid-session change had no warning designed) **(Annotated 2026-09-12, code review of Story 5.2 round 2):** if the change triggers FR37's completion consequence while the user is on the Settings screen, Home's existing redirect-to-active-session behavior then replaces Settings with the Completion screen mid-adjustment, with no back route to Settings and no way to undo the value just set. No separate UI is designed for this — it is a consequence of FR37 and the existing navigation model, not a new requirement.
 
 ## Non-Functional Requirements
 
@@ -378,7 +439,7 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 ### Reliability
 
 - NFR3: Full in-progress session state — all state necessary to reconstruct the six fields in the Mechanic Specification (`target_streak` may be derived rather than stored directly, per architecture) — must survive app backgrounding or process kill, with no data loss beyond, at most, the single most recent tap if killed in the narrow window around a write in progress.
-- NFR4: On relaunch with an interrupted session present, the user must always be prompted resume vs. discard — the app must never silently resume or silently discard.
+- NFR4: On relaunch with an interrupted session present, the user must always be prompted resume vs. discard — the app must never silently resume or silently discard. **(Amended 2026-09-12, code review of Story 5.2 round 2):** applies to a session still incomplete at relaunch. From v1.1, FR24's accepted exception means the Settings-driven completion transition (FR37) can complete a session before relaunch is reached — that is a completion, shown via the ordinary Completion screen, not a silent resume or discard of an interrupted session.
 - NFR5: Completed-session history entries, once written, must be durable across app restarts, reinstalls-with-data-intact, and OS-level backgrounding — the only acceptable data loss is a full app uninstall or device loss (an explicitly accepted tradeoff of local-only storage).
 
 ### Accessibility
@@ -390,3 +451,9 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 
 - NFR8: Zero data leaves the device: no network calls, no analytics, no crash reporting, no usage tracking of any kind — verifiable by code inspection (no networking library/permission should be present in the shipped app at all, not just unused).
 - NFR9: No account creation, authentication, or any form of user identification — the app must have zero concept of "a user" beyond the single local device installation.
+
+**Web platform addendum (2026-09-14):** NFR8/9 hold identically on the web build — nothing about what leaves the device, or what accounts exist, changes. What differs is durability, not privacy: the web build's storage has no OS-level app sandbox and no backup mechanism, so data is lost if the user clears browser data, uses a private/incognito window, or switches browsers/profiles — a real platform-capability difference from native, not a relaxation of NFR8/9.
+
+### Web Platform Availability
+
+- NFR10 (added 2026-09-14): The web build must remain fully functional offline after the first successful load — installable as a standalone app (PWA), not merely a hosted page requiring constant connectivity — so it serves as a genuine alternative for the users the native iOS build currently excludes.

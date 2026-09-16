@@ -18,8 +18,17 @@ export function getString(key: string): string | undefined {
   }
 }
 
+// [Story 6.1] A write can genuinely throw on web (localStorage.setItem on
+// quota-exceeded) even though it essentially never does on native — proven
+// by storage.test.ts's web-path suite. Degrades to no-op rather than crash,
+// matching getString's existing pattern (both platforms; harmless on
+// native, where this path was already effectively unreachable).
 export function setString(key: string, value: string): void {
-  storage.set(key, value);
+  try {
+    storage.set(key, value);
+  } catch {
+    // See comment above.
+  }
 }
 
 export function getNumber(key: string): number | undefined {
@@ -27,19 +36,44 @@ export function getNumber(key: string): number | undefined {
 }
 
 export function setNumber(key: string, value: number): void {
-  storage.set(key, value);
+  try {
+    storage.set(key, value);
+  } catch {
+    // See setString's comment above.
+  }
 }
 
 export function deleteKey(key: string): void {
-  storage.remove(key);
+  try {
+    storage.remove(key);
+  } catch {
+    // See setString's comment above.
+  }
 }
 
 // Change notification for the data modules above the storage layer. Without
 // it, two mounted copies of the same hook hold independent snapshots and
 // silently diverge — a write made on one screen is invisible to another that
 // is already mounted. Keeps the MMKV API itself behind this module.
+//
+// [Story 6.1] onChange is wrapped before registration: neither the native
+// nor the web MMKV implementation isolates listeners from each other
+// (confirmed for web via storage.test.ts's web-path suite — the underlying
+// `Set.forEach` has no per-callback try/catch) — one throwing subscriber
+// aborts the fan-out entirely, silently skipping every listener registered
+// after it AND propagating out through the `set`/`remove` call that
+// triggered notification, crashing the write itself. Wrapping here, once,
+// fixes both for every subscriber on both platforms without touching the
+// raw store.
 export function subscribeToKeys(onChange: (key: string) => void): () => void {
-  const listener = storage.addOnValueChangedListener(onChange);
+  const listener = storage.addOnValueChangedListener((key) => {
+    try {
+      onChange(key);
+    } catch {
+      // A subscriber's own failure must not block sibling notifications or
+      // the write that triggered them.
+    }
+  });
   return () => listener.remove();
 }
 
@@ -59,8 +93,12 @@ function quarantine(key: string, raw: string): void {
 // release that renames/restructures a persisted shape would have no way to
 // migrate existing data — the type guards would just discard it. Bumping
 // SCHEMA_VERSION and adding a migrations[oldVersion] entry is the intended
-// upgrade path; there is nothing in the registry yet because v1 is the only
-// version that has ever shipped.
+// upgrade path — see migrations[0] and migrations[1] below for the two
+// bumps this has gone through so far.
+// [Review][Patch] found via code review 2026-09-12 (round 2): this comment
+// used to claim "there is nothing in the registry yet because v1 is the
+// only version that has ever shipped" in the same commit that populated
+// migrations[1] — falsified by its own diff.
 export const SCHEMA_VERSION = 2;
 
 type VersionedEnvelope<T> = { __v: number; data: T };
@@ -86,15 +124,38 @@ function isVersionedEnvelope(value: unknown): value is VersionedEnvelope<unknown
 // every in-progress session persisted by a build before this change has no
 // completedTarget key, so isSessionState would reject it and quarantine
 // the user's session on first read after upgrade. v1 -> v2 defaults a
-// missing completedTarget to null on session-shaped data only (detected by
-// the presence of sessionComplete, a field unique to SessionState among
-// this app's persisted shapes); every other shape (segments, history,
-// settings) has no sessionComplete field and passes through unchanged.
-const migrations: Record<number, (data: unknown) => unknown> = {
+// missing completedTarget on session-shaped data only (detected by the
+// presence of sessionComplete, a field unique to SessionState among this
+// app's persisted shapes); every other shape (segments, history, settings)
+// has no sessionComplete field and passes through unchanged.
+//
+// [Review][Patch] found via code review 2026-09-12 (round 2, two layers
+// independently): the original version of this migration keyed only on
+// the *presence* of completedTarget, so a session that was already
+// sessionComplete: true on a pre-Story-5.2 build was defaulted to
+// completedTarget: null exactly like an in-progress one — and nothing
+// ever backfills it afterward, since reconcileCompletion (the only writer
+// of completedTarget on an already-complete session) early-returns when
+// sessionComplete is already true. Both of useActiveSession.ts's
+// `?? targetStreak`/`?? calculateTargetStreak(...)` fallbacks then fire,
+// recording a live-recomputed target the user never practiced under —
+// the exact display/history divergence Story 5.2's Task 2 exists to
+// prevent, reintroduced through the migration path. Fixed by backfilling
+// from currentStreak when the session was already complete: every build
+// before this migration existed had exactly one completion path
+// (logCorrect), which always completed with currentStreak === the target
+// in force at that moment — so the achieved streak IS the target that was
+// met, with no need to recompute anything.
+// Exported only for storage.test.ts's registry-coverage assertion (that
+// every version in 0..SCHEMA_VERSION-1 has an entry) — no production
+// caller outside this module.
+export const migrations: Record<number, (data: unknown) => unknown> = {
   0: (data) => data,
   1: (data) => {
     if (typeof data === 'object' && data !== null && !Array.isArray(data) && 'sessionComplete' in data && !('completedTarget' in data)) {
-      return { ...data, completedTarget: null };
+      const record = data as Record<string, unknown>;
+      const completedTarget = record.sessionComplete ? (record.currentStreak as number) : null;
+      return { ...data, completedTarget };
     }
     return data;
   },
@@ -154,7 +215,11 @@ export function getObject<T>(key: string, isValid?: (value: unknown) => value is
   return data as T;
 }
 
+// [Review][Patch] found via Story 6.1 review: setObject is the busiest write
+// path (every segment/history/session write goes through it) but called
+// storage.set directly, bypassing setString's degrade-to-no-op protection —
+// the exact web quota-exceeded crash this story exists to prevent.
 export function setObject<T>(key: string, value: T): void {
   const envelope: VersionedEnvelope<T> = { __v: SCHEMA_VERSION, data: value };
-  storage.set(key, JSON.stringify(envelope));
+  setString(key, JSON.stringify(envelope));
 }

@@ -11,8 +11,8 @@ externalPointerStatus: 'not_used'
 v1.1:
   stepsCompleted: ['v1.1-step-01-load-context', 'v1.1-step-02-discover-tests', 'v1.1-step-03-map-criteria', 'v1.1-step-04-analyze-gaps', 'v1.1-step-05-gate-decision']
   lastStep: 'v1.1-step-05-gate-decision'
-  lastSaved: '2026-09-11'
-  gateStatus: 'CONCERNS'
+  lastSaved: '2026-09-12'
+  gateStatus: 'PASS'
   coverageBasis: 'acceptance_criteria'
   oracleConfidence: 'high'
   oracleResolutionMode: 'formal_requirements'
@@ -219,34 +219,34 @@ Rationale for CONCERNS → WAIVED rather than a silent downgrade to PASS: the un
 - Story 5.2 (mid-session apply + settings-driven completion): `session.test.tsx`, `useActiveSession.test.ts`, `lib/session-transitions.test.ts`, `lib/storage.test.ts` additions
 - Story 5.3 (in-progress-session notice): `settings.test.tsx` additions (10 tests in this block alone, after that story's own code-review round)
 
-**On-device layer:** `uat-scripts.md`'s v1.1 section, **10 scripts (UAT-32–UAT-41), 0 executed.** Revised this pass (see that document) to add coverage for two behavioral additions this trace's oracle now includes that the 2026-09-06 scripts predate: FR37's completion consequence (UAT-39, UAT-41) and FR40's second inline-rename site (UAT-37). This is the one real gap this run surfaces — see Step 5.
+**On-device layer:** `uat-scripts.md`'s v1.1 section, **10 scripts (UAT-32–UAT-41), 10/10 executed and passing** — UAT-32–37 on build `5a47a7a5` (2026-09-12), UAT-38–41 on build `c944e760` (`main` @ `5ffd7c2`, 2026-09-12) once Story 5.4 (FR43) added the Settings-navigation path UAT-38/39/40/41 needed. **Updated 2026-09-12** — this section originally recorded 0 executed; see the Gate Decision below for the re-run that closed it.
 
-**Levels present:** Unit and Component (Jest/RNTL) — comprehensive. Manual/On-device (UAT) — scripts exist and were just brought current, but none have been run against real hardware yet.
+**Levels present:** Unit and Component (Jest/RNTL) — comprehensive. Manual/On-device (UAT) — comprehensive, all 10 v1.1 scripts run against real hardware and passing.
 
 ## v1.1 Step 3: Requirements-to-Test Traceability Matrix
 
-**Legend:** FULL = automated test(s) confirm it, no on-device layer required to trust it (e.g., pure logic, storage, persisted state) · FULL-PENDING-UAT = automated tests confirm it, but the requirement also has a P0/P1 UAT script that has never been run — full confidence requires that on-device pass · NONE = no coverage.
+**Legend:** FULL = automated test(s) confirm it, no on-device layer required to trust it (e.g., pure logic, storage, persisted state) · FULL (all rows below, updated 2026-09-12) = automated tests confirm it AND its P0/P1 UAT script has since been run and passed — the FULL-PENDING-UAT status this table used before the on-device pass no longer applies to any row · UAT-ONLY = on-device confirmed, no automated equivalent · NONE = no coverage.
 
 ### Segment Organization & Insight (Epic 4)
 
 | FR | Requirement | Test(s) | Status |
 |---|---|---|---|
-| FR30 | Rename via dedicated screen | `segment-rename.test.tsx` (5 tests, screen-level); `lib/segments.test.ts` (`renameSegment`, validation/disambiguation); UAT-32, UAT-33 | **FULL-PENDING-UAT** |
-| FR31 | Rename propagates to all 5 display sites | `segment-rename.test.tsx`; `index.test.tsx` (list row); `segment-detail.test.tsx` (detail heading); `session.test.tsx` + `settings.test.tsx` (active-session readout, sourced via `useSegment` not frozen `segmentName` — the same rule Story 5.3 extended to the Settings notice as a sixth site); `home-session-interaction.test.tsx` (resume/discard prompt); UAT-32 (the R8-mitigating on-device check) | **FULL-PENDING-UAT** |
-| FR32 | Duplicate segment, no copied history | `lib/segments.test.ts` (`duplicateSegment`, disambiguation, empty history); `index.test.tsx` (row menu, snackbar); UAT-34 | **FULL-PENDING-UAT** |
-| FR33 | Sort by name/created/last-practiced/Solidification % | `SortControl.test.tsx` (8 tests); `lib/segments.test.ts` (`sortSegments`, `buildSortAggregates`); `index.test.tsx` (live re-sort); UAT-35 | **FULL-PENDING-UAT** |
-| FR34 | Sort choice persists across relaunch | `lib/settings.test.ts`; `index.test.tsx`; UAT-35's step 4 | **FULL-PENDING-UAT** |
-| FR38 | Solidification % summary on history log | `lib/history.test.ts` (`calculateSolidificationPercent`, incl. em-dash-not-"0%" case); `segment-detail.test.tsx`; UAT-36 | **FULL-PENDING-UAT** |
-| FR40 | Inline rename via press-and-hold (list row + detail heading) | `SegmentListItem.test.tsx` (list row); `segment-detail.test.tsx` (detail heading); UAT-37 (both sites, since this run's revision) | **FULL-PENDING-UAT** |
+| FR30 | Rename via dedicated screen | `segment-rename.test.tsx` (5 tests, screen-level); `lib/segments.test.ts` (`renameSegment`, validation/disambiguation); UAT-32, UAT-33 | **FULL** |
+| FR31 | Rename propagates to all 5 display sites | `segment-rename.test.tsx`; `index.test.tsx` (list row); `segment-detail.test.tsx` (detail heading); `session.test.tsx` + `settings.test.tsx` (active-session readout, sourced via `useSegment` not frozen `segmentName` — the same rule Story 5.3 extended to the Settings notice as a sixth site); `home-session-interaction.test.tsx` (resume/discard prompt); UAT-32 (the R8-mitigating on-device check) | **FULL** |
+| FR32 | Duplicate segment, no copied history | `lib/segments.test.ts` (`duplicateSegment`, disambiguation, empty history); `index.test.tsx` (row menu, snackbar); UAT-34 | **FULL** |
+| FR33 | Sort by name/created/last-practiced/Solidification % | `SortControl.test.tsx` (8 tests); `lib/segments.test.ts` (`sortSegments`, `buildSortAggregates`); `index.test.tsx` (live re-sort); UAT-35 | **FULL** |
+| FR34 | Sort choice persists across relaunch | `lib/settings.test.ts`; `index.test.tsx`; UAT-35's step 4 | **FULL** |
+| FR38 | Solidification % summary on history log | `lib/history.test.ts` (`calculateSolidificationPercent`, incl. em-dash-not-"0%" case); `segment-detail.test.tsx`; UAT-36 | **FULL** |
+| FR40 | Inline rename via press-and-hold (list row + detail heading) | `SegmentListItem.test.tsx` (list row); `segment-detail.test.tsx` (detail heading); UAT-37 (both sites, since this run's revision) | **FULL** |
 
 ### Configurable Overlearning Target (Epic 5)
 
 | FR | Requirement | Test(s) | Status |
 |---|---|---|---|
-| FR35 | Settings screen access | `settings.test.tsx` (mount, stepper renders); UAT-38 | **FULL-PENDING-UAT** |
-| FR36 | 50–300% in 10% steps, incl. rapid-tap race and disabled-boundary tests | `settings.test.tsx`; `lib/settings.test.ts` (clamp); UAT-38 | **FULL-PENDING-UAT** |
-| FR37 | Applies live to in-progress session; **can complete it outright with no tap (amended 2026-09-11, Story 5.2 code review)** | `useActiveSession.test.ts` (`reconcileCompletion` — display-only case and the completion-trigger case, incl. `completedTarget: Math.max(liveTarget, currentStreak)`); `session.test.tsx` (Completion screen anchors on `completedTarget`, not a possibly-since-changed live value); `lib/session-transitions.test.ts` (`reconcileCompletion` unit suite); `settings.test.tsx` (notice hides on settings-driven completion); UAT-39 (revised this pass to test the completion path, not just the display update), UAT-41 (the FR24 interrupted-session case) | **FULL-PENDING-UAT** |
-| FR39 | Standing in-progress-session notice, incl. absence when no/already-completed session, position above the stepper, live segment name via `useSegment` (not frozen), and stability across repeated taps | `settings.test.tsx` (10 tests, incl. this story's own code-review-round additions); UAT-40 | **FULL-PENDING-UAT** |
+| FR35 | Settings screen access | `settings.test.tsx` (mount, stepper renders); UAT-38 | **FULL** |
+| FR36 | 50–300% in 10% steps, incl. rapid-tap race and disabled-boundary tests | `settings.test.tsx`; `lib/settings.test.ts` (clamp); UAT-38 | **FULL** |
+| FR37 | Applies live to in-progress session; **can complete it outright with no tap (amended 2026-09-11, Story 5.2 code review)** | `useActiveSession.test.ts` (`reconcileCompletion` — display-only case and the completion-trigger case, incl. `completedTarget: Math.max(liveTarget, currentStreak)`); `session.test.tsx` (Completion screen anchors on `completedTarget`, not a possibly-since-changed live value); `lib/session-transitions.test.ts` (`reconcileCompletion` unit suite); `settings.test.tsx` (notice hides on settings-driven completion); UAT-39 (revised this pass to test the completion path, not just the display update), UAT-41 (the FR24 interrupted-session case) | **FULL** |
+| FR39 | Standing in-progress-session notice, incl. absence when no/already-completed session, position above the stepper, live segment name via `useSegment` (not frozen), and stability across repeated taps | `settings.test.tsx` (10 tests, incl. this story's own code-review-round additions); UAT-40 | **FULL** |
 
 ### Cross-Cutting
 
@@ -254,24 +254,24 @@ Rationale for CONCERNS → WAIVED rather than a silent downgrade to PASS: the un
 |---|---|---|
 | Route registration (`app/settings.tsx`, `app/segment/[id]/rename.tsx`) | `stack-screens.test.ts` | **FULL** |
 | FR22 lockout reachable via settings change alone, no tap (amended 2026-09-11) | `useActiveSession.test.ts` (Restart no-ops once `sessionComplete` is true, regardless of trigger) | **FULL** |
-| FR24 interrupted session may auto-complete at app open, bypassing Resume/Discard (amended 2026-09-11) | No automated test — `home-session-interaction.test.tsx` covers the ordinary resume/discard path, but not this specific interleaving with a settings-driven completion firing before the prompt renders | **NONE** — see Step 4 |
-| Real-device gesture timing (press-and-hold delay) / accessibility announcement delivery | UAT-32, UAT-37, UAT-40 | **PENDING-UAT** |
+| FR24 interrupted session may auto-complete at app open, bypassing Resume/Discard (amended 2026-09-11) | No automated test — `home-session-interaction.test.tsx` covers the ordinary resume/discard path, but not this specific interleaving with a settings-driven completion firing before the prompt renders. **UAT-41 ran and passed 2026-09-12 (build `c944e760`), confirming the interleaving on real hardware** — the automated gap itself is unchanged and still worth closing, but the behavior is no longer unverified. | **UAT-ONLY** — see Step 4 |
+| Real-device gesture timing (press-and-hold delay) / accessibility announcement delivery | UAT-32, UAT-37, UAT-40 — all passed 2026-09-12 | **FULL (UAT)** |
 
 ### v1.1 Summary
 
 | Status | Count | FRs |
 |---|---|---|
-| FULL-PENDING-UAT | 11 | FR30–FR35, FR36–FR40 (all 11 v1.1 FRs) |
+| FULL (automated + UAT both passing) | 11 | FR30–FR35, FR36–FR40 (all 11 v1.1 FRs) |
 | FULL (cross-cutting, no UAT dependency) | 2 | Route registration, FR22's no-tap lockout |
-| NONE | 1 | FR24's auto-complete-bypasses-prompt interleaving (cross-cutting item, not a numbered FR of its own — the underlying FR24 amendment has no automated regression test) |
+| UAT-ONLY (on-device confirmed, no automated test) | 1 | FR24's auto-complete-bypasses-prompt interleaving — UAT-41 passed 2026-09-12; an automated regression test for this interleaving is still a worthwhile addition, tracked as a gap, not a blocker |
 
-**Total: 11 v1.1 FRs traced, all with automated (Jest) coverage. 0 at NONE among the numbered FRs.** The one NONE is a cross-cutting scenario (a specific interleaving of FR24 with FR37) that has a *planned* on-device script (UAT-41, added this pass) but no automated equivalent.
+**Total: 11 v1.1 FRs traced, all with automated (Jest) coverage AND on-device (UAT) confirmation. 0 at NONE.** The one remaining open item is automated-test coverage (not correctness) for one cross-cutting interleaving already confirmed working on real hardware.
 
 ## v1.1 Step 4: Gap Analysis & Coverage Statistics
 
 ### Coverage Statistics
 
-| | Total | Automated FULL | On-device pending | NONE | % with ≥1 automated test |
+| | Total | Automated FULL | On-device executed & passing | NONE | % with ≥1 automated test |
 |---|---|---|---|---|---|
 | **P0** (FR30, FR31, FR32, FR33, FR35, FR36, FR37) | 7 | 7 | 7 | 0 | **100%** |
 | **P1** (FR34, FR38, FR39, FR40) | 4 | 4 | 4 | 0 | **100%** |
@@ -279,29 +279,27 @@ Rationale for CONCERNS → WAIVED rather than a silent downgrade to PASS: the un
 
 (Priority assignments per `test-design-epic-4-5.md`'s original scoring, carried forward unchanged — no v1.1 FR's priority was revised by any story's code review.)
 
+**Updated 2026-09-12:** the "On-device pending" column above (0/10 executed at this trace's original writing) is now "On-device executed & passing" — all 10 `uat-scripts.md` v1.1 scripts have run against real hardware and passed. See the Gate Decision below.
+
 ### Gap Analysis
 
 **Automated coverage is complete.** Every v1.1 FR has at least one Jest test, and the highest-risk item (FR31's cross-file rename propagation, `test-design-epic-4-5.md`'s R8) has dedicated regression coverage across every display site, including the settings notice Story 5.3 added as a sixth site subject to the same rule.
 
-**The one real gap: zero on-device verification.** `uat-scripts.md`'s 10 v1.1 scripts have never been executed — this is a materially different situation from v1.0's NFR1/NFR2 waiver (a narrow, architecturally-guaranteed, subjectively-spot-checked property) or from the FR24 pre-v1.1 gap this same document once flagged as its single biggest miss. Here, nothing has been run on real hardware at all for 11 requirements, including two (FR37, FR24) whose newest behavior — a settings change alone completing a session, or completing one that's sitting interrupted, bypassing Resume/Discard — is a genuinely surprising, no-confirmation, no-tap user-facing consequence that automated tests can confirm the *mechanism* of but not the *feel* of on a real device (timing of the redirect, whether the haptic/announcement lands convincingly, whether a user finds it disorienting).
-
-Risk-scored: probability 3 (certain — by definition, since it's simply unrun) × impact 2 (moderate — automated coverage already gives high confidence the mechanism is correct; what's unverified is presentation/timing/feel, not correctness) = **score 6, MITIGATE tier.** Elevated attention on UAT-39/UAT-41 specifically, since those two scripts are the ones testing behavior automated tests can prove correct but not prove *unsurprising*.
+**Resolved 2026-09-12 — on-device verification is complete.** This section originally flagged zero on-device execution as the one real gap (risk-scored 6, MITIGATE tier), with elevated concern on UAT-39/UAT-41's no-tap completion behavior. Four of the ten scripts (UAT-38, 39, 40, 41) were additionally found **blocked** partway through that pass — no UI path existed from an active/interrupted session to Settings — which Story 5.4 (FR43) then fixed. A new preview build (`c944e760`, `main` @ `5ffd7c2`) was cut containing that fix plus Story 5.2's completion-reconciliation work, and all 10 v1.1 scripts, including the previously-blocked four, have now run and passed. The one item that remains genuinely open is narrower than "zero on-device verification" ever was: FR24's auto-complete-bypasses-prompt interleaving has on-device confirmation (UAT-41) but still no automated regression test — see the Cross-Cutting table above.
 
 ## v1.1 Step 5: Gate Decision
 
-### Gate Decision: **CONCERNS**
+### Gate Decision: **PASS** (was CONCERNS)
 
 | Criterion | Required | Actual | Status |
 |---|---|---|---|
 | No score=9 (BLOCK-tier) risks | 0 | 0 | ✅ MET |
 | No FR at NONE (automated) | 0 | 0 | ✅ MET |
 | P0 automated coverage | 100% | 100% (7/7) | ✅ MET |
-| On-device (UAT) execution | — | 0 / 10 scripts run | ⚠️ OPEN |
+| On-device (UAT) execution | — | 10 / 10 scripts run, 10/10 pass | ✅ MET |
 
-**Why CONCERNS and not PASS:** every v1.1 requirement has automated coverage and no requirement is at NONE — the code is not broken by any test this project can currently run. But this is the first time this trace has reached a gate decision for code that has *never been touched on a real device*, for a set of requirements that include a behavior (settings-driven completion) capable of surprising a user with no tap of their own. v1.0's precedent for accepting a real, named gap was an explicit WAIVED record with an owner and a re-open condition (see Step 5 above) — not a silent PASS. This run does not carry that waiver; CONCERNS is the honest default until either the UAT pass runs or Gerardo explicitly waives it.
+**Why PASS:** every v1.1 requirement has both automated coverage and on-device confirmation, with no requirement at NONE. The single open item flagged by the prior CONCERNS decision — zero on-device execution, elevated concern on UAT-39/UAT-41's no-tap settings-driven completion behavior — is closed: all 10 scripts ran on build `c944e760` (`main` @ `5ffd7c2`) and passed, including UAT-39/UAT-41. The four scripts (UAT-38, 39, 40, 41) found blocked mid-pass were unblocked by Story 5.4 (FR43) adding the missing Settings-navigation path, then re-run successfully on the same build.
 
-**Why not FAIL:** unlike the 2026-09-02 v1.0 FAIL (P0 coverage 17%, real requirements with zero test of any kind), every v1.1 FR here has genuine automated coverage, including the specific high-risk items (FR31 propagation, FR37's completion trigger) called out by name in the original test design. The open item is a verification *layer*, not a coverage *hole*.
-
-**Path to PASS:** run `uat-scripts.md`'s UAT-32–UAT-41 against the next preview build (already scheduled — Gerardo will build and execute after this session). Re-run this trace afterward; if all 7 P0 scripts pass, the natural outcome is PASS. If UAT-39/UAT-41's completion behavior reads as confusing in practice despite working correctly, that becomes a UX finding for `ux-design-specification.md`/`epics.md`, not a code defect — this trace only gates correctness, not delightfulness.
+**Residual, non-blocking item:** FR24's auto-complete-bypasses-prompt interleaving still has no automated regression test — only on-device confirmation (UAT-41). Worth adding as a `home-session-interaction.test.tsx` case at some point, but it does not gate this decision: the interleaving is confirmed correct on real hardware, and this trace gates correctness, not test-suite completeness.
 
 **Full report:** `_bmad-output/test-artifacts/traceability-matrix.md` (this file, v1.1 section)

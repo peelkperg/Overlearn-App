@@ -40,6 +40,15 @@ function directionLabel(key: SortKey, direction: SortDirection): string {
   return direction === 'desc' ? 'highest first' : 'lowest first';
 }
 
+// Story 4.7 (FR42): single formula for the asc/desc opposite, so
+// handleSelect's re-tap-active-option branch and the toggle's onPress
+// call the same function and cannot diverge.
+function flip(direction: SortDirection): SortDirection {
+  return direction === 'asc' ? 'desc' : 'asc';
+}
+
+const DirectionGlyph: Record<SortDirection, string> = { asc: '↑', desc: '↓' };
+
 // FR33/FR34, UX-DR18/19: sort control above the segment list. Mirrors
 // SegmentListItem's Modal-menu visual/interaction pattern (same backdrop,
 // dismiss-on-tap-outside, 44x44 menu-item sizing) rather than extracting a
@@ -51,25 +60,50 @@ export function SortControl({ sortKey, sortDirection, onChange }: SortControlPro
   const handleSelect = (key: SortKey) => {
     setMenuVisible(false);
     if (key === sortKey) {
-      onChange(key, sortDirection === 'asc' ? 'desc' : 'asc');
+      onChange(key, flip(sortDirection));
     } else {
       onChange(key, DefaultDirection[key]);
     }
   };
 
-  const accessibilityLabel = `Sort by ${KeyLabels[sortKey]}, ${directionLabel(sortKey, sortDirection)}`;
+  // Decision (2026-09-12 code review): the trigger's own label no longer
+  // names direction — the toggle is now the single place that announces it,
+  // avoiding a double-read across two adjacent focus stops.
+  const accessibilityLabel = `Sort by ${KeyLabels[sortKey]}`;
+
+  const flippedDirection = flip(sortDirection);
 
   return (
     <View>
-      <Pressable
-        testID="segment-sort-control"
-        style={styles.trigger}
-        onPress={() => setMenuVisible(true)}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-      >
-        <ThemedText type="small">Sort: {KeyLabels[sortKey]} ▾</ThemedText>
-      </Pressable>
+      <View style={styles.row}>
+        <Pressable
+          testID="segment-sort-control"
+          style={styles.trigger}
+          onPress={() => setMenuVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+        >
+          <ThemedText type="small" numberOfLines={1}>
+            Sort: {KeyLabels[sortKey]} ▾
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          testID="segment-sort-direction-toggle"
+          style={styles.directionToggle}
+          onPress={() => onChange(sortKey, flippedDirection)}
+          accessibilityRole="button"
+          // Decision (2026-09-12 code review): a single accessibilityLabel
+          // naming the key, current direction, and resulting direction — no
+          // accessibilityHint. A hint is lost when "Speak Hints" is off
+          // (iOS) and gets merged into contentDescription (Android), so
+          // AC #4's "direction a tap would produce" must live in the label
+          // to be heard unconditionally. Also satisfies UX-DR28's "names
+          // the key" requirement, which the prior label omitted.
+          accessibilityLabel={`Sort by ${KeyLabels[sortKey]}, currently ${directionLabel(sortKey, sortDirection)}, switches to ${directionLabel(sortKey, flippedDirection)}`}
+        >
+          <ThemedText type="small">{DirectionGlyph[sortDirection]}</ThemedText>
+        </Pressable>
+      </View>
 
       <Modal
         visible={menuVisible}
@@ -109,10 +143,30 @@ export function SortControl({ sortKey, sortDirection, onChange }: SortControlPro
 }
 
 const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // Story 4.7 (FR42) patch: a dead zone between the trigger and the
+    // toggle so a tap near the ▾ glyph can't land on the toggle instead.
+    gap: Spacing.three,
+  },
   trigger: {
+    // Story 4.7 (FR42) patch: RN defaults flexShrink to 0 (unlike web's 1),
+    // so without this the trigger claims the full row width at large font
+    // scales and pushes the toggle off-screen and out of reach.
+    flexShrink: 1,
     minHeight: 44,
     justifyContent: 'center',
     paddingVertical: Spacing.two,
+  },
+  // Story 4.7 (FR42): matches the 44x44 minimum-target convention every
+  // other row control in this codebase already uses (SegmentListItem's
+  // menuButton, SettingsButton).
+  directionToggle: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backdrop: {
     flex: 1,

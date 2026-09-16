@@ -1,20 +1,55 @@
 ---
-stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisions, step-05-patterns, step-06-structure, step-07-validation, step-08-complete, v1.1-extension]
+stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisions, step-05-patterns, step-06-structure, step-07-validation, step-08-complete, v1.1-extension, v1.1.1-extension]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-08-31'
-lastUpdated: '2026-09-11'
+lastUpdated: '2026-09-14'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/specs/spec-web-platform-support/SPEC.md
+  - _bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-13/ARCHITECTURE-SPINE.md
 workflowType: 'architecture'
 project_name: 'Overlearn'
 user_name: 'Gerardo'
 date: '2026-08-31'
 versionCoverage:
+  web-platform: 'The "Web Platform Architectural Decisions" section and its Project Structure/Requirements Mapping/Enforcement/Gap Analysis subsections, appended at the end. Summarizes ARCHITECTURE-SPINE.md (2026-09-13, amended 2026-09-14) -- full decision detail lives there, not duplicated here. Designed, not implemented.'
   v1.0: 'Everything above the "v1.1 Architectural Decisions" heading. Shipped, frozen at git tag v1.0.0.'
+  v1.1.1: 'The "Settings Entry Point on Every Screen (FR43)", "Segment List Row Summary Data (FR41)", "Sort Direction Toggle (FR42)", and their Project Structure/Requirements Mapping/Enforcement/Gap Analysis subsections -- all inserted immediately before "v1.1 Gap Analysis". Targeted addition (2026-09-12), driven by gaps manual UAT found in the shipped v1.1 build. Designed, not implemented.'
   v1.1: 'The "v1.1 Architectural Decisions" section - lib/settings.ts storage boundary, optional-parameter threading through calculateTargetStreak/session-transitions, FR38-FR39 read paths, rename propagation, sort, rename/duplicate. Designed, not implemented.'
 editHistory:
+  - date: '2026-09-14'
+    changes: >-
+      Appended "Web Platform Architectural Decisions": a summary of
+      ARCHITECTURE-SPINE.md's eight ADs (storage port/adapter boundary
+      with construction gating, subscribeToKeys fan-out contract, base
+      path as one named config key, dynamic-route SPA fallback, Workbox
+      precache generation, manual-trigger GitHub Pages deploy, no
+      backend/accounts/telemetry, service-worker registration ownership),
+      plus Project Structure Additions, Requirements to Structure Mapping,
+      Enforcement Guidelines, and a Gap Analysis, matching this
+      document's existing per-version-addition convention. Full detail
+      intentionally left in ARCHITECTURE-SPINE.md rather than duplicated.
+      Folded in ahead of epics.md extraction per this project's
+      established PRD-first-source-of-truth convention.
+  - date: '2026-09-12'
+    changes: >-
+      Added architectural decisions for FR41, FR42, FR43, following manual
+      UAT of the shipped v1.1 build (UAT-32 through UAT-41) and this
+      session's ux-design-specification.md v1.1.1 addendum. FR43: extracted
+      app/index.tsx's inline Settings gear icon into a shared
+      components/SettingsButton.tsx, mounted on session/[id].tsx and
+      segment/[id].tsx too -- an Expo Router stack push, no new session
+      read/write path, so the existing "session/[id].tsx talks only to
+      useActiveSession" boundary holds unchanged. FR41: no new lib/
+      function -- useSegments() now also returns the aggregates map
+      buildSortAggregates() (Story 4.3, FR33) already computes internally,
+      and SegmentListItem gains one prop to render it. FR42: extends
+      SortControl.tsx in place with a second Pressable reusing its existing
+      directionLabel() helper -- no new component file, the menu's
+      re-tap-active-option flip path is untouched. No new storage boundary,
+      no lib/ module, no Mechanic Specification change.
   - date: '2026-09-11'
     changes: >-
       Code review of Story 5.2 found the FR37 paragraph's "no session-state
@@ -175,13 +210,15 @@ npx create-expo-app@latest Overlearn --template default@sdk-57
 
 **Active session state — write strategy:** synchronous MMKV writes on every Correct/Incorrect/Restart tap. Because MMKV writes complete in microseconds (JSI, no bridge serialization), this directly satisfies NFR1/NFR2 (100ms budget, no async-queue complexity needed) — resolving the PRD's flagged "riskiest assumption" with a simpler mechanism than originally anticipated.
 
-**`target_streak` — derive vs. store:** derived on every read as a pure function of `total_incorrect_this_session` (`max(TARGET_FLOOR, ceil(total_incorrect_this_session * OVERLEARNING_LEVEL))`), never persisted as its own field. Only `current_streak`, `total_correct_this_session`, `total_incorrect_this_session`, `segment_name`, `session_start_timestamp`, and `session_complete` are the persisted source-of-truth fields — this eliminates any possibility of a stored target drifting from what the formula would produce.
+**`target_streak` — derive vs. store:** derived on every read as a pure function of `total_incorrect_this_session` (`max(TARGET_FLOOR, ceil(total_incorrect_this_session * OVERLEARNING_LEVEL))`), never persisted as its own field. Only `current_streak`, `total_correct_this_session`, `total_incorrect_this_session`, `segment_name`, `session_start_timestamp`, `session_complete`, and (v1.1, Story 5.1's code review — see the Schema addition note below) `completed_target` are the persisted source-of-truth fields — this eliminates any possibility of a stored target drifting from what the formula would produce.
 
 **Schema addition — `total_correct_this_session` (Story 2.6, confirmed with the user):** not one of the Mechanic Specification's original six fields. Added because FR13's Completion summary requires total attempts (correct + incorrect), and `current_streak` alone can't reconstruct total correct once a session has had more than one miss-then-recover cycle (it resets to 0 on every miss, losing the prior run's count). Incremented alongside `current_streak` in the Correct transition; reset to 0 by Start/Restart, same as the other counters. Purely additive — none of the original six fields changed meaning.
 
 **Schema addition — `segment_id` (Story 2.10, confirmed with the user):** the Mechanic Specification's Session State only carries `segment_name`. Story 2.10's resume/discard prompt is shown on the Segment List screen at app open — before the user has navigated back into the specific segment — and needs an unambiguous way to route to that segment's session screen on Resume. `segment_name` alone risks a false match if segment names aren't unique, or a stale one if the segment was renamed since the session started. `segment_id` is set once at session start and never changes for the life of the session, same lifecycle as `segment_name`.
 
-**`session_complete` persistence:** written synchronously in the same MMKV write as the final `current_streak` update that triggers completion — since writes are synchronous, this is inherent to the write strategy above, not a separate mechanism. Directly resolves the UX spec's flagged completion-screen resume gap: on relaunch, if `session_complete = true` is found, the app restores directly to the Completion screen rather than the resume/discard prompt.
+**`session_complete` persistence:** written synchronously in the same MMKV write as the final `current_streak` update that triggers completion — since writes are synchronous, this is inherent to the write strategy above, not a separate mechanism. Directly resolves the UX spec's flagged completion-screen resume gap: on relaunch, if `session_complete = true` is found, the app restores directly to the Completion screen rather than the resume/discard prompt. **(Corrected 2026-09-12, code review of Story 5.2 round 2):** this held only through v1.0. From v1.1, `session_complete` can also be written by a settings-driven reconciliation effect keyed on the overlearning-% alone, with `current_streak` left untouched — a genuinely separate mechanism from the one described above. See the Settings-driven completion transition in the Mechanic Specification (`prd.md`).
+
+**Schema addition — `completed_target` (Story 5.1's code review, 2026-09-10; documented 2026-09-12 following Story 5.2 round 2):** not one of the Mechanic Specification's original six fields. Captures the streak actually achieved in the same write that flips `session_complete` true, so a settings change made after completion but before Done cannot alter what the Completion screen displays or what gets permanently recorded to history. `null` while incomplete. Written by both completion-writing transitions (`logCorrect`'s delegated path and the settings-driven `reconcileCompletion`), per the single completion rule those share.
 
 **Segments & history log:** stored as MMKV-backed JSON collections (one entry per segment, one array of completed-session records per segment) rather than SQLite — the data volume (single user, realistically dozens to low hundreds of segments/sessions) doesn't warrant a relational database, and keeping one persistence library for the whole app reduces solo-dev maintenance surface (consistent with the PRD's Resource Risks mitigation).
 
@@ -701,6 +738,124 @@ Every new route must be added to `src/app/stack-screens.ts` and given a `<Stack.
 - Call `calculateTargetStreak`/`calculateSolidificationPercent` for any target or Solidification % display or check — never reimplement either formula, extending the v1.0 single-formula rule to the new metric.
 - Never add a required parameter to `calculateTargetStreak` or `logCorrect` — the optional-parameter-with-v1.0-default pattern is what keeps this a non-breaking extension; a required parameter would be a breaking change to a "pure function, one implementation" contract this document has twice now relied on staying stable. (`logIncorrect` does not carry this parameter at all, required or optional — corrected 2026-09-10, see above.)
 
+## Settings Entry Point on Every Screen (FR43, added 2026-09-12)
+
+**Decision:** one new shared component, `components/SettingsButton.tsx` — extracts the gear-icon `Pressable` already inline in `app/index.tsx` (lines ~172-179: `testID="segment-list-settings"`, `⚙` glyph, `router.push('/settings')`, `accessibilityLabel="Settings"`) into a reusable component, then mounts it on `app/session/[id].tsx` and `app/segment/[id].tsx` too. `app/index.tsx` is refactored to use the extracted component rather than keeping its own inline copy — a third near-identical inline `Pressable` would be exactly the drift the project's "reuse, don't reimplement" pattern (see `calculateTargetStreak`, `calculateSolidificationPercent`) exists to prevent.
+
+```ts
+// components/SettingsButton.tsx
+export function SettingsButton(): JSX.Element {
+  return (
+    <Pressable
+      testID="settings-button"
+      onPress={() => router.push('/settings')}
+      accessibilityRole="button"
+      accessibilityLabel="Settings"
+    >
+      <ThemedText themeColor="textSecondary">⚙</ThemedText>
+    </Pressable>
+  );
+}
+```
+
+No props — it is a pure navigation trigger, identical at every call site (ux-design-specification.md: "same icon, same placement convention" everywhere). Per-screen positioning (top corner, fixed) stays each screen's own `StyleSheet`, not the component's concern.
+
+**Does not touch `useActiveSession` or session state.** `router.push('/settings')` pushes Settings on top of the current route; the Active Session screen underneath is not unmounted (Expo Router stack push, not replace), so no session read/write happens as a side effect of this navigation — satisfying FR43's "does not end, reset, or otherwise mutate the session" requirement by construction, not by added guard logic. Returning via back pops Settings and the session screen re-renders from whatever `useActiveSession`'s live subscription already reflects (including a completion FR37 may have triggered while Settings was open — no new wiring needed, `useActiveSession`'s existing `useSyncExternalStore` subscription already re-renders on that write).
+
+**Component Boundaries note:** `app/session/[id].tsx`'s existing boundary ("talks only to `useActiveSession`") is unchanged in substance — `<SettingsButton />` is a self-contained navigation trigger, not a second data dependency; the screen still reads/writes session state exclusively through `useActiveSession`.
+
+## Segment List Row Summary Data (FR41, added 2026-09-12)
+
+**Decision:** no new `lib/` computation — `lib/segments.ts`'s `buildSortAggregates()` (added for FR33's sort, Story 4.3) already computes exactly the two derived values FR41 needs per segment: `lastPracticed` and `solidification`. `createdAt` is already a `Segment` field (FR1). The gap is purely that `useSegments()` computed aggregates internally for sorting but never returned them to its caller.
+
+**`useSegments()` return value gains one field:**
+
+```ts
+function useSegments(): {
+  segments: Segment[];
+  aggregates: Map<string, SortAggregate>; // NEW — same map sortSegments() already builds
+  // ...unchanged: deleteSegment, duplicateSegment, renameSegment, sortKey, sortDirection, setSortOption
+}
+```
+
+`aggregates` is returned regardless of the active sort key — FR41's row display is independent of what the list happens to be sorted by. No second `buildSortAggregates()` call: the hook already computes it once per render for sorting; that same map is exposed rather than discarded.
+
+**`SegmentListItem` gains one new prop:**
+
+```ts
+type SegmentListItemProps = {
+  segment: Segment;
+  aggregate: SortAggregate | undefined; // NEW — { lastPracticed, solidification } | undefined
+  // ...unchanged: onOpen, onRename, onDuplicate, onDelete, onInlineRename
+};
+```
+
+`app/index.tsx` passes `aggregates.get(segment.id)` at the existing `<SegmentListItem>` call site. `undefined` is a real, valid case (a segment somehow missing from the map) and renders identically to "no history" — both resolve to the em-dash display, never a crash.
+
+**Formatting is a display-layer concern, not a new `lib/` function:** `dd Mmm yyyy` date formatting and one-decimal `%` formatting happen inline in `SegmentListItem.tsx` (or a small colocated formatter if reused a third time — not architecturally significant at two call sites: this row and the FR38 history-log summary already do their own similar formatting). Em-dash convention: `aggregate === undefined || aggregate.lastPracticed === null` → `"—"` for both the date and the percent, matching FR38's existing rule — do not invent a third convention.
+
+## Sort Direction Toggle (FR42, added 2026-09-12)
+
+**Decision:** extends `components/SortControl.tsx` in place — no new component file, per the UX spec's "no custom component" note. The toggle button is a second `Pressable` rendered alongside the existing `Sort: X ▾` trigger inside `SortControl`'s returned `View`, sharing the component's existing `sortKey`/`sortDirection`/`onChange` props (no new prop surface on the parent — `app/index.tsx`'s `<SortControl>` call site is unchanged).
+
+```ts
+// Inside SortControl's return, alongside the existing trigger Pressable:
+<Pressable
+  testID="segment-sort-direction-toggle"
+  onPress={() => onChange(sortKey, flip(sortDirection))}
+  accessibilityRole="button"
+  // Decision (2026-09-12 code review): a single accessibilityLabel naming
+  // the key, current direction, and resulting direction — no
+  // accessibilityHint (a hint is dropped when "Speak Hints" is off on iOS,
+  // and merged into contentDescription on Android).
+  accessibilityLabel={`Sort by ${KeyLabels[sortKey]}, currently ${directionLabel(sortKey, sortDirection)}, switches to ${directionLabel(sortKey, flip(sortDirection))}`}
+>
+  <ThemedText type="small">{DirectionGlyph[sortDirection]}</ThemedText>
+</Pressable>
+```
+
+Reuses the existing `directionLabel()` helper (already defined in `SortControl.tsx` for the menu's accessibility labels) rather than a second direction-to-prose mapping — one function, two call sites, same discipline as `calculateTargetStreak`. A `flip()` helper is the single formula for the asc/desc opposite, called by both the menu's re-tap-active-option branch (`handleSelect`) and the toggle's `onPress` — they cannot diverge because they call the same function, not because they happen to be independently identical.
+
+## Project Structure Additions (v1.1.1)
+
+```
+src/
+├── components/
+│   └── SettingsButton.tsx                 # NEW — FR43, extracted from app/index.tsx's inline gear icon
+├── app/
+│   ├── index.tsx                          # refactored to use SettingsButton (no inline Pressable duplication)
+│   ├── session/[id].tsx                   # + <SettingsButton /> (FR43)
+│   └── segment/[id].tsx                   # + <SettingsButton /> (FR43)
+├── hooks/
+│   └── useSegments.ts                     # useSegments() return value + aggregates: Map<string, SortAggregate> (FR41)
+├── components/
+│   ├── SegmentListItem.tsx                # + aggregate prop, + row summary lines 2-3 (FR41)
+│   └── SortControl.tsx                    # + direction-toggle Pressable, no new file (FR42)
+```
+
+## Requirements to Structure Mapping (v1.1.1 additions)
+
+**Segment List Row Summary Data (FR41):** `src/hooks/useSegments.ts` (aggregates exposed), `src/components/SegmentListItem.tsx` (row rendering), `src/lib/segments.ts` (`buildSortAggregates`, unchanged, reused).
+
+**Sort Direction Toggle (FR42):** `src/components/SortControl.tsx` only — no other file touched.
+
+**Settings Entry Point on Every Screen (FR43):** `src/components/SettingsButton.tsx` (new), `src/app/index.tsx` (refactored to use it), `src/app/session/[id].tsx`, `src/app/segment/[id].tsx` (both gain the mount point).
+
+## Enforcement Guidelines (v1.1.1 additions)
+
+**All AI Agents MUST additionally:**
+- Never reimplement `buildSortAggregates()`'s per-segment last-practiced/Solidification % computation for FR41's row display — call it once, via `useSegments()`'s exposed `aggregates`, same rule the v1.1 Enforcement Guidelines already state for `calculateTargetStreak`/`calculateSolidificationPercent`.
+- Route every mid-session Settings navigation through the shared `SettingsButton` component — a fourth inline gear-icon `Pressable` (beyond the three call sites this extension establishes) is exactly the drift `SettingsButton`'s extraction exists to prevent.
+- Reuse `SortControl.tsx`'s existing `directionLabel()` helper for the toggle's and the trigger's accessibility labels — never write a second direction-to-prose mapping. The toggle's label is a single string naming the key, current direction, and resulting direction — no `accessibilityHint`.
+
+## v1.1.1 Gap Analysis
+
+**Critical Gaps:** None identified — all three FR41/FR42/FR43 architectural concerns (row data source, direction-toggle wiring, Settings reachability) have a decision above, each reusing existing v1.0/v1.1 infrastructure (`buildSortAggregates`, `directionLabel`, Expo Router stack push) with no new storage boundary, no new `lib/` module, and no change to the Mechanic Specification.
+
+**Minor Gaps:**
+- Exact per-screen `StyleSheet` positioning of `SettingsButton` (top-left vs. top-right corner, exact offset) is left to implementation time — the UX spec fixes it as "fixed top corner" without pinning left vs. right, and it is visually inconsequential enough not to warrant an architectural decision.
+- The inline-vs-colocated-formatter question for FR41's date/percent display (noted above) is explicitly left open, matching the same kind of small implementation-time call the v1.1 Gap Analysis already made for `lib/segments.ts` vs. `lib/segment-sort.ts`.
+
 ## v1.1 Gap Analysis
 
 **Critical Gaps:** None identified — all six FR30–FR39 architectural concerns (settings storage, mechanic threading, in-progress-session detection, Solidification % aggregation, rename propagation, sort) have a decision above with no open question carried forward from the UX spec.
@@ -708,3 +863,57 @@ Every new route must be added to `src/app/stack-screens.ts` and given a `<Stack.
 **Minor Gaps:**
 - The `lib/segments.ts` vs. new `lib/segment-sort.ts` file-split decision is explicitly left to implementation time (noted above) — the module is small enough today that either is fine, and splitting preemptively would be speculative structure.
 - `disambiguate`'s self-exclusion fix for `renameSegment` is a small, testable change to existing logic, not a new decision, but is called out here so it isn't missed during implementation (a rename to the same name in different case must succeed, not collide with itself).
+
+# Web Platform Architectural Decisions
+
+Added 2026-09-14, via a separate bmad-spec/bmad-architecture chain (`_bmad-output/specs/spec-web-platform-support/SPEC.md` + its `ARCHITECTURE-SPINE.md` companion) rather than the sharded step-file process this document's earlier sections used, then folded back here as this project's canonical PRD-first source, per convention. **Full decisions, `Binds`/`Prevents`/`Rule` detail, and diagrams live in `ARCHITECTURE-SPINE.md` (`_bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-13/`) — not restated in full here.** Summary of its eight `AD`s:
+
+- **AD-1 [ADOPTED]:** `storage.ts` stays one port with platform-selected adapters (MMKV native / `localStorage` web) — construction itself, not only the calls made on it, is gated by `Platform.OS`.
+- **AD-2 [ADOPTED]:** `subscribeToKeys` fan-out is synchronous, per-listener error-isolated, and cleanly unsubscribable on web, matching MMKV's semantics.
+- **AD-3:** One named config key (`app.json#expo.extra.basePath`) is the single source of truth for the router base, PWA manifest `start_url`/`scope`, and service-worker scope — a GitHub Pages subpath for now.
+- **AD-4:** Deep links past the root (`segment/[id]`, `segment/[id]/rename`, `session/[id]`) are client-rendered, not statically prerenderable (their ids are user-created at runtime) — a pinned `404.html`-copy SPA fallback, generated in the same postbuild step as the service worker, is required, not optional.
+- **AD-5:** The service worker's precache is generated by `workbox-build`'s `generateSW` (pinned `7.4.1`) from the real static-export output, covering 100% of `dist/`; update lifecycle uses Workbox's conservative default (no `skipWaiting`/`clientsClaim`) so an in-progress session is never swapped under itself. One canonical `build:web` script serves both local verification and CI.
+- **AD-6:** Deploy via GitHub's native Pages Actions (`actions/upload-pages-artifact` + `actions/deploy-pages`), triggered manually (`workflow_dispatch`) — not automatically on push to `main`, so web release timing stays a deliberate choice, matching Android's own manual EAS build/submit cadence.
+- **AD-7:** No backend, accounts, or telemetry introduced to support hosting or installability — GitHub Pages serves static files only, consistent with NFR8/9.
+- **AD-8:** Service-worker registration has one named call site (the web entry point), no explicit `scope` passed.
+
+## Project Structure Additions (Web Platform)
+
+```
+public/
+├── service-worker.js       # NEW — Workbox-generated, postbuild (AD-5)
+├── 404.html                 # NEW — SPA-routing fallback, same postbuild step (AD-4)
+.github/
+├── workflows/
+│   └── deploy-pages.yml    # NEW — build:web script, manual trigger (AD-6)
+src/
+├── lib/
+│   └── storage.ts           # MODIFIED — Platform.OS==='web' branch, construction gated (AD-1, AD-2)
+app.json                     # MODIFIED — expo.extra.basePath, PWA manifest fields (AD-3)
+```
+
+## Requirements to Structure Mapping (Web Platform additions)
+
+**Web storage parity:** `src/lib/storage.ts` only (AD-1, AD-2) — no call site above the storage boundary changes.
+
+**Installability / offline shell:** `app.json` (manifest fields, `basePath`), `public/service-worker.js`, the web entry point's registration call (AD-3, AD-5, AD-8).
+
+**Deep-link routing on a static host:** `public/404.html`, GitHub Pages config (AD-3, AD-4).
+
+**Hosting & deploy:** `.github/workflows/deploy-pages.yml` (AD-6).
+
+**Durability documentation:** `prd.md`'s NFR8/9 addendum and NFR10 (doc-only, no code).
+
+## Enforcement Guidelines (Web Platform additions)
+
+**All AI Agents MUST additionally:**
+- Never construct or call the native MMKV store unconditionally at module load in `storage.ts` — construction itself is gated by `Platform.OS`, not only the calls made on it (AD-1).
+- Never hardcode or independently re-derive the base path in the router, manifest, or service-worker registration — all three read `app.json#expo.extra.basePath` directly (AD-3).
+- Never hand-maintain the service worker's precache list or the `404.html` fallback — both are generated by the single `build:web` postbuild step, never committed by hand (AD-4, AD-5).
+- Never pass an explicit `scope` to `navigator.serviceWorker.register()` — it defaults correctly from the service worker's own location under the base path (AD-8).
+
+## Web Platform Gap Analysis
+
+**Critical Gaps:** None identified — all eight `AD`s were reviewer-gated (deterministic lint + three independent subagent passes: rubric, version/reality-check, adversarial) before finalization; findings from that gate were applied, not merely logged.
+
+**Deferred (see `ARCHITECTURE-SPINE.md` for full list):** custom domain, wider PWA feature surface (push, background sync, share-target), multi-environment deploy, GitHub Pages CDN-caching interaction with the SW update lifecycle, and a deploy rollback procedure — none load-bearing for this scope.

@@ -13,6 +13,10 @@ const renderRow = (overrides: Partial<Parameters<typeof SegmentListItem>[0]> = {
   render(
     <SegmentListItem
       segment={segment}
+      // Story 4.6 (FR41): undefined is the default, matching a segment with
+      // no completed sessions — exercises the em-dash path unless a test
+      // overrides it.
+      aggregate={undefined}
       onOpen={jest.fn()}
       onRename={jest.fn()}
       onDuplicate={jest.fn()}
@@ -202,6 +206,7 @@ describe('SegmentListItem inline rename [Story 4.5, FR40, UX-DR25]', () => {
     await view.rerender(
       <SegmentListItem
         segment={{ ...segment, name: 'New name' }}
+        aggregate={undefined}
         onOpen={jest.fn()}
         onRename={jest.fn()}
         onDuplicate={jest.fn()}
@@ -317,5 +322,116 @@ describe('SegmentListItem inline rename [Story 4.5, FR40, UX-DR25]', () => {
 
     expect(onInlineRename).toHaveBeenCalledTimes(1);
     expect(view.queryByTestId('segment-row-inline-input-segment-1')).toBeNull();
+  });
+});
+
+describe('SegmentListItem row summary data [Story 4.6]', () => {
+  it('shows creation date, last-practice date, and Solidification % (AC #1)', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    expect(view.getByText('Last practice: 10 Sep 2026 · 42.3%')).toBeTruthy();
+    expect(view.getByText('Created 31 Aug 2026')).toBeTruthy();
+  });
+
+  it('shows an em dash, never 0.0%, for a segment with no completed sessions (AC #2)', async () => {
+    const nullAggregate = await renderRow({ aggregate: { lastPracticed: null, solidification: null } });
+    expect(nullAggregate.getByText('Last practice: — · —')).toBeTruthy();
+    expect(nullAggregate.queryByText(/0\.0%/)).toBeNull();
+
+    const undefinedAggregate = await renderRow({ aggregate: undefined });
+    expect(undefinedAggregate.getByText('Last practice: — · —')).toBeTruthy();
+  });
+
+  it('combines name, last-practice date, Solidification %, and creation date into one row accessibility label, and does not label the summary lines separately (AC #4)', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBe(
+      'Bar 24 arpeggio, last practice 10 Sep 2026, solidification 42.3%, created 31 Aug 2026',
+    );
+    expect(view.queryByLabelText('Last practice: 10 Sep 2026 · 42.3%')).toBeNull();
+    expect(view.queryByLabelText('Created 31 Aug 2026')).toBeNull();
+  });
+
+  it('reads "never" and "no data" in the accessibility label for a segment with no history, not a bare em dash (AC #4)', async () => {
+    const view = await renderRow({ aggregate: undefined });
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBe(
+      'Bar 24 arpeggio, last practice never, solidification no data, created 31 Aug 2026',
+    );
+  });
+
+  // [Review][Patch] found via code review 2026-09-12: the original assertions
+  // used unanchored regexes (/0\.0%/ matches "100.0%" as a substring), so the
+  // exact0 case still passed with the two boundary guard clauses swapped.
+  // Full-string getByText anchors each case to the exact rendered line.
+  it('rounds Solidification % to one decimal, reserving 100.0%/0.0% for the true boundary', async () => {
+    const near100 = await renderRow({ aggregate: { lastPracticed: null, solidification: 99.97 } });
+    expect(near100.getByText('Last practice: — · 99.9%')).toBeTruthy();
+
+    const near0 = await renderRow({ aggregate: { lastPracticed: null, solidification: 0.02 } });
+    expect(near0.getByText('Last practice: — · 0.1%')).toBeTruthy();
+
+    const exact100 = await renderRow({ aggregate: { lastPracticed: null, solidification: 100 } });
+    expect(exact100.getByText('Last practice: — · 100.0%')).toBeTruthy();
+
+    const exact0 = await renderRow({ aggregate: { lastPracticed: null, solidification: 0 } });
+    expect(exact0.getByText('Last practice: — · 0.0%')).toBeTruthy();
+  });
+
+  // [Review][Patch] found via code review 2026-09-12: renamed from "does not
+  // clear ... " — the label IS cleared while editing; the field's own
+  // "Segment name" label takes over. The old name asserted the opposite of
+  // what it tested. Also strengthened: the pre-longPress assertion is what
+  // makes this fail if accessibilityLabel were ever removed from the JSX
+  // entirely (both values would read as undefined, and the original
+  // single-assertion version could not tell that apart from correct
+  // behavior).
+  it('clears the row accessibilityLabel while editing — the field\'s own label takes over instead', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBe(
+      'Bar 24 arpeggio, last practice 10 Sep 2026, solidification 42.3%, created 31 Aug 2026',
+    );
+
+    await fireEvent(view.getByTestId('segment-row-segment-1'), 'longPress');
+
+    expect(view.getByTestId('segment-row-segment-1').props.accessibilityLabel).toBeUndefined();
+    expect(view.getByTestId('segment-row-inline-input-segment-1').props.accessibilityLabel).toBe('Segment name');
+  });
+
+  // [Review][Decision, resolved 2026-09-12] the summary lines used to live
+  // only in the static branch, so entering inline rename collapsed the row
+  // by ~40pt, breaking Story 4.5's no-shift invariant. Now rendered in both
+  // branches — this is the regression guard for that fix.
+  it('keeps the summary lines visible and unchanged while editing the name inline', async () => {
+    const view = await renderRow({
+      aggregate: { lastPracticed: '2026-09-10T12:00:00.000Z', solidification: 42.3 },
+    });
+
+    await fireEvent(view.getByTestId('segment-row-segment-1'), 'longPress');
+
+    expect(view.getByText('Last practice: 10 Sep 2026 · 42.3%')).toBeTruthy();
+    expect(view.getByText('Created 31 Aug 2026')).toBeTruthy();
+    expect(view.getByTestId('segment-row-inline-input-segment-1')).toBeTruthy();
+  });
+
+  // [Review][Patch] found via code review 2026-09-12: formatRowDate had no
+  // guard against an unparseable date string, rendering "NaN undefined NaN"
+  // instead of the em dash this component's own no-crash contract promises.
+  it('shows an em dash rather than crashing or showing NaN for an unparseable date', async () => {
+    const view = await renderRow({
+      segment: { ...segment, createdAt: 'not-a-real-date' },
+      aggregate: { lastPracticed: 'also-not-a-date', solidification: 50 },
+    });
+
+    expect(view.getByText('Last practice: — · 50.0%')).toBeTruthy();
+    expect(view.getByText('Created —')).toBeTruthy();
+    expect(view.queryByText(/NaN/)).toBeNull();
   });
 });
