@@ -142,6 +142,8 @@ editHistory:
 **Author:** Gerardo
 **Date:** 2026-08-30
 
+> **Versioning note (2026-09-16):** this document's epic/release labels (v1.0, v1.1, v1.1.1) are internal roadmap milestones and do not map 1:1 to the public Google Play store version. The store's v1.0.0 (git tag `v1.0.0`, commit `518cc8e`) = Epics 1-5 only, bundled as a single first public release. Epic 6 (v1.1.1, web platform support) shipped after that tag and is not in the store build. See `backlog.md`'s "Publish v1.0 to Google Play" entry for the full reconciliation.
+
 ## Executive Summary
 
 Overlearn is a mobile-first, offline-only app for musicians who need a technical fix to hold under performance pressure, not just in the practice room. Musicians typically stop practicing a corrected passage as soon as it "feels" right, but every incorrect attempt reinforces the wrong muscle memory just as strongly as a correct one reinforces the right one — so a fix built on feel, not count, stays fragile. Overlearn replaces feel with a rule: a session starts immediately with a minimum bar of 5 consecutive correct repetitions; any mistake resets the streak to zero and raises the bar in real time (to 50% of total mistakes made that session) if the passage proves harder than the minimum assumed. Reaching the (possibly-raised) target is the only way a session completes. Initial users are musicians generally, with classical guitarists as the beachhead.
