@@ -7,27 +7,23 @@ remains the authoritative scope-decision record; this file exists so both
 kinds of deferred work are visible in one place for future planning. None
 of the items below are designed or estimated yet.
 
-## Open (tactical)
+Priority tiers (assigned 2026-09-16): **P1** (highest value-for-effort,
+ready to scope next) down to **P4** (speculative, undefined shape), plus
+**Blocked** (needs a product/PRD decision before it can be prioritized) and
+**Won't-do** (explicitly ruled out in the brief, not a priority tier).
 
-### Rename a segment from the row menu
-
-**Requested:** 2026-09-02, by Gerardo.
-
-Add a **Rename** option to the segment row's action menu (`SegmentListItem.tsx`), alongside Delete. No FR currently covers this — segment names are set once at creation (FR1) with no way to change them afterward.
-
-**Context:** `SegmentForm.tsx` was already designed as a shared create/rename form (see `architecture.md`'s Project Structure and `ux-design-specification.md`'s Component Strategy — both describe it as "segment creation/rename"), but rename was never actually wired into the UI; only creation ships today. Implementing this is substantially reusing existing form/validation logic (`normalizeSegmentName`, disambiguation against existing names in `lib/segments.ts`), not building from scratch.
-
-**Open questions for scoping (not yet answered):**
-- Does a rename mid-active-session update the segment name shown on that session's Active Session screen and any history entries already recorded for it, or only future ones? (`SessionState.segmentName` and `HistoryEntry` don't currently store a live reference back to the segment — they copy the name at the time.)
-- Does the resume/discard prompt's segment name (`ResumeDiscardDialog`) need to reflect a rename that happened while a session was interrupted?
+**Resolved and removed from this list (2026-09-16):** "Rename a segment
+from the row menu" (shipped, Stories 4.1/4.5), "Overlearning-level settings
+toggle" (superseded by Epic 5's overlearning-target configuration, Stories
+5.1/5.2), "Web version" strategic item (shipped, Epic 6).
 
 ## Open (release)
 
 ### Publish v1.0 to Google Play
 
-**Requested:** 2026-09-04, by Gerardo. Decision: hold off, not started — publish later.
+**Status (2026-09-16):** in progress — app is live in Closed Testing on Google Play Console; Gerardo still needs to complete the 12-tester minimum before promoting toward production. Not a backlog priority-tier item; tracked directly by Gerardo, who will report status.
 
-All engineering/prep work is done: `eas.json` production + submit profiles configured, privacy policy drafted (`docs/privacy-policy.html`, published as a Claude Artifact, needs to be made public via Share before use), custom app icon shipped, production AAB and preview APK both built successfully via EAS (icon confirmed on-device). Remaining steps are Play Console account actions requiring Gerardo's own login — see chat history 2026-09-03/04 session for the full walkthrough (app creation, API access/service account for `eas submit`, content rating + data safety forms, store listing incl. a not-yet-designed 1024×500 feature graphic, internal testing track, then promote to production).
+All engineering/prep work is done: `eas.json` production + submit profiles configured, privacy policy drafted (`docs/privacy-policy.html`, published as a Claude Artifact, needs to be made public via Share before use), custom app icon shipped, production AAB and preview APK both built successfully via EAS (icon confirmed on-device).
 
 ## Open (strategic scope, from product-brief-Overlearn.md)
 
@@ -35,16 +31,17 @@ Named explicitly as out-of-scope-for-v1 in the brief (2026-08-xx planning phase)
 
 ### Practice-enhancement features
 
-- **Metronome**
-- **Practice time tracking**
-- **Tuner**
-- **Audio-based automatic correctness detection** — the brief calls this out more strongly than the others: "explicitly out of scope for v1 and all foreseeable near-term releases," not just a v1 cut.
-- **Voice-command Correct/Incorrect input** — user-selectable command words (e.g. "right"/"wrong", "yes"/"no", "green"/"red"). Named in the brief as the *planned* fix for a real, already-identified problem: tapping Correct/Incorrect requires reaching for the phone while hands are occupied playing an instrument. Not designed yet, but not speculative either — it has an identified user need behind it.
-- **Settings screen for overlearning level** — a global toggle between the 50% and 100% overlearning modes described in the original mechanic spec. Fixed at 50% for v1; no UI exists to change it.
-- **Gamification**
-- **AI integration / AI-assisted correctness judging**
+- **Voice-command Correct/Incorrect input** — `P1`. User-selectable command words (e.g. "right"/"wrong", "yes"/"no", "green"/"red"). Named in the brief as the *planned* fix for a real, already-identified problem: tapping Correct/Incorrect requires reaching for the phone while hands are occupied playing an instrument. Not designed yet, but not speculative either — it has an identified user need behind it.
+- **Practice time tracking** — `P2`. Straightforward addition, decent value, no architectural conflicts identified.
+- **Metronome** — `P3`. Nice-to-have, not core to the overlearning mechanic, moderate complexity.
+- **Tuner** — `P3`. Audio pitch detection is a different technical domain than anything else in this app; lower strategic fit.
+- **Gamification** — `P4`. Speculative, undefined shape.
+- **AI integration / AI-assisted correctness judging** — `P4`. Speculative, undefined shape.
+- **Audio-based automatic correctness detection** — `Won't-do`. The brief calls this out more strongly than the others: "explicitly out of scope for v1 and all foreseeable near-term releases," not just a v1 cut.
 
 ### Practice session video recording
+
+**Priority:** `P3` — real user request, but flagged below as architecturally non-trivial; needs a scoping/design pass before it's even estimable.
 
 **Requested:** 2026-09-06, by Gerardo.
 
@@ -63,13 +60,17 @@ When a camera is available on the device running the app, let the user record vi
 
 ### Analytics — flagged conflict, not a simple add
 
+**Priority:** `Blocked` — not a scoping question but a direct conflict with NFR8/NFR9; needs a PRD-level product decision before it can be prioritized at all.
+
 Named in the brief's out-of-scope list, but this one needs a real decision before any scoping pass, not just design work: this app's NFR8/NFR9 (zero telemetry, zero data leaves the device, verifiable by code inspection) were treated as load-bearing all the way through implementation — this session's Android Auto Backup fix (`app.json`'s `allowBackup: false`) exists specifically because that guarantee was taken seriously even at the OS-configuration level. Any future analytics work is a scope change to NFR8/NFR9 themselves, not an additive feature — it would need to be re-litigated at the PRD level, not just added as a story.
 
 ### Platform/technical gaps
 
-- **Landscape orientation** — app is portrait-only by design; UX-DR12 and the UX spec both flag this as an explicit open question for architecture/implementation, not a settled decision. Active Session screen's proportional (percentage-of-height) layout was built for portrait only.
+- **Landscape orientation** — `P2`. App is portrait-only by design; UX-DR12 and the UX spec both flag this as an explicit open question for architecture/implementation, not a settled decision. Active Session screen's proportional (percentage-of-height) layout was built for portrait only.
 
 ### iOS support
+
+**Priority:** `P3` (2026-09-16). Codebase is already cross-platform-clean — low engineering risk — but blocked on an Apple Developer account + Mac access regardless of priority; re-rank when that unblocks.
 
 **Discussed:** 2026-09-02. Decision: hold off, not started.
 
