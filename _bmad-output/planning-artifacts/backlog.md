@@ -23,6 +23,10 @@ toggle" (superseded by Epic 5's overlearning-target configuration, Stories
 
 **Status (2026-09-16):** in progress — app is live in Closed Testing on Google Play Console; Gerardo still needs to complete the 12-tester minimum before promoting toward production. Not a backlog priority-tier item; tracked directly by Gerardo, who will report status.
 
+**Tagged `v1.0.0` = commit `518cc8e`** (confirmed via `eas build:list`, not assumed from branch state — see build `24213c66`, versionCode 1), matching exactly what's in the submitted AAB: Epics 1-5, native Android only. Epic 6 (web platform support) correctly does **not** bundle into the AAB — `registerServiceWorker()` is `Platform.OS !== 'web'`-guarded and Metro's platform-file resolution excludes `.web.tsx`/`+html.tsx` from native builds entirely; verified, not assumed.
+
+**Known gap for the next AAB build:** Story 6.1's `storage.ts` fixes — `subscribeToKeys` listener-isolation (one throwing listener no longer aborts sibling notification) and quota-exceeded guards on `setString`/`setNumber`/`deleteKey`/`setObject` — are genuine cross-platform bug fixes, not web-only code, and are **not** in the tagged `v1.0.0` build (it predates Story 6.1). Low real-world likelihood (needs a throwing listener or actual storage-quota exhaustion to trigger) — decided 2026-09-16 not to patch-release for this alone, but make sure whatever commit produces the *next* AAB includes it.
+
 All engineering/prep work is done: `eas.json` production + submit profiles configured, privacy policy drafted (`docs/privacy-policy.html`, published as a Claude Artifact, needs to be made public via Share before use), custom app icon shipped, production AAB and preview APK both built successfully via EAS (icon confirmed on-device).
 
 ## Open (strategic scope, from product-brief-Overlearn.md)
