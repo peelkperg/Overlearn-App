@@ -68,7 +68,7 @@
 # shipped.
 
 generated: '2026-09-12'
-last_updated: '09-15-2026 09:00' # Story 6.3 implementation + review complete, spec status done
+last_updated: '09-15-2026 20:00' # Story 6.3 review loop 1 closed (3 decisions + 3 patches resolved), status done
 project: Overlearn-App
 project_key: NOKEY
 tracking_system: file-system
@@ -120,7 +120,7 @@ development_status:
 
   epic-6: in-progress
   6-1-web-compatible-storage-layer: done
-  6-2-base-path-pwa-manifest-configuration: review
-  6-3-installable-offline-app-shell: review
+  6-2-base-path-pwa-manifest-configuration: done
+  6-3-installable-offline-app-shell: done
   6-4-github-pages-deploy-workflow: backlog
   epic-6-retrospective: optional
