@@ -7,9 +7,14 @@ import { type PropsWithChildren } from 'react';
 // second copy of the path the manifest generator also derives.
 const baseUrl = Constants.expoConfig?.experiments?.baseUrl;
 
-if (typeof baseUrl !== 'string' || !baseUrl.startsWith('/') || !baseUrl.endsWith('/')) {
+if (
+  typeof baseUrl !== 'string' ||
+  !baseUrl.startsWith('/') ||
+  !baseUrl.endsWith('/') ||
+  baseUrl.includes('//')
+) {
   throw new Error(
-    `expo.experiments.baseUrl must be set in app.json and start and end with "/" (got: ${JSON.stringify(baseUrl)}).`
+    `expo.experiments.baseUrl must be set in app.json, start and end with "/", and contain no "//" (got: ${JSON.stringify(baseUrl)}).`
   );
 }
 

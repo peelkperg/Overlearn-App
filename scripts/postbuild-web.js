@@ -86,6 +86,18 @@ async function main() {
     globPatterns: ["**/*"],
     globIgnores: ["service-worker.js"],
     swDest,
+    // Workbox's 2 MiB default would drop the main JS bundle (~2.0 MiB and
+    // growing) from the precache, breaking AD-5's 100%-precached invariant.
+    // Set explicitly rather than left implicit so bundle growth doesn't
+    // silently cross an unowned default.
+    maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+    // AD-4: the service worker intercepts navigations before GitHub Pages'
+    // static 404.html fallback can, so without this an offline deep link to
+    // a non-root route matches no precache entry and fails. Dynamic routes
+    // export as literal [id].html files, so index.html is the only shell
+    // that can client-render an arbitrary route.
+    navigateFallback: "index.html",
+    navigateFallbackDenylist: [/_expo\//],
   });
 
   if (warnings && warnings.length > 0) {

@@ -37,10 +37,11 @@ const baseUrl = expoConfig.experiments && expoConfig.experiments.baseUrl;
 if (
   typeof baseUrl !== "string" ||
   !baseUrl.startsWith("/") ||
-  !baseUrl.endsWith("/")
+  !baseUrl.endsWith("/") ||
+  baseUrl.includes("//")
 ) {
   console.error(
-    `❌ expo.experiments.baseUrl must be set in app.json and start and end with "/" (got: ${JSON.stringify(
+    `❌ expo.experiments.baseUrl must be set in app.json, start and end with "/", and contain no "//" (got: ${JSON.stringify(
       baseUrl
     )}).`
   );

@@ -17,6 +17,10 @@ describe('lib/service-worker registerServiceWorker', () => {
   function setUp(platformOS: string, isDev: boolean) {
     jest.resetModules();
     jest.doMock('react-native', () => ({ Platform: { OS: platformOS } }));
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: { expoConfig: { experiments: { baseUrl: '/Overlearn-App/' } } },
+    }));
     (globalThis as { __DEV__?: boolean }).__DEV__ = isDev;
   }
 
@@ -32,7 +36,7 @@ describe('lib/service-worker registerServiceWorker', () => {
     expect(register).not.toHaveBeenCalled();
   });
 
-  it('production web, SW supported: registers once with bare path, no scope', () => {
+  it('production web, SW supported: registers once at the base path, no scope', () => {
     setUp('web', false);
     const register = jest.fn().mockReturnValue(Promise.resolve());
     (globalThis as unknown as { navigator: unknown }).navigator = {
@@ -42,7 +46,31 @@ describe('lib/service-worker registerServiceWorker', () => {
     const { registerServiceWorker } = require('./service-worker');
     registerServiceWorker();
     expect(register).toHaveBeenCalledTimes(1);
-    expect(register).toHaveBeenCalledWith('service-worker.js');
+    // Absolute, base-path-prefixed (AD-8 amended): a relative path would
+    // resolve against the document and 404 on a deep-link first visit.
+    expect(register).toHaveBeenCalledWith('/Overlearn-App/service-worker.js');
+  });
+
+  it('production web, registration rejects: swallowed, no unhandled rejection', async () => {
+    setUp('web', false);
+    const register = jest.fn().mockReturnValue(Promise.reject(new Error('404')));
+    (globalThis as unknown as { navigator: unknown }).navigator = {
+      serviceWorker: { register },
+    };
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const onUnhandled = jest.fn();
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { registerServiceWorker } = require('./service-worker');
+      registerServiceWorker();
+      await new Promise<void>((resolve) => setImmediate(() => resolve()));
+      expect(onUnhandled).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+      warn.mockRestore();
+    }
   });
 
   it('production web, SW unsupported: no registration call attempted', () => {
