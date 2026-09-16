@@ -68,7 +68,7 @@
 # shipped.
 
 generated: '2026-09-12'
-last_updated: '09-15-2026 22:00' # Story 6.4 implemented + code review (2 patches applied, 1 defer), awaiting human UAT (live GH Pages dispatch)
+last_updated: '09-16-2026' # Story 6.4 UAT passed on live GH Pages dispatch (2 post-review fixes: lockfile drift, missing expo-env.d.ts in CI); epic-6 done
 project: Overlearn-App
 project_key: NOKEY
 tracking_system: file-system
@@ -118,9 +118,9 @@ development_status:
   5-4-reach-settings-from-any-screen-v1-1-1-added-2026-09-12: done
   epic-5-retrospective: optional
 
-  epic-6: in-progress
+  epic-6: done
   6-1-web-compatible-storage-layer: done
   6-2-base-path-pwa-manifest-configuration: done
   6-3-installable-offline-app-shell: done
-  6-4-github-pages-deploy-workflow: review
+  6-4-github-pages-deploy-workflow: done
   epic-6-retrospective: optional
