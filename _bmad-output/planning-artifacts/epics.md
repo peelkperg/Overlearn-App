@@ -1,17 +1,41 @@
 ---
-stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories, v1.1-step-04-final-validation, v1.1.1-extension, web-platform-step-01-validate-prerequisites, web-platform-step-02-design-epics, web-platform-step-03-create-stories]
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, v1.1-step-01-validate-prerequisites, v1.1-step-02-design-epics, v1.1-step-03-create-stories, v1.1-step-04-final-validation, v1.1.1-extension, web-platform-step-01-validate-prerequisites, web-platform-step-02-design-epics, web-platform-step-03-create-stories, voice-command-step-01-validate-prerequisites, voice-command-step-02-design-epics, voice-command-step-03-create-stories]
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/specs/spec-web-platform-support/SPEC.md
-lastUpdated: '2026-09-14'
+  - _bmad-output/specs/spec-voice-command-input/SPEC.md
+lastUpdated: '2026-09-16'
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Requirements Inventory" heading, and Epic 1-3 below "## Epic List". Shipped, frozen at git tag v1.0.0.'
   v1.1: 'The "v1.1 Requirements Inventory" section (FR30-FR40, UX-DR13-25), and 8 stories (4.1-4.5, 5.1-5.3) below "## Epic List". Fully specified, not yet implemented.'
   v1.1.1: 'The "v1.1.1 Requirements Inventory" section (FR41-FR43, UX-DR26-28), and 3 stories (4.6, 4.7, 5.4) below "## Epic List". Targeted addition (2026-09-12), driven by gaps manual UAT found in the shipped v1.1 build. Fully specified, not yet implemented.'
   web-platform: 'The "Web Platform Requirements Inventory" section (no new FRs; NFR10 + NFR8/9 addendum, 8 architecture-derived additional requirements), Epic 6: Web Platform Access below "## Epic List", and its 4 stories (6.1-6.4) below "## Epic 6". Fully specified (2026-09-14), not yet implemented.'
+  v1.2: 'The "Voice-Command Requirements Inventory" section (FR44-FR47, UX-DR29-36, 7 architecture-derived additional requirements), Epic 7: Voice-Command Correct/Incorrect Input below "## Epic List", and its 5 stories (7.1-7.5) below "## Epic 7". Fully specified (2026-09-16), not yet implemented.'
 editHistory:
+  - date: '2026-09-16'
+    changes: >-
+      Extended in place. Added a "Voice-Command Requirements Inventory"
+      section: FR44-FR47 (hands-free Correct/Incorrect logging via
+      recorded-sound triggers, wake-word gating, an on/off wake-word
+      setting, and a 2-second recording cap), an NFR8/9 addendum (first
+      OS permission request, first audio processing), 7
+      architecture-derived additional requirements (AD-1 through AD-7),
+      and UX-DR29-36. Added Epic 7: Voice-Command Correct/Incorrect Input
+      to the Epic List -- one epic, five stories ordered by dependency
+      (matching core, trigger recording, mic toggle/permission,
+      voice-logged Correct/Incorrect, wake-word toggle), touching no file
+      any other epic touches. Specified first through a separate
+      bmad-spec/bmad-architecture/bmad-ux chain
+      (spec-voice-command-input's SPEC.md + stack.md +
+      ARCHITECTURE-SPINE.md), including a mid-workflow spec update
+      (CAP-4 added after the user reviewed the initial CAP-1-3 UX
+      design), then folded into prd.md, architecture.md, and
+      ux-design-specification.md before this extraction. Final
+      validation (FR coverage, story dependency ordering, file-churn
+      check) run and passed; one story-4 AC reworded to remove an
+      implicit forward dependency on Story 7.5's settings.ts field.
   - date: '2026-09-14'
     changes: >-
       Extended in place (same destructive-template-copy declined again, per
@@ -386,6 +410,49 @@ None — no new UI surface; existing screens render unmodified on web via `react
 
 N/A — no new FRs. NFR10, the NFR8/9 addendum, and AD-1–AD-8 all map to Epic 6 below, not to any FR.
 
+## Voice-Command Requirements Inventory (added 2026-09-16, v1.2, planned)
+
+Everything above this heading is designed and specified, not yet implemented (v1.1/v1.1.1/Web Platform) or shipped (v1.0). This section covers hands-free Correct/Incorrect logging via on-device recorded-sound triggers, for practice sessions where the user's hands are occupied playing an instrument. Specified first through a separate bmad-spec/bmad-architecture/bmad-ux chain (`_bmad-output/specs/spec-voice-command-input/SPEC.md` + `stack.md` + `ARCHITECTURE-SPINE.md`), then folded into `prd.md`, `architecture.md`, and `ux-design-specification.md` in that order per this project's established PRD-first convention. CAP-4 (wake-word on/off toggle, 2-second recording cap) was added to the spec mid-workflow, after the user reviewed the initial CAP-1–3 design and asked for it — folded through the same chain before this extraction.
+
+### Voice-Command Functional Requirements
+
+FR44: User can log a Correct or Incorrect repetition during an active session via a wake-then-command recorded-sound trigger, in addition to the existing tap controls (SPEC-voice-command-input CAP-1)
+FR45: User can turn voice-command listening on or off via an explicit mic toggle on the active-session screen; the mic is off by default (CAP-2)
+FR46: User can record three custom trigger sounds (wake, Correct, Incorrect); save is blocked if any two are not acoustically distinguishable (CAP-3)
+FR47: User can turn the wake-word requirement on or off, independent of FR45's mic toggle — ON (default) keeps FR44's wake-then-command flow, OFF matches Correct/Incorrect triggers directly with no wake sound, trading away the wake gate's ambient-noise protection by choice; each trigger recording (FR46) is capped at 2 seconds (CAP-4)
+
+### Voice-Command NonFunctional Requirements
+
+None added directly. Addendum to NFR8/9 (not a new NFR): FR44–FR47 introduce this app's first-ever OS permission request (microphone) and first audio processing of any kind — NFR8/9's own guarantees are unchanged: matching is on-device only, no recorded sample or audio data ever leaves the device, permission is requested lazily (first mic-toggle-on), regardless of the FR47 wake-word setting.
+
+### Voice-Command Additional Requirements (from architecture.md's Voice-Command section)
+
+- Matcher (`src/lib/voiceCommand/matcher.ts`) is a plain, framework-agnostic `createMatcher({ onCorrect, onIncorrect })` factory with no import of or reach into `useActiveSession` — `useVoiceCommand` is the sole construction site, wiring `useActiveSession`'s own `logCorrect`/`logIncorrect` in directly. One session-state write path, tap or voice (AD-1).
+- Matcher exposes `setWakeWordEnabled()`, reactive immediately on every flip. ON: two-state `LISTENING_FOR_WAKE`/`AWAITING_COMMAND` machine, bounded command window. OFF: single `ALWAYS_AWAITING_COMMAND` state, no wake check, no timeout. OFF→ON always lands in `LISTENING_FOR_WAKE`; ON→OFF lands in `ALWAYS_AWAITING_COMMAND` immediately (AD-2).
+- MFCC extraction and DTW distance are hand-rolled pure TypeScript (`mfcc.ts`, `dtw.ts`), no new npm dependency; `dtw.ts` is the single distance function shared by live matching and CAP-3's save-time distinguishability check (AD-3).
+- Audio capture via `expo-audio` (pinned `57.0.5`). `useVoiceCommand` owns one unpersisted `listening` boolean as the single source of truth for the mic toggle's display and capture state. Capture is foreground-and-mounted only — backgrounding/unmounting is a hard stop, `listening` set false, no auto-resume (AD-4).
+- Mic permission requested lazily inside the toggle's `onPress`, identically on every tap — no app-level "already denied" flag; relies on OS re-prompt suppression (AD-5).
+- Trigger templates persist as MFCC feature matrices only (never raw audio) in new `src/lib/voiceTriggers.ts`, one atomically-overwritten three-template record. In-progress recording takes are in-memory-only, screen-owned state — backgrounding mid-sequence discards them (AD-6).
+- `wakeWordEnabled: boolean` (default `true`) is a persisted preference in `src/lib/settings.ts`, alongside the overlearning-%. One write path, two UI entry points (Active Session live switch, Settings) that both call it; `useVoiceCommand` subscribes (`subscribeToKeys`) and reacts live. The 2-second recording cap is a fixed `recorder.ts` constant, not user-configurable (AD-7).
+
+### Voice-Command UX Design Requirements
+
+UX-DR29: Mic toggle and wake-word switch — two small icon/switch controls fixed opposite top corner from the Settings gear, same 44×44 convention; mic toggle has two visual states only (off / on-and-listening), no third state for the wake/command sub-phase
+UX-DR30: Wake-word switch is a live control, always interactive regardless of mic state, writing `wakeWordEnabled` immediately — no need to toggle the mic off/on for a change to take effect
+UX-DR31: Permission-denial inline text ("Microphone access is off. Enable it in your device Settings to use voice commands.") appears beneath the two icon controls on denial, disappears once permission is actually granted; no modal, no repeated prompting
+UX-DR32: Trigger recording flow has two entry points (first mic-toggle-on with no existing set; a new "Voice Commands" section in Settings) into the same one-trigger-at-a-time flow (wake → Correct → Incorrect)
+UX-DR33: Recording cap UI — a thin progress ring around the record button fills over 2 seconds, auto-stopping the take on completion or earlier on manual stop; playback affordance (▶) before moving to the next trigger
+UX-DR34: Distinguishability-rejection recovery — names the flagged pair by role, asks the user to re-record only the later trigger of that pair (wake < Correct < Incorrect ordering), keeping the other two takes; re-running the full three-way check before allowing save again
+UX-DR35: Backgrounding mid-recording discards in-progress takes with no partial-set resume prompt; flow restarts from the wake trigger on return
+UX-DR36: Accessibility — mic toggle and wake-word switch carry `accessibilityState: { checked }` and are announced as toggles/switches, not momentary buttons; a live wake-word flip while listening is announced; permission-denial text and the record button's 2-second-cap wording use the same `accessibilityLiveRegion="polite"` / descriptive-label conventions as the rest of the app
+
+### Voice-Command FR Coverage Map
+
+FR44: Epic 7 - Voice-logged Correct/Incorrect via wake-then-command
+FR45: Epic 7 - Mic on/off toggle, off by default
+FR46: Epic 7 - Custom trigger recording with distinguishability check
+FR47: Epic 7 - Wake-word on/off toggle, 2-second recording cap
+
 ## Epic List
 
 ### Epic 1: Segment Management
@@ -417,6 +484,11 @@ Users can adjust how strict the overlearning target is — from the fixed 50% to
 Musicians without iOS access — or anyone preferring a browser — can install and use Overlearn as an offline-capable web app, matching native functionality exactly, hosted free with no ads and no new accounts.
 **FRs covered:** None (platform parity, not new functionality — covers NFR10, the NFR8/9 durability addendum, and architecture-derived additional requirements AD-1–AD-8)
 **Implementation notes:** One epic, not three, because the three capability groups are strictly sequential and none is independently meaningful without the others — a web-compatible `storage.ts` with nowhere to deploy it, or a deployed build that can't persist data, both fail the epic's own goal. Stories ordered: storage web-parity first (`src/lib/storage.ts`, blocking prerequisite — AD-1, AD-2), then installability (`app.json`, `public/service-worker.js` — AD-3, AD-5, AD-8), then hosting/deploy (`public/404.html`, `.github/workflows/deploy-pages.yml` — AD-4, AD-6, AD-7). Full contract: `_bmad-output/specs/spec-web-platform-support/SPEC.md` + `ARCHITECTURE-SPINE.md` companion. No dependency on Epics 1–5; touches no file any of them touch.
+
+### Epic 7: Voice-Command Correct/Incorrect Input (v1.2, added 2026-09-16)
+Musicians whose hands are occupied playing an instrument can log a Correct or Incorrect repetition by voice — a recorded-sound trigger, not speech-to-text — instead of reaching for the phone, with an optional wake-word gate to suit noisy or quiet practice environments.
+**FRs covered:** FR44, FR45, FR46, FR47
+**Implementation notes:** One epic; five stories, sequenced by dependency rather than by File Overlap (this feature touches no file any other epic touches — entirely new `src/lib/voiceCommand/` tree, `voiceTriggers.ts`, `useVoiceCommand.ts`, plus one additive field on the existing `src/lib/settings.ts`). Order: matching core (`mfcc.ts`/`dtw.ts`, no dependencies) → trigger recording flow (needs the matching core for the distinguishability check) → mic toggle & permission lifecycle (independent of recording, but a prerequisite for live matching) → voice-logged Correct/Incorrect during a session (needs recorded templates, the matching core, and the mic toggle) → wake-word on/off toggle (extends the matcher and mic-toggle work with a second, independently-flippable control). Full contract: `_bmad-output/specs/spec-voice-command-input/SPEC.md` + `stack.md` + `ARCHITECTURE-SPINE.md` companions (`_bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-16/`). No dependency on Epics 1–6.
 
 ## Epic 1: Segment Management
 
@@ -1101,3 +1173,173 @@ So that releasing the web build is a deliberate choice, decoupled from every com
 **Given** the whole epic
 **When** any story in it is implemented
 **Then** no backend, account system, or telemetry is introduced anywhere in the web-delivery surface (AD-7)
+
+## Epic 7: Voice-Command Correct/Incorrect Input (v1.2, added 2026-09-16)
+
+### Story 7.1: MFCC/DTW Matching Core
+
+As a developer,
+I want a hand-rolled MFCC feature extractor and DTW distance function,
+So that trigger matching and the distinguishability check share one tested comparison primitive, with no new npm dependency (AD-3).
+
+**Acceptance Criteria:**
+
+**Given** a raw audio buffer (from a live capture window or a recorded template)
+**When** `mfcc.ts`'s extraction function runs
+**Then** it returns a Mel-frequency cepstral coefficient matrix, pure computation, no native module or I/O
+
+**Given** two MFCC matrices
+**When** `dtw.ts`'s distance function runs
+**Then** it returns a single numeric distance via dynamic time warping, deterministic for identical inputs
+
+**Given** two recordings of the same sound (same trigger, two takes)
+**When** their distance is computed
+**Then** it falls below the match/distinguishability threshold; two recordings of clearly different sounds fall above it (verified by a test using recorded audio fixtures, not synthetic data)
+
+**Given** `mfcc.ts` or `dtw.ts`
+**When** the codebase is inspected
+**Then** neither imports a new npm dependency — pure TypeScript only (AD-3)
+
+### Story 7.2: Trigger Recording Flow
+
+As a user,
+I want to record my own wake, Correct, and Incorrect trigger sounds, with a save blocked if two are too similar,
+So that I can set up hands-free logging with sounds I choose, confident the app can tell them apart (FR46, FR47's recording cap; CAP-3).
+
+**Acceptance Criteria:**
+
+**Given** the user has no saved trigger set
+**When** they turn the Active Session screen's mic toggle on for the first time
+**Then** the recording flow launches immediately instead of starting to listen (UX-DR32)
+
+**Given** the user opens Settings at any time
+**When** they select "Record trigger sounds" under a new "Voice Commands" section
+**Then** the same recording flow launches (UX-DR32)
+
+**Given** the recording flow is open, on the wake trigger's turn
+**When** the user taps record
+**Then** capture starts via `expo-audio`, a progress ring fills over 2 seconds, and recording auto-stops at 2 seconds if not stopped manually first (AD-4, AD-7, UX-DR33)
+
+**Given** a take has been recorded for the current trigger
+**When** the user taps playback
+**Then** they hear that take before moving on or re-recording it, with no limit on draft re-takes before save (UX-DR33)
+
+**Given** all three takes (wake, Correct, Incorrect) exist
+**When** the user taps Save
+**Then** `dtw.ts`'s distance function runs pairwise across all three candidate MFCC matrices before anything is persisted (AD-3, AD-6)
+
+**Given** every pairwise distance is above the separation threshold
+**When** save completes
+**Then** the three MFCC matrices — not the raw audio — are written to `voiceTriggers.ts` as one atomically-overwritten record; raw recordings are discarded from memory (AD-6)
+
+**Given** any pair of the three candidate matrices is below the separation threshold
+**When** save is attempted
+**Then** it is blocked, the flow does not exit, and the rejection names the pair and asks the user to re-record only the **later** trigger of that pair (wake < Correct < Incorrect ordering), keeping the other two takes untouched (UX-DR34)
+
+**Given** a trigger was re-recorded after a rejection
+**When** the user attempts save again
+**Then** the full three-way distinguishability check re-runs before allowing save (UX-DR34)
+
+**Given** the recording flow is in progress (0–2 of 3 takes done)
+**When** the app leaves foreground (backgrounded or killed)
+**Then** the in-progress takes are discarded with no persistence and no resume prompt; returning to the flow restarts from the wake trigger (AD-6, UX-DR35)
+
+### Story 7.3: Mic Toggle & Permission Lifecycle
+
+As a user,
+I want an explicit, off-by-default mic toggle on the Active Session screen that only ever asks for microphone permission when I turn it on,
+So that voice commands are opt-in and this app's first-ever permission prompt never surprises me (FR45; CAP-2).
+
+**Acceptance Criteria:**
+
+**Given** a new or resumed session
+**When** the Active Session screen mounts
+**Then** the mic toggle renders off — `useVoiceCommand`'s `listening` boolean defaults `false` on every mount, with no separate reset-on-resume logic needed (AD-4, UX-DR29)
+
+**Given** the mic toggle is off, and a trigger set already exists
+**When** the user taps the mic toggle
+**Then** `expo-audio`'s permission-request sequence runs — identically whether this is the first tap ever or the hundredth (AD-5)
+
+**Given** permission is granted
+**When** the request resolves
+**Then** `listening` becomes `true` and capture begins (mic toggle visually reflects "on-and-listening" — two visual states only, no third state for the wake/command sub-phase) (AD-4, UX-DR29)
+
+**Given** permission is denied (first-ever prompt, or the OS's own re-prompt suppression after a prior denial)
+**When** the request resolves
+**Then** the mic toggle stays/reverts to off and an inline text line appears beneath the toggle controls: "Microphone access is off. Enable it in your device Settings to use voice commands." — no modal, no disabled state, no repeated automatic prompting (AD-5, UX-DR31)
+
+**Given** the mic is on and listening
+**When** the Active Session screen unmounts, the app leaves foreground, or the user taps the toggle off
+**Then** capture stops immediately and `listening` is set to `false` (a hard stop, not a pause) — foreground return never auto-resumes listening (AD-4)
+
+**Given** the app is granted permission in a later session, after a previous denial resolved by the user via OS Settings
+**When** the mic toggle is tapped on
+**Then** the inline denial text no longer appears and listening begins normally (UX-DR31)
+
+### Story 7.4: Voice-Logged Correct/Incorrect During a Session
+
+As a user with hands busy on my instrument,
+I want to say my wake sound followed by my Correct or Incorrect sound to log a repetition,
+So that I don't have to put my instrument down to tap the screen (FR44; CAP-1).
+
+**Acceptance Criteria:**
+
+**Given** the mic is on and a trigger set is saved
+**When** live audio is captured
+**Then** the matcher (`createMatcher()`) starts in `LISTENING_FOR_WAKE`, checking only the wake template against each window — this story wires only the wake-gated mode; no user-facing wake-word toggle exists yet, no `settings.ts` field is added (Story 7.5 introduces both) (AD-1, AD-2)
+
+**Given** the matcher is in `LISTENING_FOR_WAKE`
+**When** a live window matches the wake template
+**Then** it transitions to `AWAITING_COMMAND` and checks only the Correct/Incorrect templates for a bounded window
+
+**Given** the matcher is in `AWAITING_COMMAND`
+**When** a live window matches the Correct or Incorrect template
+**Then** it calls the exact `logCorrect`/`logIncorrect` function reference `useActiveSession`'s tap handlers call — no parallel session-state write path — and returns to `LISTENING_FOR_WAKE` (AD-1)
+
+**Given** the matcher is in `AWAITING_COMMAND`
+**When** the bounded window elapses with no Correct/Incorrect match
+**Then** it reverts silently to `LISTENING_FOR_WAKE` with no action taken (AD-2)
+
+**Given** the mic is in `LISTENING_FOR_WAKE`
+**When** ambient noise (not the wake template) is heard
+**Then** no Correct/Incorrect match can fire — Correct/Incorrect templates are never checked outside `AWAITING_COMMAND` (AD-2)
+
+**Given** a full practice session is logged entirely by voice (wake-then-command for every repetition)
+**When** compared against the same sequence logged by tapping
+**Then** the resulting session counters (streak, target, total correct/incorrect) are identical (SPEC success signal)
+
+### Story 7.5: Wake-Word On/Off Toggle
+
+As a user practicing in a quiet room,
+I want to turn off the wake-word requirement so a Correct or Incorrect sound alone is enough,
+So that I make fewer sounds per repetition when ambient noise isn't a problem — and I can turn it back on when the room gets loud (FR47; CAP-4).
+
+**Acceptance Criteria:**
+
+**Given** `settings.ts`'s existing persisted-settings record (from Epic 5)
+**When** this story adds `wakeWordEnabled: boolean` to it, default `true`
+**Then** every existing settings read/write is unaffected — purely additive, same storage module, same persistence model as the overlearning-% (AD-7)
+
+**Given** the Active Session screen
+**When** it renders
+**Then** a wake-word switch appears beside the mic toggle, always interactive regardless of the mic's on/off state, reflecting the persisted `wakeWordEnabled` value (AD-7, UX-DR29, UX-DR30)
+
+**Given** `wakeWordEnabled` is persisted in `settings.ts`
+**When** the user flips the switch from either the Active Session screen or, if surfaced there, Settings
+**Then** both write through the same single path — no two independently-drifting copies of the value (AD-7)
+
+**Given** the mic is listening and the wake-word switch is ON
+**When** the user flips it to OFF
+**Then** `useVoiceCommand`'s subscription fires, the matcher's `setWakeWordEnabled(false)` is called immediately, and it transitions to `ALWAYS_AWAITING_COMMAND` — discarding any in-progress wake-match window — without the user needing to toggle the mic off and on (AD-2, AD-7, UX-DR30)
+
+**Given** the matcher is in `ALWAYS_AWAITING_COMMAND` (wake-word off)
+**When** a live window matches the Correct or Incorrect template, with no preceding wake trigger
+**Then** the corresponding `logCorrect`/`logIncorrect` fires — the same call path as Story 7.4 (AD-1, AD-2)
+
+**Given** the mic is listening and the wake-word switch is OFF
+**When** the user flips it to ON
+**Then** the matcher transitions to `LISTENING_FOR_WAKE` (never mid-flight into `AWAITING_COMMAND`) — a wake trigger is required before the next command counts, even if the user was mid-utterance at the moment of the flip (AD-2)
+
+**Given** each of the three trigger recordings (Story 7.2)
+**When** any recording is captured, regardless of the wake-word setting
+**Then** it is capped at 2 seconds — the cap applies uniformly and is not affected by `wakeWordEnabled` (AD-7)

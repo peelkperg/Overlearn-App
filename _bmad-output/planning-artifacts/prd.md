@@ -13,8 +13,21 @@ classification:
   domain: general
   complexity: low
   projectContext: greenfield
-lastEdited: '2026-09-14'
+lastEdited: '2026-09-16'
 editHistory:
+  - date: '2026-09-16'
+    changes: >-
+      Added FR47 (v1.2, planned): a wake-word on/off toggle independent
+      of FR45's mic toggle -- ON (default) keeps FR44's wake-then-command
+      flow, OFF matches Correct/Incorrect triggers directly with no wake
+      sound, trading away the wake gate's ambient-noise protection by the
+      user's own choice; noisy-environment vs. quiet-environment practice.
+      Also folds in a 2-second cap on each of FR46's trigger recordings.
+      Added mid-workflow during bmad-create-epics-and-stories, after the
+      user requested these two additions while reviewing the voice-command
+      UX design. Specified first through spec-voice-command-input's
+      SPEC.md (CAP-4) and stack.md, per the established PRD-first
+      convention.
   - date: '2026-09-14'
     changes: >-
       Added web as a platform target (extended the Platform line under
@@ -431,6 +444,15 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 - FR37: **(v1.1)** System applies a changed overlearning-% immediately to the target-streak calculation of a session already in progress, not only to sessions started after the change (supersedes any assumption that `target_streak` is fixed for a session's duration once started). If the recalculated target is now met or exceeded by the session's existing streak, the session completes immediately as a result of the setting change alone (see Mechanic Specification's Settings-driven completion transition) — this can end an in-progress session with no further user action, including from Home if the session is interrupted. (clarified 2026-09-11, code review of Story 5.2 — the original text covered only the displayed target number, not the completion consequence Story 5.2's implementation also produces.)
 - FR39: **(v1.1)** When an in-progress session exists for any segment, the Settings screen warns the user that a change to the overlearning-% will apply to that session immediately (per FR37), before they change the value — not as a confirmation gate on every tap, but as a standing notice visible while the setting is open. (added 2026-09-06 — resolves the v1.1 design review's open question that a mid-session change had no warning designed) **(Annotated 2026-09-12, code review of Story 5.2 round 2):** if the change triggers FR37's completion consequence while the user is on the Settings screen, Home's existing redirect-to-active-session behavior then replaces Settings with the Completion screen mid-adjustment, with no back route to Settings and no way to undo the value just set. No separate UI is designed for this — it is a consequence of FR37 and the existing navigation model, not a new requirement.
 
+### Voice-command Correct/Incorrect input (v1.2, planned)
+
+Full design (activation model, matching technique, recording flow, privacy/permission constraints) lives in `_bmad-output/specs/spec-voice-command-input/SPEC.md` (companion: `stack.md`) — cited here, not restated.
+
+- FR44: **(v1.2, planned)** User can log a Correct or Incorrect repetition during an active session via a wake-then-command recorded-sound trigger, in addition to the existing tap controls. See SPEC-voice-command-input CAP-1.
+- FR45: **(v1.2, planned)** User can turn voice-command listening on or off via an explicit mic toggle on the active-session screen; the mic is off by default. See SPEC-voice-command-input CAP-2.
+- FR46: **(v1.2, planned)** User can record three custom trigger sounds (wake, Correct, Incorrect); save is blocked if any two are not acoustically distinguishable. See SPEC-voice-command-input CAP-3.
+- FR47: **(v1.2, planned)** User can turn the wake-word requirement on or off, independent of FR45's mic toggle — ON (default) keeps FR44's wake-then-command flow; OFF matches Correct/Incorrect triggers directly, with no wake sound required, trading away the wake gate's ambient-noise protection by the user's own choice. Each of the three trigger recordings (FR46) is capped at 2 seconds. See SPEC-voice-command-input CAP-4.
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -453,6 +475,8 @@ The comparison is `> 10`, not `>= 10`. `target_streak` is monotonically non-decr
 
 - NFR8: Zero data leaves the device: no network calls, no analytics, no crash reporting, no usage tracking of any kind — verifiable by code inspection (no networking library/permission should be present in the shipped app at all, not just unused).
 - NFR9: No account creation, authentication, or any form of user identification — the app must have zero concept of "a user" beyond the single local device installation.
+
+**Voice-command addendum (2026-09-16, planned v1.2):** FR44–FR47 introduce this app's first-ever OS permission request (microphone) and the first audio processing of any kind. NFR8/9 still hold: matching is on-device only (SPEC-voice-command-input constraint), no recorded sample or audio data ever leaves the device, and the OS permission is requested lazily (first mic-toggle-on), never upfront. This holds identically whether FR47's wake-word setting is on or off — the setting changes which templates are matched, not where matching happens.
 
 **Web platform addendum (2026-09-14):** NFR8/9 hold identically on the web build — nothing about what leaves the device, or what accounts exist, changes. What differs is durability, not privacy: the web build's storage has no OS-level app sandbox and no backup mechanism, so data is lost if the user clears browser data, uses a private/incognito window, or switches browsers/profiles — a real platform-capability difference from native, not a relaxation of NFR8/9.
 
