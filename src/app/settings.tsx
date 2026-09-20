@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -117,6 +118,17 @@ export default function SettingsScreen() {
         <ThemedText type="small" themeColor="textSecondary">
           A session never targets fewer than 5 correct in a row.
         </ThemedText>
+        {/* SPEC-voice-command-input, CAP-3: leaf-screen entry point for
+            recording/re-recording the three voice triggers. */}
+        <Pressable
+          testID="voice-triggers-link"
+          style={styles.stepperButton}
+          onPress={() => router.push('/settings/voice-triggers')}
+          accessibilityRole="button"
+          accessibilityLabel="Voice triggers"
+        >
+          <ThemedText type="link">Voice triggers</ThemedText>
+        </Pressable>
       </SafeAreaView>
     </ThemedView>
   );

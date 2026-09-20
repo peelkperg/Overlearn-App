@@ -2,6 +2,33 @@
 
 Items surfaced by review workflows that were real but not actionable at the time they were found.
 
+## Deferred from: bmad-build spec-voice-command-input, token-count split (2026-09-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: CAP-4 (independent wake-word ON/OFF toggle, adding a second single-state matcher mode and its own settings entry) — ship CAP-1–CAP-3 with wake-word gating always ON, defer the OFF mode and its toggle.
+  evidence: Narrowed the spec to fit the 900–1600 token target. CAP-4 is additive to CAP-1's matcher (a second mode plus a settings toggle and its own I/O edge cases) rather than a dependency of it, so CAP-1–CAP-3 ship a complete, testable feature (wake-then-command voice logging with recordable triggers) without it.
+
+## Deferred from: bmad-build spec-voice-command-input, step-04 review (2026-09-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: No test covers `voice-capture.web.ts`'s 2s trigger-recording auto-stop — only the native path (`voice-capture.ts`) is covered by `voice-capture.test.ts`.
+  evidence: jsdom cannot deterministically drive the real Web Audio `onaudioprocess`/`Date.now()`-driven loop `voice-capture.web.ts`'s `captureWindow` depends on.
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: `MicToggle` can leak live capture if the Active Session screen loses focus/unmounts while `start()`'s `await voiceCapture.requestPermission()` is still pending — no cancellation guard resumes capture after the screen is gone.
+  evidence: Verified no is-still-current check exists after the `await` in `MicToggle.tsx`'s `start()`. Narrow timing window (permission typically resolves fast); distinct from the blur-based listening-stop patch applied in this same review pass, which only prevents the already-running case.
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: `architecture.md` and `ux-design-specification.md` were never reconciled with this spec's actual scope (CAP-1–3 only, CAP-4 deferred) and actual implementation — most notably, `architecture.md`'s AD-6 promises trigger templates "persist as MFCC feature matrices only (never raw audio)," but the shipped code persists base64-encoded WAV audio directly via `voice-settings.ts`/`voice-triggers.tsx`. Architecture also names files (`voiceCommand/matcher.ts`, `mfcc.ts`, `dtw.ts`, `recorder.ts`, `voiceTriggers.ts`, `useVoiceCommand.ts`) that don't match what was built (`voice-matcher.ts`, `voice-capture.ts`/`.web.ts`, `voice-settings.ts`, `useVoiceSettings.ts`), and presents CAP-4 (AD-2/AD-7, UX-DR29/30) with the same "Gap Analysis: None identified" confidence as shipped CAP-1-3, unlike PRD's explicit "(v1.2, planned)" tagging convention.
+  evidence: Verified by reading `architecture.md` lines 928-970 against the shipped `src/lib/voice-settings.ts` and `src/app/settings/voice-triggers.tsx`. Real, privacy-relevant divergence (raw-audio-vs-features-only) plus stale structural detail; needs a documentation-reconciliation pass per CLAUDE.md §13.4. Out of scope for this code-focused build.
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: No `AppState` handling — nothing in `voice-capture.ts`/`.web.ts` stops capture when the app backgrounds mid-session; only unmount (and, after this review's patch, navigation blur) stop it.
+  evidence: Plausible but bounded — OS-level mic suspension on background likely limits real impact on native; not required by the frozen spec's Boundaries/AC. Worth a follow-up, not a blocker.
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: `package-lock.json`'s diff includes dependency-resolution churn beyond `expo-audio` itself (`@emnapi/core`/`@emnapi/runtime` removal, new `peer` markers on unrelated packages).
+  evidence: Consistent with npm's normal transitive re-resolution when adding a new dependency, not necessarily a manually unrelated change — unconfirmed without a clean-room `npm install` diff. Would only be `low` severity if true.
+- source_spec: `_bmad-output/implementation-artifacts/spec-voice-command-input.md`
+  summary: `decodeWav` (`src/lib/wav.ts`) doesn't validate a missing `fmt ` chunk — `sampleRate` silently stays 0 instead of throwing.
+  evidence: Real gap, but `decodeWav` only ever reads this app's own `encodeWav` output (no WAV-import feature exists), so the scenario isn't reachable through any current code path; the downstream effect (empty MFCC, `Infinity` distance) is already safely absorbed by existing logic.
+
 ## Deferred from: bmad-build spec-web-platform-support, multi-goal split (2026-09-13)
 
 - ~~source_spec: `_bmad-output/implementation-artifacts/spec-web-platform-support.md`~~

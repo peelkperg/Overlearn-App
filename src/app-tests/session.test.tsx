@@ -12,6 +12,14 @@ import ActiveSessionScreen from '@/app/session/[id]';
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(),
+  // [Review][Patch] MicToggle.tsx now stops listening on blur via
+  // useFocusEffect, not only on unmount — this suite renders
+  // ActiveSessionScreen with no NavigationContainer ancestor, so the real
+  // hook would throw. A same-as-mount/unmount stand-in keeps this test's
+  // "screen stays focused throughout" behavior unchanged; it doesn't need
+  // to exercise blur.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- inside a jest.mock factory, which is hoisted above any import
+  useFocusEffect: (effect: () => void | (() => void)) => require('react').useEffect(effect, []),
 }));
 
 const replaced = router.replace as jest.Mock;

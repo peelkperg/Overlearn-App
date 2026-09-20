@@ -16,4 +16,5 @@ export const STACK_SCREENS = [
   'segment/[id]/rename',
   'session/[id]',
   'settings',
+  'settings/voice-triggers',
 ] as const;
