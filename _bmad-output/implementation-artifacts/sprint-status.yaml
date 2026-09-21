@@ -76,7 +76,7 @@
 # shipped.
 
 generated: '2026-09-12'
-last_updated: '09-16-2026 17:30' # Story 6.4 UAT passed on live GH Pages dispatch (2 post-review fixes: lockfile drift, missing expo-env.d.ts in CI); epic-6 done
+last_updated: '09-20-2026 19:12' # Story 6.4 UAT passed on live GH Pages dispatch (2 post-review fixes: lockfile drift, missing expo-env.d.ts in CI); epic-6 done
 project: Overlearn-App
 project_key: NOKEY
 tracking_system: file-system
@@ -139,7 +139,9 @@ development_status:
   7-3-mic-toggle-permission-lifecycle: done
   7-4-voice-logged-correct-incorrect-during-a-session: done
   7-5-wake-word-on-off-toggle: backlog
+  7-6-first-entry-recording-flow-launch: backlog
+  7-7-recording-flow-polish-playback-progress-indicator: backlog
+  7-8-targeted-distinguishability-rejection-recovery: backlog
+  7-9-backgrounding-safety-for-voice-capture: backlog
+  7-10-mfcc-only-trigger-storage-privacy-hardening: backlog
   epic-7-retrospective: optional
-  # Stories 7.6-7.10 added 2026-09-20 (sprint-change-proposal-2026-09-20.md) to
-  # epics.md but not yet keyed here — run bmad-sprint-planning (full refresh)
-  # to derive their keys deterministically rather than hand-guessing slugs.
