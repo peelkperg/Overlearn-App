@@ -22,6 +22,10 @@ import ActiveSessionScreen from '@/app/session/[id]';
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: jest.fn(),
+  // See session.test.tsx's identical addition: MicToggle.tsx (rendered
+  // transitively via session/[id].tsx) now uses useFocusEffect.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- inside a jest.mock factory, which is hoisted above any import
+  useFocusEffect: (effect: () => void | (() => void)) => require('react').useEffect(effect, []),
 }));
 
 const replaced = router.replace as jest.Mock;

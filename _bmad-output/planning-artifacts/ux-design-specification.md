@@ -1,14 +1,29 @@
 ---
-stepsCompleted: [step-01-init, step-02-discovery, step-03-core-experience, step-04-emotional-response, step-05-inspiration, step-06-design-system, step-07-defining-experience, step-08-visual-foundation, step-09-design-directions, step-10-user-journeys, step-11-component-strategy, step-12-ux-patterns, step-13-responsive-accessibility, step-14-complete, v1.1-extension, v1.1.1-extension]
+stepsCompleted: [step-01-init, step-02-discovery, step-03-core-experience, step-04-emotional-response, step-05-inspiration, step-06-design-system, step-07-defining-experience, step-08-visual-foundation, step-09-design-directions, step-10-user-journeys, step-11-component-strategy, step-12-ux-patterns, step-13-responsive-accessibility, step-14-complete, v1.1-extension, v1.1.1-extension, voice-command-extension]
 lastStep: 14
-lastUpdated: '2026-09-12'
+lastUpdated: '2026-09-16'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/specs/spec-voice-command-input/SPEC.md
+  - _bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-16/ARCHITECTURE-SPINE.md
 versionCoverage:
   v1.0: 'Everything above the "v1.1 Design Additions" heading. Shipped, frozen at git tag v1.0.0.'
   v1.1: 'The "v1.1 Design Additions" section — Settings screen with in-progress-session notice (FR35-FR37, FR39), segment list sort control (FR33-FR34), row-menu Rename/Duplicate (FR30, FR32), rename screen (FR30-FR31), inline press-and-hold rename (FR40), history log Solidification % summary (FR38). Designed, not implemented.'
   v1.1.1: 'Targeted addition (2026-09-12), driven by gaps manual UAT found in the shipped v1.1 build: Settings gear icon on every screen (FR43), segment list row summary data (FR41), sort-direction toggle button (FR42). Superseded passages marked inline rather than rewritten silently. Designed, not implemented.'
+  v1.2: 'The "Voice-Command Design Additions" section (2026-09-16, planned; reconciled 2026-09-20) — mic toggle on the Active Session screen and Settings-only trigger recording (FR44-FR46) shipped in feat/voice-command-input; live wake-word switch (FR47) and several recording-flow details (first-entry launch, playback, progress ring, targeted-rejection recovery) remain designed-not-implemented, tracked as Stories 7.5-7.8.'
 editHistory:
+  - date: '2026-09-16'
+    changes: >-
+      Added the "Voice-Command Design Additions" section for FR44-FR47
+      (SPEC-voice-command-input CAP-1-4): mic toggle + live wake-word
+      switch placement on the Active Session screen, their two visual
+      states, permission-denial copy, the CAP-3 recording flow (Settings
+      entry + first-toggle-on entry, 2s countdown-ring cap per take), and
+      distinguishability-rejection recovery (re-record only the flagged
+      later trigger). Specified through spec-voice-command-input's
+      SPEC.md (CAP-4 added mid-workflow) and its ARCHITECTURE-SPINE.md
+      first, then folded back here per the established PRD-first
+      convention, ahead of bmad-create-epics-and-stories extraction.
   - date: '2026-09-12'
     changes: >-
       Synced against Story 4.6's implementation and code review: specified
@@ -761,3 +776,46 @@ Both questions logged when this section was first written have been resolved and
 
 - **Mid-session settings change** → FR39, designed as the standing in-progress-session notice on the Settings screen (see Settings screen above; copy corrected 2026-09-11, code review of Story 5.2, to name the completion consequence Story 5.2's Task 3 introduced).
 - **Solidification % never displayed** → FR38, designed as the history log's summary line (see Segment History Log Addition above).
+
+# Voice-Command Design Additions (v1.2, planned)
+
+Added 2026-09-16, for FR44–FR47 (SPEC-voice-command-input CAP-1–4). Behavior, permission-lifecycle, and state-model detail were originally fixed by `ARCHITECTURE-SPINE.md` (`_bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-16/`) — this section designs the screen/interaction surface only, not restated architecture. **Reconciled 2026-09-20** (`sprint-change-proposal-2026-09-20.md`): CAP-1–3 shipped via a condensed spec (`spec-voice-command-input.md`) that diverged from this section in several places, marked inline below.
+
+## Active Session Screen Additions
+
+Existing layout, unchanged: Correct button (top ~40%), Streak/Target readout (middle), Incorrect button (bottom ~40%), Settings gear (fixed top corner, FR43), recessive Restart control.
+
+**Two new small icon controls, fixed opposite top corner from the Settings gear** — same 44×44 minimum target, same fixed-corner convention as the gear, no new visual pattern introduced:
+
+- **Mic toggle** (FR45/CAP-2). Two visual states only — **off** (default, every new and resumed session) and **on-and-listening**. No third state for wake-vs-command sub-phase — that distinction is matcher-internal (AD-2) with no user-facing consequence, and exposing it would be UI the spec doesn't call for. **Shipped as designed.**
+- **Wake-word switch** (FR47/CAP-4). A standard toggle-switch control (not an icon button, to read unambiguously as a binary setting rather than an action), positioned directly beside the mic toggle. Reflects and writes `wakeWordEnabled` live — flipping it while the mic is on switches the matcher's mode immediately (no need to toggle the mic off/on), per the architecture's live-subscription rule (AD-2, AD-7). Always visible and interactive regardless of the mic toggle's state (so the user can set their preference before turning the mic on), but has no listening-time effect until the mic is on. **Not yet built — see Story 7.5 (backlog).**
+
+**Permission-denial handling (FR45, AD-5):** if the OS mic-permission prompt is denied (first mic-toggle-on) or the OS reports a prior denial (any later toggle-on, no dialog shown), the mic toggle visually reverts to off and a small inline text line appears directly beneath the two icon controls: *"Microphone access is off. Enable it in your device Settings to use voice commands."* No modal, no repeated prompting — matches AD-5's "identical on every tap" rule. The line disappears on the next successful toggle-on (i.e. once permission is actually granted via the OS Settings path).
+
+## Trigger Recording Flow (FR46/CAP-3)
+
+**Two entry points, same flow:**
+1. ~~**First-time:** the very first mic-toggle-on, before any trigger set exists, launches the recording flow immediately instead of starting to listen (nothing to listen for yet).~~ **Not shipped** — the mic toggle is simply disabled until a trigger set exists via entry 2. Tracked as Story 7.6.
+2. **Settings:** a new "Voice Commands" section in the Settings screen (alongside the existing overlearning-% control) offers "Record trigger sounds" at any time — initial setup or re-recording a full new set. **The only entry point that shipped.**
+
+**Flow, one trigger at a time (wake → Correct → Incorrect), each a single take:**
+- A record button per trigger, labeled with which trigger is being captured ("Record your wake sound", then "Record your Correct sound", then "Record your Incorrect sound"). **Shipped**, as a text label ("Record"/"Recording…"/"Re-record") rather than dynamic per-trigger copy.
+- **Recording-cap UI (FR47):** ~~tapping record starts a thin progress ring around the button that fills over 2 seconds; recording auto-stops when the ring completes, or earlier if the user taps stop manually.~~ **Not shipped** — auto-stop at 2 seconds works, but with the plain text label above, no progress ring, and no manual-stop control. Tracked as Story 7.7.
+- ~~After each take, a lightweight playback affordance (▶) lets the user hear their own recording before moving to the next trigger or re-taking the current one — no re-recording limit before save is attempted (SPEC's "single-take" constraint governs the *saved* set, not draft attempts before save).~~ **Not shipped** — no playback exists. Re-recording before save (no limit) did ship. Tracked as Story 7.7.
+- After all three takes exist, a "Save" action runs the distinguishability check (AD-3/AD-6) — **shipped**, but against the raw recorded audio, not MFCC matrices (see `architecture.md` AD-6, Story 7.10).
+
+**Distinguishability-rejection recovery:** if two of the three are too similar, save is blocked and the flow does not exit — **shipped**. ~~The rejection names the pair by role and asks for one new take... always naming the **later** trigger of the flagged pair... as the one to re-record...~~ **Partially shipped**: the rejection names the pair generically ("Too similar to tell apart: X / Y. Re-record and try again.") but does not direct the user to re-record specifically the later trigger — the user may re-record any of the three. The other two takes are kept untouched either way. Re-recording re-runs the full three-way check before allowing save again — **shipped**. Tracked as Story 7.8 for the targeted-recovery copy.
+
+**In-progress recording and backgrounding (AD-6):** ~~if the app backgrounds mid-flow, the in-progress takes are discarded (no raw audio persists per AD-6) and the flow restarts from the wake trigger on return...~~ **Not shipped** — no `AppState` handling exists in the recording flow. Tracked as Story 7.9.
+
+## Component Strategy Additions (Voice Command)
+
+No new custom component budget beyond what FR43 already established (default pressable/icon, no bespoke component) — the mic toggle and wake-word switch both use standard design-system primitives (icon-pressable, switch). The recording-flow's progress ring is the one new custom visual element this addition introduces, scoped to the recording flow only, not reused elsewhere.
+
+## Accessibility (Voice Command)
+
+- **Mic toggle** carries `accessibilityLabel="Voice commands"` and `accessibilityState: { checked: <listening> }` (announced as a toggle, not a momentary button).
+- **Wake-word switch** carries `accessibilityLabel="Require wake word"` and `accessibilityState: { checked: <wakeWordEnabled> }`; a live flip while listening is announced ("Wake word required" / "Wake word not required") since it silently changes matcher behavior with no other visual feedback beyond the switch itself.
+- **Permission-denial inline text** uses `accessibilityLiveRegion="polite"`, matching the existing in-progress-session-notice and duplicate-snackbar convention (see Accessibility (v1.1) above) — read as part of normal content, not an alert interruption.
+- **Recording progress ring** is not the sole cue: the record button's `accessibilityLabel` includes "Recording, stops automatically after 2 seconds" so the 2-second cap is available non-visually, and the button announces `accessibilityState: { busy: true }` while recording.
+- Screen-reader/TalkBack-VoiceOver interaction with live mic capture is explicitly out of scope, per SPEC-voice-command-input's Non-goals — no additional accessibility design beyond the labels above is attempted for this release.

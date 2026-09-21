@@ -1,14 +1,17 @@
 ---
-stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisions, step-05-patterns, step-06-structure, step-07-validation, step-08-complete, v1.1-extension, v1.1.1-extension]
+stepsCompleted: [step-01-init, step-02-context, step-03-starter, step-04-decisions, step-05-patterns, step-06-structure, step-07-validation, step-08-complete, v1.1-extension, v1.1.1-extension, web-platform-extension, voice-command-extension]
 lastStep: 8
 status: 'complete'
 completedAt: '2026-08-31'
-lastUpdated: '2026-09-14'
+lastUpdated: '2026-09-16'
 inputDocuments:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/ux-design-specification.md
   - _bmad-output/specs/spec-web-platform-support/SPEC.md
   - _bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-13/ARCHITECTURE-SPINE.md
+  - _bmad-output/specs/spec-voice-command-input/SPEC.md
+  - _bmad-output/specs/spec-voice-command-input/stack.md
+  - _bmad-output/planning-artifacts/architecture/architecture-Overlearn-App-2026-09-16/ARCHITECTURE-SPINE.md
 workflowType: 'architecture'
 project_name: 'Overlearn'
 user_name: 'Gerardo'
@@ -917,3 +920,72 @@ app.json                     # MODIFIED — expo.extra.basePath, PWA manifest fi
 **Critical Gaps:** None identified — all eight `AD`s were reviewer-gated (deterministic lint + three independent subagent passes: rubric, version/reality-check, adversarial) before finalization; findings from that gate were applied, not merely logged.
 
 **Deferred (see `ARCHITECTURE-SPINE.md` for full list):** custom domain, wider PWA feature surface (push, background sync, share-target), multi-environment deploy, GitHub Pages CDN-caching interaction with the SW update lifecycle, and a deploy rollback procedure — none load-bearing for this scope.
+
+# Voice-Command Architectural Decisions
+
+Added 2026-09-16 via a separate bmad-spec/bmad-architecture chain (`_bmad-output/specs/spec-voice-command-input/SPEC.md` + `stack.md`, `ARCHITECTURE-SPINE.md`), then folded back here per the same convention the Web Platform section established.
+
+**Reconciled 2026-09-20** (`sprint-change-proposal-2026-09-20.md`): CAP-1–3 shipped via `bmad-build` reading `spec-voice-command-input.md` directly rather than these `AD`s — the spec was condensed independently and diverged from the design below without either side being updated. The `AD`s are corrected here to describe what actually shipped (`feat/voice-command-input`, commits `80573fe`, `178d947`); `ARCHITECTURE-SPINE.md` itself is **not** updated and should be read as the original, superseded design for CAP-4 (still backlog) and historical context only — not as current fact for CAP-1–3.
+
+- **AD-1:** The matcher (`src/lib/voice-matcher.ts`, a `VoiceMatcher` class, not a `createMatcher()` factory) is constructed directly by `MicToggle.tsx` (a component, not a dedicated hook) and never imports or reaches into `useActiveSession` — `MicToggle` wires `useActiveSession`'s own `logCorrect`/`logIncorrect` in via props (`onCorrect`/`onIncorrect`) passed from the Active Session screen. There is exactly one session-state write path, tap or voice.
+- **AD-2 [CAP-4, not yet built]:** Original design retained as forward guidance for Story 7.5/7.10's future work: the matcher would expose `setWakeWordEnabled()`, reacting immediately to a live wake-word switch flip, with an `ALWAYS_AWAITING_COMMAND` mode when off. Not yet implemented — wake-word gating is currently always on, per `spec-voice-command-input.md`'s Spec Change Log.
+- **AD-3:** MFCC extraction and DTW distance are hand-rolled pure TypeScript, both in `src/lib/voice-matcher.ts` (one file, not separate `mfcc.ts`/`dtw.ts`) — no new npm dependency (no RN-native fit exists for this scope). The same `dtwDistance()` is shared by live matching and CAP-3's save-time distinguishability check (`checkDistinguishability()`).
+- **AD-4:** Audio capture uses `expo-audio` (native) behind a `VoiceCapture` interface also implemented for web (`voice-capture.web.ts`, Web Audio API) — full native/web parity was delivered, not deferred (see Gap Analysis below). `MicToggle.tsx` owns one unpersisted `micOn` component-local boolean as the single source of truth for the toggle's display and actual capture state. Screen unmount and screen blur (navigating away, e.g. to Settings — added during this build's own review pass to close a cross-screen capture-leak) are both hard stops. **Gap:** the app leaving foreground (backgrounding) is not yet handled — no `AppState` subscription exists; tracked as Story 7.9.
+- **AD-5:** Mic permission is requested lazily inside the toggle's `onPress` (`start()`), identically on every tap (no app-level "already denied" flag) — relies on the OS's own re-prompt suppression after a denial, not app-tracked state. Matches original design.
+- **AD-6 [amended 2026-09-20]:** Trigger templates persist as **base64-encoded WAV audio** (not MFCC feature matrices) in `src/lib/voice-settings.ts`, via `storage.ts`'s existing string API, one atomically-overwritten record. This is a deliberate simplification made when `spec-voice-command-input.md` was condensed, not a decision this architecture ever endorsed — the original MFCC-only design was privacy-motivated (a recording of the user's voice should never sit in local storage in a directly listenable form) and still stands as the target. **Tracked as Story 7.10** (needs explicit product sign-off given the rework cost) rather than corrected in this pass, since the current implementation is shipped, tested, and already meets NFR8/9 ("no audio leaves the device"). Save still runs the CAP-3 distinguishability check (`checkDistinguishability()`) before persisting. **Gap:** in-progress recording-flow takes are not discarded on backgrounding (no `AppState` handling) — tracked as Story 7.9.
+- **AD-7 [CAP-4, not yet built]:** Original design retained as forward guidance: `wakeWordEnabled` as a persisted `settings.ts` preference, one write path, two UI entry points. Not yet implemented — see Story 7.5 (still backlog, consistent with `deferred-work.md`'s CAP-4 deferral).
+
+## Project Structure Additions (Voice Command)
+
+```
+src/
+├── lib/
+│   ├── voice-matcher.ts       # MFCC extraction, DTW distance, VoiceMatcher state machine, checkDistinguishability (AD-1, AD-3, AD-6)
+│   ├── voice-capture-types.ts # VoiceCapture interface, TRIGGER_RECORD_MAX_MS (AD-4)
+│   ├── voice-capture.ts       # NATIVE capture (expo-audio) (AD-4)
+│   ├── voice-capture.web.ts   # WEB capture (Web Audio API) (AD-4)
+│   ├── voice-settings.ts      # Trigger-template storage (base64 WAV), own storage key (AD-6)
+│   ├── wav.ts                 # WAV encode/decode for base64 persistence (AD-6)
+│   └── base64.ts              # base64 encode/decode helper
+├── hooks/
+│   └── useVoiceSettings.ts    # Reactive wrapper over voice-settings.ts
+├── components/session/
+│   └── MicToggle.tsx          # Toggle UI, permission lifecycle, matcher construction/wiring (AD-1, AD-4, AD-5)
+└── app/settings/
+    └── voice-triggers.tsx     # Trigger recording/re-recording screen (AD-6, distinguishability gate)
+```
+
+*(`wakeWordEnabled` in `settings.ts`, and any `voiceCommand/` directory structure, remain forward design for CAP-4/Story 7.5 — not yet present in the codebase.)*
+
+## Requirements to Structure Mapping (Voice Command additions)
+
+**Voice-logged Correct/Incorrect (FR44, CAP-1):** `src/lib/voice-matcher.ts` → `MicToggle.tsx` → `useActiveSession`'s existing handlers (AD-1) — no changes to `useActiveSession` itself.
+
+**Mic toggle (FR45, CAP-2):** `src/components/session/MicToggle.tsx` (AD-4, AD-5).
+
+**Custom trigger recording (FR46, CAP-3):** `src/app/settings/voice-triggers.tsx`, `src/lib/voice-settings.ts` (AD-6).
+
+**Wake-word toggle & recording cap (FR47, CAP-4):** not yet built — see Story 7.5 (backlog).
+
+## Enforcement Guidelines (Voice Command additions)
+
+**All AI Agents MUST additionally:**
+- Never import or reach into `useActiveSession` from `voice-matcher.ts`, `voice-capture.ts`/`.web.ts` — these are plain, callback/return-value-driven modules; only `MicToggle.tsx` may call `useActiveSession`'s handlers (AD-1).
+- Never let Correct/Incorrect templates be checked outside `AWAITING_COMMAND` state — the wake gate is not optional while CAP-4 is unbuilt (AD-2).
+- Never add a new npm dependency for MFCC/DTW without a fresh dependency-governance justification (CLAUDE.md §5.2) — the hand-rolled implementation is the committed decision (AD-3).
+- Persisting raw/WAV-encoded audio in `voice-settings.ts` is a known, tracked deviation (AD-6, Story 7.10) — don't extend it further (e.g. to new features) without the same sign-off Story 7.10 requires.
+- Never introduce a second, screen-owned copy of the mic-toggle/capture state beyond `MicToggle.tsx`'s `micOn` (AD-4).
+- Never add an app-level "permission already denied" flag that changes `onPress` behavior after the first denial — every tap runs the identical permission-check sequence (AD-5).
+
+## Voice Command Gap Analysis
+
+**Critical Gaps:** None identified in the shipped CAP-1–3 code itself (reviewed via this build's own three-layer process — Blind Hunter, Edge Case Hunter, Verification Gap — findings patched before merge; see `spec-voice-command-input.md`'s Review Triage Log). The gaps below are between this architecture's original design and what shipped, not defects in the shipped code.
+
+**Known gaps (tracked as new backlog stories, see `epics.md`):**
+- Trigger storage is raw WAV, not MFCC-only (AD-6) — Story 7.10.
+- No `AppState` handling for backgrounding, in either active listening or the recording flow (AD-4, AD-6) — Story 7.9.
+- First-entry recording-flow launch from the mic toggle, playback-before-save, the 2s progress-ring indicator, and targeted distinguishability-rejection recovery were all designed (`ux-design-specification.md`) but not delivered — Stories 7.6–7.8.
+
+**Delivered beyond what was deferred:** web platform parity for this feature — this document's Gap Analysis previously listed it as deferred; `spec-voice-command-input.md`'s Intent committed to it for consistency with epic-6, and it shipped (`voice-capture.web.ts`).
+
+**Still deferred (see `ARCHITECTURE-SPINE.md` for full list, CAP-4 only):** wake/command window timing and DTW/MFCC threshold constants (empirical, story-level tuning — `voice-matcher.ts`'s constants are tuned against synthetic fixtures only, real-device validation still required), accessibility/screen-reader interaction (explicit SPEC non-goal), and re-recording-for-robustness — none load-bearing for this scope.

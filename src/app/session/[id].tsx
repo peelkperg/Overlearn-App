@@ -7,6 +7,7 @@ import { CompletionScreen } from '@/components/session/CompletionScreen';
 import { CorrectButton } from '@/components/session/CorrectButton';
 import { SessionColors } from '@/components/session/colors';
 import { IncorrectButton } from '@/components/session/IncorrectButton';
+import { MicToggle } from '@/components/session/MicToggle';
 import { RestartConfirmDialog } from '@/components/session/RestartConfirmDialog';
 import { RestartControl } from '@/components/session/RestartControl';
 import { StreakReadout } from '@/components/session/StreakReadout';
@@ -192,6 +193,10 @@ export default function ActiveSessionScreen() {
         </Text>
       )}
       <SettingsButton testID="session-settings" />
+      <MicToggle
+        onCorrect={() => runAction(logCorrect, 'Could not record that. Check that the device has free storage.')}
+        onIncorrect={() => runAction(logIncorrect, 'Could not record that. Check that the device has free storage.')}
+      />
       <CorrectButton onPress={() => runAction(logCorrect, 'Could not record that. Check that the device has free storage.')} />
       <StreakReadout currentStreak={session.currentStreak} targetStreak={targetStreak} segmentName={segment.name} />
       <IncorrectButton

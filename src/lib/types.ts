@@ -59,6 +59,22 @@ export interface Settings {
   sortDirection: SortDirection; // FR33-FR34
 }
 
+// SPEC-voice-command-input (CAP-2, CAP-3). One base64-encoded WAV template
+// per trigger — Boundaries: "Trigger audio persists as base64 strings via
+// storage.ts's existing string/object API — no raw buffers" (spec-6-1
+// precedent). `triggers` is null until the user has recorded and saved a
+// full, distinguishable set (lib/voice-matcher.ts's checkDistinguishability
+// gate) — there is no partial/two-of-three saved state.
+export interface VoiceTriggerSet {
+  wake: string;
+  correct: string;
+  incorrect: string;
+}
+
+export interface VoiceSettings {
+  triggers: VoiceTriggerSet | null;
+}
+
 // Runtime shape guards for everything read back out of MMKV. On-device data
 // is untrusted input: a `getObject<T>` cast alone is an unchecked assertion,
 // and a parseable-but-wrong payload would reach the UI and throw there.
@@ -159,6 +175,14 @@ function isSortKey(value: unknown): value is SortKey {
 
 function isSortDirection(value: unknown): value is SortDirection {
   return typeof value === 'string' && (SortDirections as readonly string[]).includes(value);
+}
+
+function isVoiceTriggerSet(value: unknown): value is VoiceTriggerSet {
+  return isRecord(value) && typeof value.wake === 'string' && typeof value.correct === 'string' && typeof value.incorrect === 'string';
+}
+
+export function isVoiceSettings(value: unknown): value is VoiceSettings {
+  return isRecord(value) && (value.triggers === null || isVoiceTriggerSet(value.triggers));
 }
 
 export function isSettings(value: unknown): value is Settings {

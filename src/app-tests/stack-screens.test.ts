@@ -16,7 +16,8 @@ import { STACK_SCREENS } from '@/app/stack-screens';
 describe('stack-screens STACK_SCREENS [Review][Patch]', () => {
   // One entry per router.push/replace target in the app, as of:
   // src/app/index.tsx, src/app/segment/[id].tsx, src/app/segment/new.tsx,
-  // src/app/segment/[id]/rename.tsx, src/app/session/[id].tsx.
+  // src/app/segment/[id]/rename.tsx, src/app/session/[id].tsx,
+  // src/app/settings.tsx.
   const navigatedRoutes: (typeof STACK_SCREENS)[number][] = [
     'index', // router.replace('/') — segment/new.tsx, segment/[id]/rename.tsx, session/[id].tsx
     'segment/new', // index.tsx's Create action
@@ -24,6 +25,7 @@ describe('stack-screens STACK_SCREENS [Review][Patch]', () => {
     'segment/[id]/rename', // index.tsx's SegmentListItem onRename (row-menu Rename, Story 4.1)
     'session/[id]', // index.tsx's resume/redirect, segment/[id].tsx's Start
     'settings', // index.tsx's gear icon (Story 5.1)
+    'settings/voice-triggers', // settings.tsx's Voice triggers link (SPEC-voice-command-input, CAP-3)
   ];
 
   it.each(navigatedRoutes)('%s has a Stack.Screen entry', (route) => {
