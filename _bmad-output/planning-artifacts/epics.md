@@ -1185,20 +1185,22 @@ So that trigger matching and the distinguishability check share one tested compa
 **Acceptance Criteria:**
 
 **Given** a raw audio buffer (from a live capture window or a recorded template)
-**When** `mfcc.ts`'s extraction function runs
+**When** `voice-matcher.ts`'s `extractMfcc()` runs
 **Then** it returns a Mel-frequency cepstral coefficient matrix, pure computation, no native module or I/O
 
 **Given** two MFCC matrices
-**When** `dtw.ts`'s distance function runs
+**When** `voice-matcher.ts`'s `dtwDistance()` runs
 **Then** it returns a single numeric distance via dynamic time warping, deterministic for identical inputs
 
 **Given** two recordings of the same sound (same trigger, two takes)
 **When** their distance is computed
-**Then** it falls below the match/distinguishability threshold; two recordings of clearly different sounds fall above it (verified by a test using recorded audio fixtures, not synthetic data)
+**Then** it falls below the match/distinguishability threshold; two recordings of clearly different sounds fall above it (`voice-matcher.test.ts` verifies this with synthetic-tone fixtures — no real recorded audio was available at implementation time; a real-device manual pass, per the spec's own Verification section, is still required before the thresholds are trusted)
 
-**Given** `mfcc.ts` or `dtw.ts`
+**Given** `voice-matcher.ts`
 **When** the codebase is inspected
 **Then** neither imports a new npm dependency — pure TypeScript only (AD-3)
+
+**Status:** Done — shipped in `feat/voice-command-input` (commits `80573fe`, `178d947`), as `voice-matcher.ts` rather than the separate `mfcc.ts`/`dtw.ts` modules originally planned; behavior and the no-new-dependency constraint are both satisfied. `DISTINGUISHABILITY_MIN_DISTANCE`/`DTW_MATCH_THRESHOLD` ordering was found backwards during the build's own review pass and corrected before merge.
 
 ### Story 7.2: Trigger Recording Flow
 
@@ -1208,41 +1210,31 @@ So that I can set up hands-free logging with sounds I choose, confident the app 
 
 **Acceptance Criteria:**
 
-**Given** the user has no saved trigger set
-**When** they turn the Active Session screen's mic toggle on for the first time
-**Then** the recording flow launches immediately instead of starting to listen (UX-DR32)
-
 **Given** the user opens Settings at any time
 **When** they select "Record trigger sounds" under a new "Voice Commands" section
-**Then** the same recording flow launches (UX-DR32)
+**Then** the recording flow launches (the only entry point that shipped — see Story 7.6 for the first-entry-from-mic-toggle launch that was designed but not delivered)
 
 **Given** the recording flow is open, on the wake trigger's turn
 **When** the user taps record
-**Then** capture starts via `expo-audio`, a progress ring fills over 2 seconds, and recording auto-stops at 2 seconds if not stopped manually first (AD-4, AD-7, UX-DR33)
-
-**Given** a take has been recorded for the current trigger
-**When** the user taps playback
-**Then** they hear that take before moving on or re-recording it, with no limit on draft re-takes before save (UX-DR33)
+**Then** capture starts (native: `expo-audio`; web: `MediaRecorder`/Web Audio API) and recording auto-stops at 2 seconds if not stopped manually first — shown as a plain text label ("Recording…"), not the progress-ring UI originally designed (see Story 7.7)
 
 **Given** all three takes (wake, Correct, Incorrect) exist
 **When** the user taps Save
-**Then** `dtw.ts`'s distance function runs pairwise across all three candidate MFCC matrices before anything is persisted (AD-3, AD-6)
+**Then** `voice-matcher.ts`'s `checkDistinguishability()` runs pairwise across all three candidate recordings before anything is persisted
 
 **Given** every pairwise distance is above the separation threshold
 **When** save completes
-**Then** the three MFCC matrices — not the raw audio — are written to `voiceTriggers.ts` as one atomically-overwritten record; raw recordings are discarded from memory (AD-6)
+**Then** the three takes — encoded as base64 WAV audio, not MFCC matrices — are written to `voice-settings.ts` as one atomically-overwritten record via `storage.ts`'s string API (see Story 7.10 for the MFCC-only storage originally designed and not yet delivered)
 
-**Given** any pair of the three candidate matrices is below the separation threshold
+**Given** any pair of the three candidate takes is below the separation threshold
 **When** save is attempted
-**Then** it is blocked, the flow does not exit, and the rejection names the pair and asks the user to re-record only the **later** trigger of that pair (wake < Correct < Incorrect ordering), keeping the other two takes untouched (UX-DR34)
+**Then** it is blocked, the flow does not exit, and the rejection names the pair generically — it does not direct the user to re-record specifically the later trigger as originally designed (see Story 7.8); the user may re-record any of the three, and the prior valid saved set (if any) is left untouched
 
 **Given** a trigger was re-recorded after a rejection
 **When** the user attempts save again
-**Then** the full three-way distinguishability check re-runs before allowing save (UX-DR34)
+**Then** the full three-way distinguishability check re-runs before allowing save
 
-**Given** the recording flow is in progress (0–2 of 3 takes done)
-**When** the app leaves foreground (backgrounded or killed)
-**Then** the in-progress takes are discarded with no persistence and no resume prompt; returning to the flow restarts from the wake trigger (AD-6, UX-DR35)
+**Status:** Done, with known gaps — shipped in `feat/voice-command-input`. No playback-before-save affordance shipped (Story 7.7). No background-discard handling for in-progress takes (Story 7.9). Gaps tracked as Stories 7.6–7.10, not silently dropped.
 
 ### Story 7.3: Mic Toggle & Permission Lifecycle
 
@@ -1254,27 +1246,29 @@ So that voice commands are opt-in and this app's first-ever permission prompt ne
 
 **Given** a new or resumed session
 **When** the Active Session screen mounts
-**Then** the mic toggle renders off — `useVoiceCommand`'s `listening` boolean defaults `false` on every mount, with no separate reset-on-resume logic needed (AD-4, UX-DR29)
+**Then** the mic toggle renders off — `MicToggle`'s `micOn` component-local state defaults `false` on every mount, with no separate reset-on-resume logic needed (satisfies the requirement without a dedicated hook/persisted flag)
 
 **Given** the mic toggle is off, and a trigger set already exists
 **When** the user taps the mic toggle
-**Then** `expo-audio`'s permission-request sequence runs — identically whether this is the first tap ever or the hundredth (AD-5)
+**Then** `voiceCapture.requestPermission()` runs — identically whether this is the first tap ever or the hundredth (native: `expo-audio`; web: `getUserMedia`)
 
 **Given** permission is granted
 **When** the request resolves
-**Then** `listening` becomes `true` and capture begins (mic toggle visually reflects "on-and-listening" — two visual states only, no third state for the wake/command sub-phase) (AD-4, UX-DR29)
+**Then** `micOn` becomes `true` and capture begins (mic toggle visually reflects "on-and-listening" — two visual states only, no third state for the wake/command sub-phase)
 
 **Given** permission is denied (first-ever prompt, or the OS's own re-prompt suppression after a prior denial)
 **When** the request resolves
-**Then** the mic toggle stays/reverts to off and an inline text line appears beneath the toggle controls: "Microphone access is off. Enable it in your device Settings to use voice commands." — no modal, no disabled state, no repeated automatic prompting (AD-5, UX-DR31)
+**Then** the mic toggle stays/reverts to off and an inline text line appears beneath the toggle controls: "Microphone permission denied. Voice commands are off." (shipped copy differs slightly from the originally-drafted wording; same behavior) — no modal, no disabled state, no repeated automatic prompting
 
 **Given** the mic is on and listening
-**When** the Active Session screen unmounts, the app leaves foreground, or the user taps the toggle off
-**Then** capture stops immediately and `listening` is set to `false` (a hard stop, not a pause) — foreground return never auto-resumes listening (AD-4)
+**When** the Active Session screen unmounts, loses focus (e.g. navigating to Settings), or the user taps the toggle off
+**Then** capture stops immediately and `micOn` is set to `false` (a hard stop, not a pause) — no auto-resume. **Gap:** the app leaving foreground (backgrounding) is not yet handled — no `AppState` subscription exists; tracked as `deferred-work.md`'s AppState entry and Story 7.9.
 
 **Given** the app is granted permission in a later session, after a previous denial resolved by the user via OS Settings
 **When** the mic toggle is tapped on
-**Then** the inline denial text no longer appears and listening begins normally (UX-DR31)
+**Then** the inline denial text no longer appears and listening begins normally
+
+**Status:** Done, with one known gap — shipped in `feat/voice-command-input`. Uses `MicToggle`/`useFocusEffect` component-local state instead of a dedicated `useVoiceCommand` hook (functionally equivalent, and its focus-based stop is a strict improvement over the originally-scoped unmount-only stop, closing a cross-screen capture-leak found in this build's own review pass — see `deferred-work.md`). The one real gap (no `AppState` handling for backgrounding) is tracked as Story 7.9. (UX-DR31)
 
 ### Story 7.4: Voice-Logged Correct/Incorrect During a Session
 
@@ -1286,7 +1280,7 @@ So that I don't have to put my instrument down to tap the screen (FR44; CAP-1).
 
 **Given** the mic is on and a trigger set is saved
 **When** live audio is captured
-**Then** the matcher (`createMatcher()`) starts in `LISTENING_FOR_WAKE`, checking only the wake template against each window — this story wires only the wake-gated mode; no user-facing wake-word toggle exists yet, no `settings.ts` field is added (Story 7.5 introduces both) (AD-1, AD-2)
+**Then** the matcher (`VoiceMatcher`, `src/lib/voice-matcher.ts`) starts in `LISTENING_FOR_WAKE`, checking only the wake template against each window — this story wires only the wake-gated mode; no user-facing wake-word toggle exists yet, no `settings.ts` field is added (Story 7.5 introduces both) (AD-1, AD-2)
 
 **Given** the matcher is in `LISTENING_FOR_WAKE`
 **When** a live window matches the wake template
@@ -1307,6 +1301,8 @@ So that I don't have to put my instrument down to tap the screen (FR44; CAP-1).
 **Given** a full practice session is logged entirely by voice (wake-then-command for every repetition)
 **When** compared against the same sequence logged by tapping
 **Then** the resulting session counters (streak, target, total correct/incorrect) are identical (SPEC success signal)
+
+**Status:** Done — shipped in `feat/voice-command-input`. No behavioral gaps found; naming updated above to match the shipped `VoiceMatcher` class.
 
 ### Story 7.5: Wake-Word On/Off Toggle
 
@@ -1343,3 +1339,73 @@ So that I make fewer sounds per repetition when ambient noise isn't a problem �
 **Given** each of the three trigger recordings (Story 7.2)
 **When** any recording is captured, regardless of the wake-word setting
 **Then** it is capped at 2 seconds — the cap applies uniformly and is not affected by `wakeWordEnabled` (AD-7)
+
+### Story 7.6: First-Entry Recording Flow Launch
+
+As a user turning on voice commands for the first time,
+I want the trigger-recording flow to launch automatically when I have no saved trigger set,
+So that I don't hit a disabled mic toggle with no explanation of what to do next (originally scoped in Story 7.2, not delivered).
+
+**Acceptance Criteria:**
+
+**Given** no trigger set is saved
+**When** the user taps the Active Session screen's mic toggle
+**Then** the trigger-recording flow (`src/app/settings/voice-triggers.tsx`) launches directly, instead of the toggle simply staying disabled
+
+### Story 7.7: Recording Flow Polish (Playback + Progress Indicator)
+
+As a user recording trigger sounds,
+I want to hear each take back before moving on, and see a visual countdown of the 2-second cap,
+So that I can judge whether a take is usable before committing to it (originally scoped in Story 7.2, not delivered).
+
+**Acceptance Criteria:**
+
+**Given** a take has been recorded for the current trigger
+**When** the user wants to review it
+**Then** a playback control lets them hear that take before moving on or re-recording
+
+**Given** the user taps record
+**When** capture is in progress
+**Then** a visual progress indicator (e.g. a filling ring) shows time remaining toward the 2-second auto-stop, replacing the current plain "Recording…" text label
+
+### Story 7.8: Targeted Distinguishability-Rejection Recovery
+
+As a user whose trigger set failed the distinguishability check,
+I want to be told exactly which trigger to re-record,
+So that I don't have to guess or re-record all three (originally scoped in Story 7.2, not delivered — shipped behavior names the pair but leaves the user to re-record any/all of the three).
+
+**Acceptance Criteria:**
+
+**Given** two of the three candidate takes are too similar
+**When** save is blocked
+**Then** the rejection names the pair and directs the user to re-record specifically the **later** trigger of that pair (wake < Correct < Incorrect ordering), leaving the other two takes untouched
+
+### Story 7.9: Backgrounding Safety for Voice Capture
+
+As a user who backgrounds the app while voice commands are active,
+I want capture to stop cleanly rather than keep running silently,
+So that the mic isn't left active without my knowledge (gap found in this build's own review pass — see `deferred-work.md`; also affects the Story 7.2 recording flow's originally-scoped background-discard behavior).
+
+**Acceptance Criteria:**
+
+**Given** the mic is on and actively listening
+**When** the app leaves foreground (backgrounded or killed)
+**Then** capture stops (via `AppState` subscription), matching the existing unmount/blur stop behavior
+
+**Given** the trigger-recording flow is in progress (0–2 of 3 takes done)
+**When** the app leaves foreground
+**Then** in-progress takes are discarded with no persistence and no resume prompt; returning to the flow restarts from the wake trigger
+
+### Story 7.10: MFCC-Only Trigger Storage (Privacy Hardening)
+
+As a privacy-conscious user,
+I want my trigger sounds stored as derived features rather than replayable audio,
+So that a recording of my voice never sits in local storage in a directly listenable form (originally decided in architecture.md's AD-6; shipped code instead persists base64-encoded raw WAV audio via CAP-3's spec, a deliberate simplification made when the spec was condensed — see `implementation-readiness.md`).
+
+**Note:** this is a product/privacy tradeoff decision, not a pure bug — the current implementation is simpler and already meets NFR8/9 ("no audio leaves the device"). Needs explicit sign-off before scheduling, weighing rework cost (matcher and storage layer both change) against the privacy benefit.
+
+**Acceptance Criteria:**
+
+**Given** a trigger set is saved
+**When** persisted
+**Then** only extracted MFCC feature matrices are written to storage — no raw or WAV-encoded audio, and no way to reconstruct audible sound from the stored data

@@ -133,10 +133,13 @@ development_status:
   6-4-github-pages-deploy-workflow: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-mfcc-dtw-matching-core: backlog
-  7-2-trigger-recording-flow: backlog
-  7-3-mic-toggle-permission-lifecycle: backlog
-  7-4-voice-logged-correct-incorrect-during-a-session: backlog
+  epic-7: in-progress
+  7-1-mfcc-dtw-matching-core: done
+  7-2-trigger-recording-flow: done
+  7-3-mic-toggle-permission-lifecycle: done
+  7-4-voice-logged-correct-incorrect-during-a-session: done
   7-5-wake-word-on-off-toggle: backlog
   epic-7-retrospective: optional
+  # Stories 7.6-7.10 added 2026-09-20 (sprint-change-proposal-2026-09-20.md) to
+  # epics.md but not yet keyed here — run bmad-sprint-planning (full refresh)
+  # to derive their keys deterministically rather than hand-guessing slugs.
